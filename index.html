@@ -1,0 +1,1272 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="UTF-8"/>
+	<!--
+		👶👶 Baby Merchant 👶👶
+
+		A text trading game (and sin against best practices) by J.R. Willett (https://www.linkedin.com/in/jrwillett/)
+		Inspired by:
+		A Dark Room http://adarkroom.doublespeakgames.com/
+		Universal Paperclip https://www.decisionproblem.com/paperclips/
+		Candy Box 2 https://candybox2.github.io/candybox/
+		Taipan! https://en.wikipedia.org/wiki/Taipan
+		Desert Trader, specifically the Apple IIGS version: https://www.reddit.com/r/tipofmytongue/comments/hh2exu/tomtgamelate_80s_to_early_90s_pc_game_about/
+		Galactic Conquest (https://www.galcon.com/classic/history.html), specifically the 1991 version for the Apple IIGS by David Hallwas, which the internet has forgotten
+
+		Goals I'd like to implement:
+		* Each level adds a new gameplay wrinkle
+		* Upgradeable weapons and/or number of weapons
+		* Health
+		* Battles
+		* Borrowing from a money lender
+		* Randomly finding/losing stuff
+		* Banking Deposits
+		* Owning multiple ships
+		* Gaining/Losing territory to rivals
+		* Karma from doing good or bad things affects luck?
+		* Travel down into massive number of consistently named subworlds
+				* Maybe to earn karma?
+				* Buy upgrades with absurd amoumts of currency from higher levels
+		* Trading affects supply/demand? (My trading actions affect prices?)
+		* Price persistence? Trending over time?
+		* Slightly disturbing ascii art?
+		* Narration needs more voice/humor
+		* Maybe only update text when something important happens? (maybe no nose picking failure?)
+		* Level title cards
+
+
+
+	-->
+	<title>Baby Merchant</title>
+	<meta itemprop="description" name="description" property="og:description" content="A minimalist trading game">
+	<meta itemprop="name" property="og:title" content="Baby Merchant" />
+
+	<link rel="apple-touch-icon" sizes="57x57" href="images/apple-icon-57x57.png">
+	<link rel="apple-touch-icon" sizes="60x60" href="images/apple-icon-60x60.png">
+	<link rel="apple-touch-icon" sizes="72x72" href="images/apple-icon-72x72.png">
+	<link rel="apple-touch-icon" sizes="76x76" href="images/apple-icon-76x76.png">
+	<link rel="apple-touch-icon" sizes="114x114" href="images/apple-icon-114x114.png">
+	<link rel="apple-touch-icon" sizes="120x120" href="images/apple-icon-120x120.png">
+	<link rel="apple-touch-icon" sizes="144x144" href="images/apple-icon-144x144.png">
+	<link rel="apple-touch-icon" sizes="152x152" href="images/apple-icon-152x152.png">
+	<link rel="apple-touch-icon" sizes="180x180" href="images/apple-icon-180x180.png">
+	<link rel="icon" type="image/png" sizes="192x192"  href="images/android-icon-192x192.png">
+	<link rel="icon" type="image/png" sizes="32x32" href="images/favicon-32x32.png">
+	<link rel="icon" type="image/png" sizes="96x96" href="images/favicon-96x96.png">
+	<link rel="icon" type="image/png" sizes="16x16" href="images/favicon-16x16.png">
+	<link rel="manifest" href="images/manifest.json">
+	<meta name="msapplication-TileColor" content="#ffffff">
+	<meta name="msapplication-TileImage" content="images/ms-icon-144x144.png">
+	<meta name="theme-color" content="#ffffff">
+
+<!-- From https://github.com/davidbau/seedrandom -->
+<script src=seedrandom.min.js>
+</script>
+
+<script src=nameGenerator.js>
+</script>
+
+	<script type='text/javascript'>
+
+Math.seedrandom()	// Start out truly random
+gameSeed = Math.floor(Math.random()*Number.MAX_SAFE_INTEGER)
+PAUSE_MULT = 100 // Pause multiplier
+devMode = true
+if(devMode) {
+	gameSeed = 1
+	PAUSE_MULT = 1
+}
+Math.seedrandom(gameSeed)	// replaces Math.random with predictable pseudorandom generator
+
+function isPunctuation(charToCheck) {
+	return(charToCheck == '.' || charToCheck == ',' || charToCheck == '?' || charToCheck == '!' || charToCheck == ':' || charToCheck == ';')
+}
+
+function setHeaderHTML(newHTML) {
+	document.getElementById("headerGoesHere").innerHTML = newHTML
+	document.getElementById("headerGoesHere").style.display = "flex"
+}
+
+function setInventoryHTML(newHTML) {
+	document.getElementById("inventoryGoesHere").innerHTML = newHTML
+	if(newHTML == "")
+		document.getElementById("inventoryGoesHere").style.display = "none"
+	else
+		document.getElementById("inventoryGoesHere").style.display = "flex"
+}
+
+function setActionsHTML(newHTML) {
+	document.getElementById("actionsGoHere").innerHTML = newHTML
+	document.getElementById("actionsGoHere").style.display = "flex"
+	document.getElementById("controlsGoHere").style.display = "flex"
+}
+
+function setDestinationsHTML(newHTML) {
+	document.getElementById("destinationsGoHere").innerHTML = newHTML
+}
+
+function setOutputHTML(newHTML) {
+	document.getElementById("outputGoesHere").innerHTML = newHTML
+	document.getElementById("outputAndGradient").style.visibility = "visible"
+}
+
+lastChar = ' '
+alreadyTyped = ''
+//gradientHTML = '<div id="textGradient"  class="gradientback">'
+textBelow = ''
+textToType = []
+textToTypeBolded = []
+waitingMessagesToType = 0
+typingText = false
+lastLineWasBold = false
+
+function typeCharacter(characterToType, bolded) {
+	if(characterToType == '\n') {
+		if(lastLineWasBold) {
+			textBelow = '<br><strong class="outputSpan">' + alreadyTyped + '</strong>' + textBelow
+			lastLineWasBold = false
+		} else {
+			textBelow = '<br><span class="outputSpan">' + alreadyTyped + '</span>' + textBelow
+		}
+		alreadyTyped = ''
+	} else {
+		alreadyTyped += characterToType
+	}
+	if(bolded) {
+		lastLineWasBold = true
+		setOutputHTML('<strong class="outputSpan">' + alreadyTyped + '</strong>' + textBelow.substring(0,4000))
+	} else {
+		setOutputHTML('<span class="outputSpan">' + alreadyTyped + '</span>' + textBelow.substring(0,4000))
+	}
+}
+
+function typeNextText() {
+	thisChar = textToType[0].substring(0,1)
+	typeCharacter(thisChar, textToTypeBolded[0])
+	textToType[0] = textToType[0].substring(1,textToType[0].length)
+	nextWait = 500
+	if(textToType[0].length > 0) {
+		nextChar = textToType[0].substring(0,1)
+		nextWait = 25 + Math.random()*50
+		if(isPunctuation(lastChar) && !isPunctuation(thisChar)) {
+			// Pause after punctuation
+			nextWait += 200 + Math.random()*200
+		} else if(thisChar != '\n' && nextChar == '\n') {
+			// Pause before linebreak
+			nextWait += 200 + Math.random()*200
+		} else if(thisChar ==' ') {
+			// Slight pause after space
+			nextWait += 50 + Math.random()*50
+		}
+	} else {
+		waitingMessagesToType--
+		if(waitingMessagesToType > 0) {
+			for(i = 0; i < waitingMessagesToType; i++) {
+				textToType[i] = textToType[i+1]
+				textToTypeBolded[i] = textToTypeBolded[i+1]
+			}
+		} else {
+			typingText = false
+		}
+	}
+	lastChar = thisChar
+	if(typingText) {
+		if(devMode || true) {
+			nextWait = nextWait / 100
+		}
+		setTimeout('typeNextText()', nextWait)
+	}
+}
+
+
+function typeText(whatToType, bolded = false) {
+	//textBelow = '<br><br>' + alreadyTyped + textBelow
+	//alreadyTyped = ''
+	textToType[waitingMessagesToType] = '\n\n' + whatToType
+	textToTypeBolded[waitingMessagesToType] = bolded
+	waitingMessagesToType++
+	if(!typingText) {
+		typingText = true
+		typeNextText()
+	}
+}
+
+
+levelData = [
+	{
+		levelDownMessage: "err",
+		levelUpMessage: "You decide you are ready to roll to other groups of babies. You need your hands for rolling, so you put the pieces of fuzz in your mouth.",
+		levelDownLabel: "err",
+		levelUpLabel: "Roll to another group",
+		discoveryMsg1: "You bump into another ",
+		discoveryMsg2: " whom you decide should be named ",
+		discoveryMsg3: ".",
+		BossDiscoveryMsg1: "You found a ",
+		BossDiscoveryMsg2: ", larger than the others, who babbles a name which might be \"",
+		BossDiscoveryMsg3: "\". Here you can buy upgrades in exchange for ",
+		BossDiscoveryMsg4: ". Perhaps you can trade with the other babies to get some.",
+		ArrivalMsg1: "You arrive at ",
+		ArrivalMsg2: "'s ",
+		ExploreMsg: "Random limb movements propel you.",
+		ExploreHdr: "Thrashing toward the unknown . . . ",
+		RevisitMsg: "You thrash your limbs with purpose.",
+		RevisitHdr1: "Thrashing toward ",
+		RevisitHdr2: "'s ",
+		VisitHdr1: "Visiting ",
+		VisitHdr2: " ",
+		VisitHdr3: "'s ",
+		tradeableItems: ['crusty boogers', 'slimy boogers', 'bloody boogers', 'pieces of fuzz'],
+		tradeableItemsSingular: ['crusty booger', 'slimy booger', 'bloody booger', 'piece of fuzz'],
+		characterType: 'helpless baby',
+		locomotionType: 'thrash about',
+		locationLabel: ['spot','spot','spot','spot','spot'],
+		travelFasterUpgradeMsg: [" reaches into a nearby diaper and liberally applies grease to your back.", " shows you how to thrash about more efficiently."],
+		travelFasterUpgradeButton: ['Back Grease', 'Super Trash'],
+		cargoUpgradeMsg: ' teaches you how to hold more boogers at once.',
+		cargoUpgradeButton: 'Tighter Grip',
+		levelUpgradeMsg: ' teaches you how to roll over to travel further to reach other groups of babies.',
+		levelUpgradeButton: 'Roll Over',
+		loseMsg: 'As you thrashed your limbs, you accidentally flung away ',
+		foundMsg: 'As you thrashed your limbs, you managed to find ',
+		lastLocation: 1,
+		travelTime: 4,
+		numLocations: 5,
+		visitedLocation: [false, false, false, false, false],
+		cargoSpace: 100,
+		price: [[1,10,100,1000],[1,10,100,1000],[1,10,100,1000],[1,10,100,1000],[1,10,100,1000]]
+	},
+	{
+		levelDownMessage: "You lie on your back and prepare to move by thrashing about and to hold boogers and fuzz in your hands.",
+		levelUpMessage: "You decide you are ready to crawl to other rooms of babies. You put on a diaper, which seems useful for item storage.",
+		levelDownLabel: "Enter this group",
+		levelUpLabel: "Crawl to another baby room",
+		discoveryMsg1: "You roll to another ",
+		discoveryMsg2: " who babbles a name which might be \"",
+		discoveryMsg3: "\".",
+		BossDiscoveryMsg1: "You roll up to a ",
+		BossDiscoveryMsg2: ", larger than the others, who babbles a name which sounds like \"",
+		BossDiscoveryMsg3: "\". Here you can buy upgrades in exchange for ",
+		BossDiscoveryMsg4: ".",
+		ArrivalMsg1: "You arrive at ",
+		ArrivalMsg2: "'s ",
+		ExploreMsg: "You roll awkwardly toward a new group.",
+		ExploreHdr: "Rolling somewhere new . . . ",
+		RevisitMsg: "You roll determinedly.",
+		RevisitHdr1: "Rolling toward ",
+		RevisitHdr2: "'s ",
+		VisitHdr1: "Visiting ",
+		VisitHdr2: " ",
+		VisitHdr3: "'s ",
+		tradeableItems: ['pieces of fuzz', 'paperclips', 'shiny beads', 'pacifiers'],
+		tradeableItemsSingular: ['piece of fuzz', 'paperclip', 'shiny bead', 'pacifier'],
+		characterType: 'wee baby',
+		locomotionType: 'roll',
+		locationLabel: ['doorway','group','group','group','group'],
+		travelFasterUpgradeMsg: [" reaches into a nearby diaper and liberally applies grease to your tummy.", " shows you how to roll more efficiently."],
+		travelFasterUpgradeButton: ['Tummy Grease', 'Mega Roll'],
+		cargoUpgradeMsg: ' teaches you how to hold more items in your mouth.',
+		cargoUpgradeButton: 'Stretchier Cheeks',
+		levelUpgradeMsg: ' teaches you how to crawl and thereby reach other rooms.',
+		levelUpgradeButton: 'Crawl',
+		loseMsg: 'While rolling, you choked and accidentally swallowed ',
+		foundMsg: 'While rolling, you managed to find ',
+		lastLocation: 1,
+		travelTime: 4,
+		numLocations: 5,
+		visitedLocation: [false, false, false, false, false],
+		cargoSpace: 100,
+		price: [[1,10,100,1000],[1,10,100,1000],[1,10,100,1000],[1,10,100,1000],[1,10,100,1000]]
+	},
+	{
+		levelDownMessage: "You remove your diaper, lie down, and prepare to move by rolling over",
+		levelUpMessage: "You decide you are ready to ride the elevator to visit other floors full of babies. You find a plastic baggy to carry your precious candies.",
+		levelDownLabel: "Enter this room",
+		levelUpLabel: "Use Elevator",
+		discoveryMsg1: "You crawl to another ",
+		discoveryMsg2: " who babbles a name which sounds like \"",
+		discoveryMsg3: "\".",
+		BossDiscoveryMsg1: "You crawl up to a ",
+		BossDiscoveryMsg2: ", larger than the others, who babbles that their name is \"",
+		BossDiscoveryMsg3: "\". Here you can buy upgrades in exchange for ",
+		BossDiscoveryMsg4: ".",
+		ArrivalMsg1: "You arrive at ",
+		ArrivalMsg2: "'s ",
+		ExploreMsg: "You crawl aimlessly toward a new doorway.",
+		ExploreHdr: "Crawling somwhere new . . . ",
+		RevisitMsg: "You crawl steadily.",
+		RevisitHdr1: "Crawling toward ",
+		RevisitHdr2: "'s ",
+		VisitHdr1: "Visiting ",
+		VisitHdr2: " ",
+		VisitHdr3: "'s ",
+		tradeableItems: ['pacifiers', 'building blocks', 'toy cars', 'candies'],
+		tradeableItemsSingular: ['pacifier', 'building block', 'toy car', 'candy'],
+		characterType: 'lil baby',
+		locomotionType: 'crawl',
+		locationLabel: ['elevator','doorway','doorway','doorway','doorway'],
+		travelFasterUpgradeMsg: [" reaches into a nearby diaper and liberally applies grease to your elbows.", " shows you how to crawl more efficiently."],
+		travelFasterUpgradeButton: ['Elbow Grease', 'Hyper Crawl'],
+		cargoUpgradeMsg: ' provides you with a roomier diaper.',
+		cargoUpgradeButton: 'Bigger Diaper',
+		levelUpgradeMsg: ' teaches you how to push elevator buttons to access other floors.',
+		levelUpgradeButton: 'Use Elevator',
+		loseMsg: 'Your diaper loosened while crawling, and you lost ',
+		foundMsg: 'You kept out a sharp eye while crawling and managed to find ',
+		lastLocation: 1,
+		travelTime: 4,
+		numLocations: 5,
+		visitedLocation: [false, false, false, false, false],
+		cargoSpace: 100,
+		price: [[1,10,100,1000],[1,10,100,1000],[1,10,100,1000],[1,10,100,1000],[1,10,100,1000]]
+	},
+]
+
+function setupLevel(index, seed, mainLocationName) {
+	levelData[index].seed = seed
+	Math.seedrandom(seed)
+	levelData[index].childSeed = []
+	for(var i = 1; i < levelData[index].numLocations; i++) {
+		levelData[index].childSeed[i] = Math.floor(Math.random()*Number.MAX_SAFE_INTEGER)
+	}
+	levelData[index].locationName = []
+	levelData[index].locationName[0] = mainLocationName
+	for(var i = 1; i < levelData[index].numLocations; i++) {
+		levelData[index].locationName[i] = getRandomName()
+	}
+}
+
+function setupLocationRadioButtons() {
+	rbHTML = '';
+	for(var i = 0; i < levelData[currLevel].numLocations; i++) {
+		rbHTML += '<div class="locChoice">'
+		rbHTML += '<input class="locRadioButton" type="radio" id="nextLoc' + i + '" name="nextLoc" value="' + i + '"'
+		if(i == nextLocIndex) rbHTML += ' checked'
+		rbHTML +='>'
+		rbHTML += '<label for="nextLoc' + i + '" '
+		if(i == locIndex) {
+			rbHTML += 'class="locRadioLabelDisabled">'
+		} else {
+			rbHTML += 'class="locRadioLabel">'
+		}
+
+		if(levelData[currLevel].visitedLocation[i]) {
+			rbHTML += levelData[currLevel].locationName[i]
+		} else {
+			rbHTML += levelData[currLevel].locationLabel[i]
+			if(i > 0) {
+				rbHTML += "&nbsp;#" + i
+			}
+		}
+		rbHTML += '</label></div>'
+	}
+	setDestinationsHTML(rbHTML)
+}
+
+i = levelData.length-1
+setupLevel(i, Math.floor(Math.random()*Number.MAX_SAFE_INTEGER), "final boss")
+i--
+while(i >= 0) {
+	setupLevel(i, levelData[i+1].childSeed[1], levelData[i+1].locationName[1])
+	i--
+}
+
+function positiveExclamation() {
+	exclamationChoice = ["Good Joss!", "Yay!", "Hooray!", "Incredible!", "Yes!", "Fantastic!", "Lucky you!", "Fabulous!", "Excellent!", "Splendid!"]
+	return exclamationChoice[Math.floor(Math.random()*exclamationChoice.length)]
+}
+
+function negativeExclamation() {
+	exclamationChoice = ["Bad Joss!", "Oh no!", "Boo!", "Terrible news!", "No!", "Bummer!", "Bad luck!", "Turnip farts!", "Dagnabbit!", "Poodoo!"]
+	return exclamationChoice[Math.floor(Math.random()*exclamationChoice.length)]
+}
+
+function doButtonAction(actionName) {
+	buttonAction = actionName
+}
+
+function getButtonHTML(actionName, buttonText) {
+	return '<button class=babyButton id="buttonID' + actionName + '" onclick="doButtonAction(\'' + actionName +'\')">' + buttonText + '</button>'
+}
+
+buttonAction = ''
+currLevel = 0
+locIndex = 1
+nextLocIndex = 2
+transitMoves = 4
+pickingEnabled = false
+tradingEnabled = false
+storeVisible = false
+upgradesVisible = false
+inv = [0,0,0,90]
+// inv = [0,0,0,100]
+basePrice = [1,10,100,1000]
+inventoryChanged = false
+maxLevel = 0
+
+function hasAnything() {
+	for(var i = 0; i < inv.length; i++) {
+		if(inv[i] > 0) return true
+	}
+	return false
+}
+
+function visitedAllLocations() {
+	for(var i = 0; i < levelData[currLevel].numLocations; i++ ) {
+		if(!levelData[currLevel].visitedLocation[i]) return false
+	}
+	return true
+}
+
+function getDisplayNumber(num, compact="") {
+	modIndex = Math.floor(Math.log10(num)/3) - 1
+	if(compact != "") {
+			mod = ['k','m','b','t','qd','qn','sx','sp','oc','nn','dc']
+			if(num < 1000 || compact != "super" && num < 2000) {
+				return num.toLocaleString()
+			} else if(modIndex < mod.length) {
+				num /= Math.pow(1000,(modIndex+1))
+				if(compact == "super") {
+					return Math.round(num) + mod[modIndex]
+				} else {
+					return num.toPrecision(3) + mod[modIndex]
+				}
+			} else {
+				if(compact == "super") {
+					return num.toExponential(0)
+				} else {
+					return num.toExponential(2)
+				}
+			}
+	} else {
+		modIndex--
+		mod = ['million','billion','trillion','quadrillion','quintillion','sextillion',
+						'septillion','octillion','nonillion','decillion','undecillion',
+						'duodecillion','tredecillion', 'quattuordecillion','quindecillion',
+						'sexdecillion','septendecillion','octodecillion','novemdecillion',
+						'vigintillion']
+		if(num < 2000000) {
+			return num.toLocaleString()
+		} else if(modIndex < mod.length) {
+				num /= Math.pow(1000,(modIndex+2))
+				return num.toPrecision(4) + " " + mod[modIndex]
+		} else {
+			return num.toExponential(5)
+		}
+	}
+}
+
+function calculateFreeSpace() {
+	freeSpace = levelData[currLevel].cargoSpace
+	for(var i = 0; i < inv.length; i++) {
+		freeSpace -= inv[i]
+	}
+	return freeSpace
+}
+
+function handleLostAndFound() {
+	whaHappen = Math.random()
+	if(whaHappen < 0.07) {
+		// Lost something, mebbe
+		whichInv = inv.length - 1
+		while(whichInv > 0 && Math.random() < 0.5) {
+			whichInv--
+		}
+		amount = Math.floor(Math.random()*inv[whichInv]*0.5)
+		if(amount > 0) {
+			inv[whichInv] -= amount
+			if(amount == 1) {
+				typeText(negativeExclamation() + " " + levelData[currLevel].loseMsg + " " +
+								amount + " " + levelData[currLevel].tradeableItemsSingular[whichInv] + "!", true)
+			} else {
+				typeText(negativeExclamation() + " " + levelData[currLevel].loseMsg + " " +
+								amount + " " + levelData[currLevel].tradeableItems[whichInv] + "!", true)
+			}
+		}
+	} else if(whaHappen > 0.975 && hasAnything()) {
+		whichInv = 0;
+		while(whichInv < inv.length && Math.random() < 0.1) {
+			whichInv++
+		}
+		maxAmountFound = calculateFreeSpace() / 2
+		amount = Math.floor(Math.random()*maxAmountFound*0.5)
+		if(amount > 0) {
+			inv[whichInv] += amount
+			if(amount == 1) {
+				typeText(positiveExclamation() + " " + levelData[currLevel].foundMsg + " " +
+								amount + " " + levelData[currLevel].tradeableItemsSingular[whichInv] + "!", true)
+			} else {
+				typeText(positiveExclamation() + " " + levelData[currLevel].foundMsg + " " +
+								amount + " " + levelData[currLevel].tradeableItems[whichInv] + "!", true)
+			}
+		}
+	}
+}
+
+function sellInv(index, quantity) {
+	if(inv[index] >= quantity) {
+		thisPrice = levelData[currLevel].price[locIndex][index]
+		inv[index] -= quantity
+		inv[0] += quantity*thisPrice
+		sellMsg = "You sell " + getDisplayNumber(quantity) + " "
+		if(quantity == 1) {
+			sellMsg += levelData[currLevel].tradeableItemsSingular[index]
+		} else {
+			sellMsg += levelData[currLevel].tradeableItems[index]
+		}
+		sellMsg += " to get " + getDisplayNumber(quantity*thisPrice) + " "
+		if(quantity*thisPrice == 1) {
+			sellMsg += levelData[currLevel].tradeableItemsSingular[0]
+		} else {
+			sellMsg += levelData[currLevel].tradeableItems[0]
+		}
+		typeText(sellMsg)
+		inventoryChanged = true;
+	}
+}
+
+function buyInv(index, quantity) {
+	thisPrice = levelData[currLevel].price[locIndex][index]
+	if(inv[0] >= quantity*thisPrice) {
+		inv[index] += quantity
+		inv[0] -= quantity*thisPrice
+		buyMsg = "You buy " + getDisplayNumber(quantity) + " "
+		if(quantity == 1) {
+			buyMsg += levelData[currLevel].tradeableItemsSingular[index]
+		} else {
+			buyMsg += levelData[currLevel].tradeableItems[index]
+		}
+		buyMsg += " for " + getDisplayNumber(quantity*thisPrice) + " "
+		if(quantity*thisPrice == 1) {
+			buyMsg += levelData[currLevel].tradeableItemsSingular[0]
+		} else {
+			buyMsg += levelData[currLevel].tradeableItems[0]
+		}
+		typeText(buyMsg)
+		inventoryChanged = true;
+	}
+}
+
+function buyUpgrade(upgradeType, upgradeAmount, cost) {
+	if(cost <= inv[3]) {
+		switch(upgradeType) {
+			case 'travel':
+				if(levelData[currLevel].travelTime > 1) {
+					levelData[currLevel].travelTime--;
+					inv[3] -= cost
+					inventoryChanged = true;
+					if(levelData[currLevel].travelTime > 1) {
+						typeText(levelData[currLevel].locationName[locIndex] + levelData[currLevel].travelFasterUpgradeMsg[0], true)
+					} else {
+						typeText(levelData[currLevel].locationName[locIndex] + levelData[currLevel].travelFasterUpgradeMsg[1], true)
+					}
+				}
+				break
+			case 'cargo':
+				levelData[currLevel].cargoSpace += upgradeAmount
+				inv[3] -= cost
+				inventoryChanged = true
+				typeText(levelData[currLevel].locationName[locIndex] + levelData[currLevel].cargoUpgradeMsg, true)
+				break
+			case 'level':
+				maxLevel++
+				inv[3] -= cost
+				inventoryChanged = true
+				document.getElementById('buttonIDlevelUp').style.visibility = 'visible'
+				typeText(levelData[currLevel].locationName[locIndex] + levelData[currLevel].levelUpgradeMsg, true)
+				break
+		}
+	} else {
+		typeText("upgrade error", true)
+	}
+}
+
+function randomizeStore(initAll=false) {
+	for(i = 1; i < inv.length; i++) {
+		for(j = 0; j < levelData[currLevel].numLocations; j++) {
+			if(initAll) {
+				levelData[currLevel].price[j][i] = basePrice[i]
+			}
+			formerPrice = levelData[currLevel].price[j][i]
+			newPrice = (formerPrice*2+basePrice[i])/3	// Trend back toward the basePrice
+			variancepct = 0.2
+			if(Math.random() < 0.1) variancepct += Math.random()*0.7 // Sometimes have wild price swings
+			newPrice = Math.round(newPrice + Math.random()*newPrice*variancepct*2 - newPrice*variancepct)
+			if(newPrice > formerPrice*1.2 && formerPrice <= basePrice) {
+				// Prices can sometimes get very high
+				while(Math.random() < 0.7 && newPrice < basePrice[i]*10) newPrice = Math.round(newPrice*1.2)
+			}
+			levelData[currLevel].price[j][i] = newPrice
+		}
+	}
+}
+
+function goBaby() {
+	if(!typingText) {	// Can't do anything if we are still typing text
+		thisAction = buttonAction
+		if(buttonAction != '') {
+
+			locomoteButton = document.getElementById('buttonIDlocomote')
+			pickButton = document.getElementById('buttonIDpick')
+			levelUpButton = document.getElementById('buttonIDlevelUp')
+			levelDownButton = document.getElementById('buttonIDlevelDown')
+
+			freeSpace = calculateFreeSpace()
+			spaceUsed = levelData[currLevel].cargoSpace - freeSpace
+
+			switch(thisAction) {
+			case 'levelUp':
+				if(currLevel < maxLevel) {
+					typeText(levelData[currLevel].levelUpMessage, true)
+					document.getElementById("destinationsAndLabel").style.display = "flex"
+
+					// Preserve inventory that can't go up to the next level
+					levelData[currLevel].oldInv = [0,0,0,0]
+					for(i = 0; i < inv.length-1; i++) {
+						levelData[currLevel].oldInv[i] = inv[i]
+					}
+					levelData[currLevel].lastLocation = locIndex
+
+					// This level's most expensive item is next level's currency
+					inv[0] = inv[inv.length-1]
+					currLevel++
+
+					// Restore inventory from the last time we were on the higher level
+					if(levelData[currLevel].oldInv != null) {
+						for(i = 1; i < inv.length; i++) {
+							inv[i] = levelData[currLevel].oldInv[i]
+						}
+					} else {
+						for(i = 1; i < inv.length; i++) {
+							inv[i] = 0
+						}
+					}
+					locIndex = levelData[currLevel].lastLocation
+					nextLocIndex = locIndex + 1
+					if(nextLocIndex > levelData[currLevel].numLocations) {
+						nextLocIndex = 0
+					}
+					levelData[currLevel].visitedLocation[locIndex] = true
+					upgradesVisible = false
+					storeVisible = true
+					randomizeStore(locIndex, true)
+					levelDownButton.style.visibility = 'visible'
+					levelDownButton.innerHTML = levelData[currLevel].levelDownLabel
+					levelUpButton.innerHTML = levelData[currLevel].levelUpLabel
+					locomoteButton.innerHTML = levelData[currLevel].locomotionType
+					levelUpButton.style.visibility = 'hidden'
+					pickButton.style.display = 'none'
+					setupLocationRadioButtons()
+					setHeaderHTML(levelData[currLevel].VisitHdr1 + levelData[currLevel].characterType +
+												levelData[currLevel].VisitHdr2 + levelData[currLevel].locationName[locIndex] +
+												levelData[currLevel].VisitHdr3 + levelData[currLevel].locationLabel[locIndex])
+				}
+				break
+			case 'levelDown':
+				if(currLevel > 0) {
+					typeText(levelData[currLevel].levelDownMessage, true)
+					// Preserve inventory that can't go down to the previous level
+					levelData[currLevel].oldInv = [0,0,0,0]
+					for(i = 1; i < inv.length; i++) {
+						levelData[currLevel].oldInv[i] = inv[i]
+					}
+					setupLevel(currLevel-1, levelData[currLevel].childSeed[locIndex], levelData[currLevel].locationName[locIndex])
+					levelData[currLevel].lastLocation = locIndex
+
+					// This level's currency is next level's most expensive item
+					inv[inv.length-1] = inv[0]
+					currLevel--
+
+					// Restore inventory from the last time we were on the lower level
+					for(i = 0; i < inv.length-1; i++) {
+						inv[i] = levelData[currLevel].oldInv[i]
+					}
+					locIndex = levelData[currLevel].lastLocation
+					storeVisible = false
+					randomizeStore(locIndex, true)
+					upgradesVisible = true
+					levelDownButton.innerHTML = levelData[currLevel].levelDownLabel
+					levelUpButton.innerHTML = levelData[currLevel].levelUpLabel
+					levelUpButton.style.visibility = 'visible'
+					locomoteButton.innerHTML = levelData[currLevel].locomotionType
+					if(currLevel == 0) {
+						levelDownButton.style.visibility = 'hidden'
+						pickButton.style.display = 'block'
+					}
+
+					setupLocationRadioButtons()
+					setHeaderHTML(levelData[currLevel].VisitHdr1 + levelData[currLevel+1].characterType +
+												levelData[currLevel].VisitHdr2 + levelData[currLevel].locationName[locIndex] +
+												levelData[currLevel].VisitHdr3 + levelData[currLevel].locationLabel[locIndex])
+				}
+				break
+			case 'pick':
+				if(locIndex == 0 && transitMoves == 0) {
+					typeText(levelData[currLevel].locationName[locIndex] + " glares at you, and you decide to wait.")
+				} else if(freeSpace == 0 && transitMoves > 0) {
+					typeText("You would be overencumbered!")
+				} else {
+					pickButton.disabled = true
+					pickResult = Math.random()
+					if(pickResult < 0.5 && hasAnything() || pickResult < 0.1) {
+						typeText("You dig deep, but find nothing")
+					} else {
+						pickResult = Math.random()
+						if(pickResult < 0.9) {
+							inv[0]++
+							typeText("You withdraw a " + levelData[currLevel].tradeableItemsSingular[0])
+						} else if(pickResult < 0.99) {
+							inv[1]++
+							typeText("You draw forth a " + levelData[currLevel].tradeableItemsSingular[1] + "!")
+						} else {
+							inv[2]++
+							typeText(positiveExclamation() + " You found a " + levelData[currLevel].tradeableItemsSingular[2] + "!!", true)
+						}
+					}
+				}
+				setTimeout("document.getElementById('buttonIDpick').disabled = false", 40*PAUSE_MULT)
+				break
+			case 'locomote':
+
+				for(var i = 0; i < levelData[currLevel].numLocations; i++) {
+					if(document.getElementById("nextLoc" + i).checked) {
+						nextLocIndex = i
+					}
+				}
+				if(freeSpace < 0) {
+					typeText("You are overencumbered!")
+				}	else if(nextLocIndex == locIndex) {
+					typeText("You are already there!")
+				} else {
+					locomoteButton.disabled = true
+					setTimeout("document.getElementById('buttonIDlocomote').disabled = false", 8*PAUSE_MULT)
+
+					if(transitMoves == 0) {
+						// Handle things related to departing a location
+						document.getElementById("destinationsAndLabel").style.display = "none"
+						transitMoves = levelData[currLevel].travelTime
+						storeVisible = false
+						levelUpButton.style.visibility = 'hidden'
+						levelDownButton.style.visibility = 'hidden'
+						upgradesVisible = false
+						locIndex = nextLocIndex
+						nextLocIndex++
+						if(nextLocIndex >= levelData[currLevel].numLocations) {
+							nextLocIndex = 0
+						}
+						randomizeStore()
+					}
+					transitMoves--
+					ctype = levelData[currLevel].characterType;
+					if(locIndex == 0) {
+						ctype = levelData[currLevel+1].characterType;
+					}
+
+					handleLostAndFound()
+
+					if(transitMoves == 0) {
+						// Handle things related to arriving at a location
+						coolLocation = false
+						if(currLevel > 0) {
+							document.getElementById("destinationsAndLabel").style.display = "flex"
+							if(locIndex > 0){
+								levelDownButton.style.visibility = 'visible'
+							}
+						}
+						if(!levelData[currLevel].visitedLocation[locIndex]) {
+							locationMessage = ''
+							levelData[currLevel].visitedLocation[locIndex] = true
+							if(visitedAllLocations()) {
+								levelData[currLevel].travelTime--
+								typeText("You have visited every location and are starting to feel comfortable in this mode of travel.", true)
+							}
+							if(locIndex > 0) {
+								locationMessage += levelData[currLevel].discoveryMsg1 + ctype +
+											levelData[currLevel].discoveryMsg2 + levelData[currLevel].locationName[locIndex] +
+											levelData[currLevel].discoveryMsg3
+
+								if(!pickingEnabled) {
+									pickButton.style.visibility = "visible"
+									pickingEnabled = true
+									locationMessage += " You notice " + levelData[currLevel].locationName[locIndex]  +
+														" has a finger in each nostril. Hmmmm."
+									coolLocation = true
+								}
+							} else {
+								locationMessage += levelData[currLevel].BossDiscoveryMsg1 + ctype +
+											levelData[currLevel].BossDiscoveryMsg2 + levelData[currLevel].locationName[locIndex] +
+											levelData[currLevel].BossDiscoveryMsg3 + levelData[currLevel].tradeableItems[3] +
+											levelData[currLevel].BossDiscoveryMsg4
+								coolLocation = true
+							}
+							typeText(locationMessage, coolLocation)
+						} else {
+							typeText(levelData[currLevel].ArrivalMsg1 + levelData[currLevel].locationName[locIndex] +
+										levelData[currLevel].ArrivalMsg2 + levelData[currLevel].locationLabel[locIndex])
+						}
+						if(locIndex == 0) {
+							if(currLevel < maxLevel) {
+								levelUpButton.style.visibility = 'visible'
+							}
+						} else {
+							if(!tradingEnabled && hasAnything() ) {
+								tradingEnabled = true;
+								typeText(levelData[currLevel].locationName[locIndex] +
+											" seems to want to trade with you, but these wares look so expensive!" +
+											" A voice resonates in your deepest being, \"Buy low. Sell high.\"", true)
+							}
+						}
+						setHeaderHTML(levelData[currLevel].VisitHdr1 + ctype +
+									levelData[currLevel].VisitHdr2 + levelData[currLevel].locationName[locIndex] +
+									levelData[currLevel].VisitHdr3 + levelData[currLevel].locationLabel[locIndex])
+
+						if(tradingEnabled) {
+							if(locIndex == 0) {
+								upgradesVisible = true
+							} else {
+								storeVisible = true
+							}
+						}
+					} else {  // transitMoves >= 0
+			 			if(levelData[currLevel].visitedLocation[locIndex]) {
+							typeText(levelData[currLevel].RevisitMsg)
+							setHeaderHTML(levelData[currLevel].RevisitHdr1 + levelData[currLevel].locationName[locIndex] +
+								 		levelData[currLevel].RevisitHdr2 + levelData[currLevel].locationLabel[locIndex])
+						} else {
+							typeText(levelData[currLevel].ExploreMsg)
+							setHeaderHTML(levelData[currLevel].ExploreHdr)
+						}
+					}
+				}
+				setupLocationRadioButtons()
+
+				break
+			default:
+				break
+			}
+		}
+
+		if(buttonAction != '' || inventoryChanged) {
+			// Get updated freeSpace and spaceUsed numbers
+			freeSpace = calculateFreeSpace()
+			spaceUsed = levelData[currLevel].cargoSpace - freeSpace
+
+			// Update inventory area
+			invHTML = ""
+			if(hasAnything()) {
+				if(upgradesVisible) {
+					invHTML += "<table class='collapseborder'>"
+					invHTML += "<tr><td style=\"text-align:center\" class='singleborder'>Upgrade</td>" +
+													"<td style=\"text-align:center\" class='singleborder'>Description</td>" +
+													"<td style=\"text-align:center\" class='singleborder'>Price</td>" +
+													"<td style=\"text-align:center\"></td></tr>"
+					if(levelData[currLevel].travelTime == 3 + (visitedAllLocations() ? 0 : 1)) {
+						invHTML += "<tr><td style=\"text-align:center\" class='singleborder'>" + levelData[currLevel].travelFasterUpgradeButton[0] + "</td>" +
+														"<td style=\"text-align:center\" class='singleborder'>Travel faster</td>" +
+														"<td style=\"text-align:center\" class='singleborder'>1</td>" +
+														"<td style=\"text-align:left\">"
+						if(inv[3] >= 1) {
+							invHTML += '<button class=upgradeButton onclick="buyUpgrade(\'travel\',1,1)">buy</button>'
+						} else {
+							invHTML += '<button disabled class=upgradeButton">buy</button>'
+						}
+						invHTML += "</td></tr>"
+					} else if(levelData[currLevel].travelTime == 2 + (visitedAllLocations() ? 0 : 1)) {
+						invHTML += "<tr><td style=\"text-align:center\" class='singleborder'>" + levelData[currLevel].travelFasterUpgradeButton[1] + "</td>" +
+														"<td style=\"text-align:center\" class='singleborder'>Travel faster</td>" +
+														"<td style=\"text-align:center\" class='singleborder'>5</td>" +
+														"<td style=\"text-align:left\">"
+						if(inv[3] >= 5) {
+							invHTML += '<button class=upgradeButton onclick="buyUpgrade(\'travel\',1,5)">buy</button>'
+						} else {
+							invHTML += '<button disabled class=upgradeButton">buy</button>'
+						}
+						invHTML += "</td></tr>"
+					}
+					cargoPrice = getDisplayNumber(Math.pow(2,levelData[currLevel].cargoSpace/100), "yes")
+					invHTML += "<tr><td style=\"text-align:center\" class='singleborder'>" + levelData[currLevel].cargoUpgradeButton + "</td>" +
+														"<td style=\"text-align:center\" class='singleborder'>Hold more</td>" +
+														"<td style=\"text-align:center\" class='singleborder'>" + cargoPrice + "</td>" +
+														"<td style=\"text-align:left\">"
+					if(inv[3] >= cargoPrice) {
+						invHTML += '<button class=upgradeButton onclick="buyUpgrade(\'cargo\',100,' + cargoPrice + ')">buy</button>'
+					} else {
+						invHTML += '<button disabled class=upgradeButton">buy</button>'
+					}
+					invHTML += "</td></tr>"
+					if(maxLevel == currLevel) {
+						invHTML += "<tr><td style=\"text-align:center\" class='singleborder'>" + levelData[currLevel].levelUpgradeButton + "</td>" +
+														"<td style=\"text-align:center\" class='singleborder'>Travel further</td>" +
+														"<td style=\"text-align:center\" class='singleborder'>20</td>" +
+														"<td style=\"text-align:left\">"
+						if(inv[3] >= 20) {
+							invHTML += '<button class=upgradeButton onclick="buyUpgrade(\'level\',1,20)">buy</button>'
+						} else {
+							invHTML += '<button disabled class=upgradeButton">buy</button>'
+						}
+						invHTML += "</td></tr>"
+					}
+					invHTML += "</table>"
+					invHTML += "Currency: " + getDisplayNumber(inv[3]) + " "
+					if(inv[3] == 1) {
+						invHTML += levelData[currLevel].tradeableItemsSingular[3]
+					} else {
+						invHTML += levelData[currLevel].tradeableItems[3]
+					}
+				}	else if(storeVisible) {
+					invHTML += "<table class='collapseborder'>"
+					invHTML += "<tr><td width=26% style=\"text-align:center\">Sell</td>" +
+													"<td style=\"text-align:center\" class='singleborder'>Item</td>" +
+													"<td style=\"text-align:center\" class='singleborder'>Price</td>" +
+													"<td style=\"text-align:center\" class='singleborder'>Held</td>" +
+													"<td width=26% style=\"text-align:center\">Buy</td></tr>"
+					for(i = inv.length-1; i >= 1; i--) {
+						alertRed = 0
+						alertGreen = 0
+						displayPrice = levelData[currLevel].price[locIndex][i]
+						if(displayPrice > basePrice[i]) {
+							alertRed = Math.floor(255*2*(displayPrice/basePrice[i]-1))
+							if(alertRed > 255) alertRed = 255
+						} else if(displayPrice < basePrice[i]) {
+							alertGreen = Math.floor(255*(basePrice[i]/displayPrice-1))
+							if(alertGreen > 255) alertGreen = 255
+						}
+						alertStyle = "style='text-align:center; color:rgb(" + alertRed + "," + alertGreen + ",0);'"
+						invHTML += "<tr><td style=\"text-align:right\">"
+						// Sell buttons
+						sellButtons = ""
+						if(inv[i] > 0) {
+							sellButtons = '<button class=tradeButton onclick="sellInv(' + i + ',1)">1</button>'
+							btnAmount = 10
+							while(btnAmount < inv[i] && btnAmount <= 100) {
+								sellButtons = '<button class=tradeButton onclick="sellInv(' + i + ',' + btnAmount + ')">' + getDisplayNumber(btnAmount,"super") + '</button>' + sellButtons
+								btnAmount *= 10
+							}
+							if(inv[i] > 1) {
+								sellButtons = '<button class=tradeButton onclick="sellInv(' + i + ',' + inv[i] + ')">all</button>' + sellButtons
+							}
+						}
+						invHTML += sellButtons
+						invHTML += "</td><td class='singleborder' " + alertStyle + ">" + levelData[currLevel].tradeableItems[i]
+						invHTML += "</td><td class='singleborder' " + alertStyle + ">" + displayPrice
+						invHTML += "</td><td class='singleborder' style=\"text-align:center\">" + getDisplayNumber(inv[i], "yes")
+						invHTML += "</td><td>"
+						// Buy buttons
+						buyButtons = ""
+						canBuy = Math.floor(inv[0]/displayPrice)
+						if(canBuy > 0) {
+							buyButtons = '<button class=tradeButton onclick="buyInv(' + i + ',1)">1</button>'
+							btnAmount = 10
+							while(btnAmount < canBuy && btnAmount <= 100) {
+								buyButtons = buyButtons + '<button class=tradeButton onclick="buyInv(' + i + ',' + btnAmount + ')">' + getDisplayNumber(btnAmount,"super") + '</button>'
+								btnAmount *= 10
+							}
+							if(canBuy > 1) {
+								buyButtons = buyButtons + '<button class=tradeButton onclick="buyInv(' + i + ',' + canBuy + ')">all</button>'
+							}
+						}
+						invHTML += buyButtons
+						invHTML += "</td></tr>"
+					}
+					invHTML += "</table><table>"
+					invHTML += "<tr><td style=\"text-align:right\">" + getDisplayNumber(inv[0]) + "</td><td>"
+					if(inv[0] == 1) {
+						invHTML += levelData[currLevel].tradeableItemsSingular[0]
+					} else {
+						invHTML += levelData[currLevel].tradeableItems[0]
+					}
+					invHTML += " to spend</td></tr><tr>"
+					if(freeSpace < 0) {
+						if(inv[0] > 0) {
+							discardNum = -freeSpace
+							if(discardNum > inv[0]) discardNum = inv[0]
+							invHTML += "<td colspan=2><button class=discardButton onclick='inv[0] -= " + discardNum + "; inventoryChanged=true;'>Discard " + discardNum + " "
+							if(inv[0] == 1) {
+								invHTML += levelData[currLevel].tradeableItemsSingular[0]
+							} else {
+								invHTML += levelData[currLevel].tradeableItems[0]
+							}
+							invHTML += "</button></td></tr><tr>"
+						}
+						invHTML += "<td style=\"text-align:right; color:red;\">"
+						invHTML += freeSpace + "</td><td style=\"color:red;\">"
+					} else {
+						invHTML += "<td style=\"text-align:right\">"
+						invHTML += freeSpace + "</td><td>"
+					}
+					invHTML += "free space (" + spaceUsed + "/" + levelData[currLevel].cargoSpace +
+											")</td></tr></table>"
+				} else {
+					invHTML += "<table>"
+					for(i = inv.length-1; i >= 0; i--) {
+						if(inv[i] > 0) {
+							invHTML += "<tr><td style=\"text-align:right\">" + getDisplayNumber(inv[i]) + "</td><td>"
+							if(inv[i] == 1) {
+								invHTML += levelData[currLevel].tradeableItemsSingular[i]
+							} else {
+								invHTML += levelData[currLevel].tradeableItems[i]
+							}
+							invHTML += "</td></tr>"
+						}
+					}
+					invHTML += "<tr>"
+					if(freeSpace < 0) {
+						invHTML += "<td style=\"text-align:right; color:red;\">"
+						invHTML += freeSpace + "</td><td style=\"color:red;\">"
+					} else {
+						invHTML += "<td style=\"text-align:right\">"
+						invHTML += freeSpace + "</td><td>"
+					}
+					invHTML += "free space (" + spaceUsed + "/" + levelData[currLevel].cargoSpace +
+											")</td></tr></table>"
+				}
+			}
+			setInventoryHTML(invHTML)
+		}
+
+		buttonAction = ''
+		inventoryChanged = false
+	}
+	setTimeout('goBaby()', 100)
+}
+
+function setupInitialActions() {
+	setActionsHTML(
+			getButtonHTML('locomote', levelData[currLevel].locomotionType)
+			+ getButtonHTML('pick', 'pick nose')
+			+ getButtonHTML('levelDown', levelData[currLevel].levelDownLabel)
+			+ getButtonHTML('levelUp', levelData[currLevel].levelUpLabel)
+		)
+	document.getElementById('buttonIDlocomote').style.visibility = 'visible'
+	setupLocationRadioButtons()
+}
+
+randomizeStore(true)
+setTimeout('setHeaderHTML("You are a " + levelData[0].characterType) ',10*PAUSE_MULT)
+setTimeout("setupInitialActions()", 50*PAUSE_MULT)
+setTimeout('goBaby()', 51*PAUSE_MULT)
+
+	</script>
+
+  <style type="text/css">
+
+  /*
+  CSS Code from here:
+  http://stackoverflow.com/questions/18651345/gradient-opacity-on-the-bottom-of-div
+  */
+.gradientback{
+
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+  	z-index: 10;
+    background: -moz-linear-gradient(top,  rgba(255,255,255,0) 0%, rgba(255,255,255,0.90) 100%); /* FF3.6+ */
+    background: -webkit-gradient(linear, left top, left bottom, color-stop(0%,rgba(255,255,255,0)), color-stop(100%,rgba(255,255,255,0.90))); /* Chrome,Safari4+ */
+    background: -webkit-linear-gradient(top, rgba(255,255,255,0) 0%,rgba(255,255,255,0.90) 100%); /* Chrome10+,Safari5.1+ */
+    background: -o-linear-gradient(top,  rgba(255,255,255,0) 0%,rgba(255,255,255,0.90) 100%); /* Opera 11.10+ */
+    background: -ms-linear-gradient(top,  rgba(255,255,255,0) 0%,rgba(255,255,255,0.90) 100%); /* IE10+ */
+    background: linear-gradient(to bottom,  rgba(255,255,255,0) 0%,rgba(255,255,255,0.90) 100%); /* W3C */
+    filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#fffffff00, endColorstr='#ffffffd8,GradientType=0 ); /* IE6-9 */
+
+}
+
+body {
+}
+
+.gameContainer {
+	display: flex;
+  align-items: center;
+  flex-direction: column;
+	position: absolute;
+  padding: 10px;
+	height: calc(100vh - 35px);
+	/* width: 100%;
+  max-width: 100vw; */
+}
+
+.gameArea {
+	width: calc(100vw - 60px);
+  min-width: 400px;
+	margin: 2px;
+	padding: 10px;
+	overflow: hidden;
+}
+
+.bordered {
+	border-width: 1px;
+	border-style: solid;
+	border-color: #DDDDDD;
+}
+
+.collapseborder {
+	border-collapse: collapse;
+	width: 100%;
+}
+
+.singleborder {
+	border-width: 1px;
+	border-style: solid;
+	border-color: #DDDDDD;
+	padding-left: 2px;
+	padding-right: 2px;
+}
+
+.headerWrapper {
+	padding-top: 5px;
+	padding-bottom: 5px;
+	height: 20px;
+	align-items: flex-end;
+	flex: 1 0 auto;
+	display: none;
+}
+
+.inventoryWrapper {
+  align-items: center;
+  flex-direction: column;
+	flex: 1 0 auto;
+	display: none;
+}
+
+.controlsWrapper {
+	flex-direction: column;
+	flex: 1 0 auto;
+	display: none;
+}
+
+.actionsWrapper {
+	width: 100%;
+	display: none;
+	flex: 1 0 auto;
+}
+
+.destinationsContainer{
+	width: 100%;
+	display: none;
+	flex: 1 0 auto;
+	flex-direction: column;
+}
+
+.destinationsWrapper{
+	width: 100%;
+	display: flex;
+	flex-direction: row;
+	flex-wrap: wrap;
+	flex: 1 0 auto;
+}
+
+.locChoice {
+	padding-top: 4px;
+	padding-left: 2px;
+	padding-right: 2px;
+}
+
+.locChoiceLabel {
+	padding-top: 6px;
+}
+
+.locRadioButton {
+    vertical-align: middle;
+}
+
+.locRadioLabel {
+    vertical-align: middle;
+}
+
+.locRadioLabelDisabled {
+    vertical-align: middle;
+		color: grey;
+}
+
+.outputAndGradientWrapper{
+  position: relative;
+  flex: 1 1 auto;
+  height: 100%;
+	visibility: hidden;
+}
+
+/* Footer isn't displayed - it's just here for flexbox */
+.footerWrapper {
+	display: flex;
+  flex: 0 0 0px;
+	padding: 0px;
+}
+
+.outputWrapper {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+	flex-direction: column;
+	padding-top: 10px;
+
+	/* Make text unselectable (blatantly stolen from ADR) */
+	-webkit-touch-callout: none;
+	-webkit-user-select: none;
+	-khtml-user-select: none;
+	-moz-user-select: none;
+	-ms-user-select: none;
+	user-select: none;
+}
+
+.outputSpan {
+	display: flex;
+	padding-left: 10px;
+	padding-right: 10px;
+}
+
+.babyButton{
+	background-color:transparent;
+	border:1px solid #dddddd;
+	padding: 5px;
+	visibility: hidden;
+	margin-right: 10px;
+}
+
+.upgradeButton:disabled {
+	background-color:transparent;
+	border:1px solid #dddddd;
+	padding: 5px;
+	margin-right: 3px;
+}
+
+.tradeButton{
+	background-color:transparent;
+	border:1px solid #dddddd;
+	padding-bottom: 1px;
+	padding-top: 1px;
+	padding-left: 2px;
+	padding-right: 2px;
+	margin-left: 2px;
+	margin-right: 2px;
+}
+  </style>
+</head>
+<body>
+	<div id="normalGameGoesHere" class="gameContainer">
+		<div id="headerGoesHere" class="gameArea bordered headerWrapper">
+		</div>
+		<div id="controlsGoHere" class="gameArea bordered controlsWrapper">
+			<div id="actionsGoHere" class="actionsWrapper">
+			</div>
+			<div id="destinationsAndLabel" class="destinationsContainer">
+				<span class="locChoiceLabel">Next destination:</span>
+				<div id="destinationsGoHere" class="destinationsWrapper">
+				</div>
+			</div>
+		</div>
+		<div id="inventoryGoesHere" class="gameArea inventoryWrapper">
+		</div>
+		<div id="outputAndGradient" class="gameArea bordered outputAndGradientWrapper">
+			<div id="textGradient"  class="gradientback">
+			</div>
+			<div id="outputGoesHere" class="outputWrapper">
+			</div>
+		</div>
+		<div id="footerGoesHere" class="gameArea footerWrapper">
+		</div>
+	</div>
+</body>
+</html>
