@@ -705,20 +705,15 @@ function goBaby() {
 				} else {
 					pickButton.disabled = true
 					pickResult = Math.random()
-					if(pickResult < 0.5 && hasAnything() || pickResult < 0.1) {
-						typeText("You dig deep, but find nothing")
+					if(pickResult < 0.9) {
+						inv[0]++
+						typeText("You withdraw a " + levelData[currLevel].tradeableItemsSingular[0])
+					} else if(pickResult < 0.99) {
+						inv[1]++
+						typeText("You draw forth a " + levelData[currLevel].tradeableItemsSingular[1] + "!")
 					} else {
-						pickResult = Math.random()
-						if(pickResult < 0.9) {
-							inv[0]++
-							typeText("You withdraw a " + levelData[currLevel].tradeableItemsSingular[0])
-						} else if(pickResult < 0.99) {
-							inv[1]++
-							typeText("You draw forth a " + levelData[currLevel].tradeableItemsSingular[1] + "!")
-						} else {
-							inv[2]++
-							typeText(positiveExclamation() + " You found a " + levelData[currLevel].tradeableItemsSingular[2] + "!!", true)
-						}
+						inv[2]++
+						typeText(positiveExclamation() + " You found a " + levelData[currLevel].tradeableItemsSingular[2] + "!!", true)
 					}
 				}
 				setTimeout("document.getElementById('buttonIDpick').disabled = false", 40*PAUSE_MULT)
