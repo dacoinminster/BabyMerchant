@@ -1070,6 +1070,7 @@ setTimeout('goBaby()', 51*PAUSE_MULT)
 }
 
 body {
+	font-size:2vh;
 }
 
 .gameContainer {
@@ -1085,7 +1086,7 @@ body {
 
 .gameArea {
 	width: calc(100vw - 60px);
-  min-width: 400px;
+  /* min-width: 400px; */
 	margin: 2px;
 	padding: 10px;
 	overflow: hidden;
@@ -1113,7 +1114,7 @@ body {
 .headerWrapper {
 	padding-top: 5px;
 	padding-bottom: 5px;
-	height: 20px;
+	height: 3vh;
 	align-items: flex-end;
 	flex: 1 0 auto;
 	display: none;
@@ -1216,10 +1217,11 @@ body {
 
 .babyButton{
 	background-color:transparent;
-	border:1px solid #dddddd;
-	padding: 5px;
+	border:0.1vh solid #dddddd;
+	padding: 0.6vh;
+	font-size: 1.7vh;
 	visibility: hidden;
-	margin-right: 10px;
+	margin-right: 1vh;
 }
 
 .upgradeButton:disabled {
