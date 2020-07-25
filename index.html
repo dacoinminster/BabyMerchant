@@ -72,7 +72,7 @@
 Math.seedrandom()	// Start out truly random
 gameSeed = Math.floor(Math.random()*Number.MAX_SAFE_INTEGER)
 PAUSE_MULT = 100 // Pause multiplier
-devMode = true
+devMode = false
 if(devMode) {
 	gameSeed = 1
 	PAUSE_MULT = 1
@@ -398,7 +398,7 @@ pickingEnabled = false
 tradingEnabled = false
 storeVisible = false
 upgradesVisible = false
-inv = [0,0,0,90]
+inv = [0,0,0,0]
 // inv = [0,0,0,100]
 basePrice = [1,10,100,1000]
 inventoryChanged = false
