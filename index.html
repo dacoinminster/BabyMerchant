@@ -31,12 +31,12 @@
 		* Maybe only update text when something important happens? (maybe no nose picking failure?)
 		* Level title cards, possibly with slightly disturbing ascii art?
 		* Saving game progress
+		* All bolded text should get a title card? For instance, "thrashing explorer" title card
 
 		TODOs resulting from play testing:
-		* Make clear when you are going down a level (confirm)
-		* Make clear that next destination is not the group you enter (name group, name destinations)
-		* Track total Currency
+		* Track total wealth
 		* Make clear that you are picking your OWN nose (pick nose card)
+
 
 
 
@@ -222,7 +222,7 @@ levelData = [
 		tradeableItems: ['crusty boogers', 'slimy boogers', 'bloody boogers', 'pieces of fuzz'],
 		tradeableItemsSingular: ['crusty booger', 'slimy booger', 'bloody booger', 'piece of fuzz'],
 		characterType: 'helpless baby',
-		locomotionType: 'thrash about',
+		locomotionType: 'thrash',
 		locationLabel: ['spot','spot','spot','spot','spot'],
 		travelFasterUpgradeMsg: [" reaches into a nearby diaper and liberally applies grease to your back.", " shows you how to thrash about more efficiently."],
 		travelFasterUpgradeButton: ['Back Grease', 'Super Trash'],
@@ -242,7 +242,7 @@ levelData = [
 	{
 		levelDownMessage: "You lie on your back and prepare to move by thrashing about and to hold boogers and fuzz in your hands.",
 		levelUpMessage: "You decide you are ready to crawl to other rooms of babies. You put on a diaper, which seems useful for item storage.",
-		levelDownLabel: "Enter this group",
+		levelDownLabel: "Enter ",
 		levelUpLabel: "Crawl to another baby room",
 		discoveryMsg1: "You roll to another ",
 		discoveryMsg2: " who babbles a name which might be \"",
@@ -284,7 +284,7 @@ levelData = [
 	{
 		levelDownMessage: "You remove your diaper, lie down, and prepare to move by rolling over",
 		levelUpMessage: "You decide you are ready to ride the elevator to visit other floors full of babies. You find a plastic baggy to carry your precious candies.",
-		levelDownLabel: "Enter this room",
+		levelDownLabel: "Enter ",
 		levelUpLabel: "Use Elevator",
 		discoveryMsg1: "You crawl to another ",
 		discoveryMsg2: " who babbles a name which sounds like \"",
@@ -344,6 +344,7 @@ function setupLocationRadioButtons() {
 	for(var i = 0; i < levelData[currLevel].numLocations; i++) {
 		rbHTML += '<div class="locChoice">'
 		rbHTML += '<input class="locRadioButton" type="radio" id="nextLoc' + i + '" name="nextLoc" value="' + i + '"'
+		rbHTML += ' onclick="updateLocomoteButton()"'
 		if(i == nextLocIndex) rbHTML += ' checked'
 		rbHTML +='>'
 		rbHTML += '<label for="nextLoc' + i + '" '
@@ -394,8 +395,8 @@ function getButtonHTML(actionName, buttonText) {
 
 buttonAction = ''
 currLevel = 0
-locIndex = 1
-nextLocIndex = 2
+locIndex = 0
+nextLocIndex = 1
 transitMoves = 4
 pickingEnabled = false
 tradingEnabled = false
@@ -615,6 +616,24 @@ function randomizeStore(initAll=false) {
 	}
 }
 
+function updateLocomoteButton() {
+
+	for(var i = 0; i < levelData[currLevel].numLocations; i++) {
+		if(document.getElementById("nextLoc" + i).checked) {
+			nextLocIndex = i
+		}
+	}
+	newLocomoteText = levelData[currLevel].locomotionType + " to "
+	if(levelData[currLevel].visitedLocation[nextLocIndex]) {
+		newLocomoteText += levelData[currLevel].locationName[nextLocIndex] +
+															levelData[currLevel].VisitHdr3 + levelData[currLevel].locationLabel[nextLocIndex]
+	} else {
+		newLocomoteText += levelData[currLevel].locationLabel[nextLocIndex]
+		if(nextLocIndex > 0) newLocomoteText += " #" + nextLocIndex
+	}
+	locomoteButton.innerHTML = newLocomoteText
+}
+
 function goBaby() {
 	if(!typingText) {	// Can't do anything if we are still typing text
 		thisAction = buttonAction
@@ -665,15 +684,16 @@ function goBaby() {
 					storeVisible = true
 					randomizeStore(locIndex, true)
 					levelDownButton.style.visibility = 'visible'
-					levelDownButton.innerHTML = levelData[currLevel].levelDownLabel
+					levelDownButton.innerHTML = levelData[currLevel].levelDownLabel + levelData[currLevel].locationName[locIndex]  +
+																				levelData[currLevel].VisitHdr3 + levelData[currLevel].locationLabel[locIndex]
 					levelUpButton.innerHTML = levelData[currLevel].levelUpLabel
-					locomoteButton.innerHTML = levelData[currLevel].locomotionType
 					levelUpButton.style.visibility = 'hidden'
 					pickButton.style.display = 'none'
 					setupLocationRadioButtons()
 					setHeaderHTML(levelData[currLevel].VisitHdr1 + levelData[currLevel].characterType +
 												levelData[currLevel].VisitHdr2 + levelData[currLevel].locationName[locIndex] +
 												levelData[currLevel].VisitHdr3 + levelData[currLevel].locationLabel[locIndex])
+					updateLocomoteButton()
 				}
 				break
 			case 'levelDown':
@@ -699,10 +719,10 @@ function goBaby() {
 					storeVisible = false
 					randomizeStore(locIndex, true)
 					upgradesVisible = true
-					levelDownButton.innerHTML = levelData[currLevel].levelDownLabel
+					levelDownButton.innerHTML = levelData[currLevel].levelDownLabel + levelData[currLevel].locationName[locIndex]  +
+																				levelData[currLevel].VisitHdr3 + levelData[currLevel].locationLabel[locIndex]
 					levelUpButton.innerHTML = levelData[currLevel].levelUpLabel
 					levelUpButton.style.visibility = 'visible'
-					locomoteButton.innerHTML = levelData[currLevel].locomotionType
 					if(currLevel == 0) {
 						levelDownButton.style.visibility = 'hidden'
 						pickButton.style.display = 'block'
@@ -712,6 +732,7 @@ function goBaby() {
 					setHeaderHTML(levelData[currLevel].VisitHdr1 + levelData[currLevel+1].characterType +
 												levelData[currLevel].VisitHdr2 + levelData[currLevel].locationName[locIndex] +
 												levelData[currLevel].VisitHdr3 + levelData[currLevel].locationLabel[locIndex])
+					updateLocomoteButton()
 				}
 				break
 			case 'pick':
@@ -736,12 +757,6 @@ function goBaby() {
 				setTimeout("document.getElementById('buttonIDpick').disabled = false", 40*PAUSE_MULT)
 				break
 			case 'locomote':
-
-				for(var i = 0; i < levelData[currLevel].numLocations; i++) {
-					if(document.getElementById("nextLoc" + i).checked) {
-						nextLocIndex = i
-					}
-				}
 				if(freeSpace < 0) {
 					typeText("You are overencumbered!")
 				}	else if(nextLocIndex == locIndex) {
@@ -758,16 +773,11 @@ function goBaby() {
 						levelUpButton.style.visibility = 'hidden'
 						levelDownButton.style.visibility = 'hidden'
 						upgradesVisible = false
-						locIndex = nextLocIndex
-						nextLocIndex++
-						if(nextLocIndex >= levelData[currLevel].numLocations) {
-							nextLocIndex = 0
-						}
 						randomizeStore()
 					}
 					transitMoves--
 					ctype = levelData[currLevel].characterType;
-					if(locIndex == 0) {
+					if(nextLocIndex == 0) {
 						ctype = levelData[currLevel+1].characterType;
 					}
 
@@ -775,10 +785,17 @@ function goBaby() {
 
 					if(transitMoves == 0) {
 						// Handle things related to arriving at a location
+						locIndex = nextLocIndex
+						nextLocIndex++
+						if(nextLocIndex >= levelData[currLevel].numLocations) {
+							nextLocIndex = 0
+						}
 						coolLocation = false
 						if(currLevel > 0) {
 							document.getElementById("destinationsAndLabel").style.display = "flex"
 							if(locIndex > 0){
+								levelDownButton.innerHTML = levelData[currLevel].levelDownLabel + levelData[currLevel].locationName[locIndex]  +
+																							levelData[currLevel].VisitHdr3 + levelData[currLevel].locationLabel[locIndex]
 								levelDownButton.style.visibility = 'visible'
 							}
 						}
@@ -787,7 +804,17 @@ function goBaby() {
 							levelData[currLevel].visitedLocation[locIndex] = true
 							if(visitedAllLocations()) {
 								levelData[currLevel].travelTime--
-								typeText("You have visited every location and are starting to feel comfortable in this mode of travel.", true)
+								comfortMsg = "You have visited every location and are starting to feel comfortable in this mode of travel."
+								if(currLevel == 0) {
+
+									nextCtype = levelData[currLevel].characterType
+									if(nextLocIndex == 0) {
+										nextCtype = levelData[currLevel+1].characterType
+									}
+									comfortMsg += " Looking around, you see that continued thrashing will bring you full circle to revisit " +
+												nextCtype + " " + levelData[currLevel].locationName[nextLocIndex] + "."
+								}
+								typeText(comfortMsg, true)
 							}
 							if(locIndex > 0) {
 								locationMessage += levelData[currLevel].discoveryMsg1 + ctype +
@@ -819,7 +846,7 @@ function goBaby() {
 							}
 						} else {
 							if(!tradingEnabled && hasAnything() ) {
-								tradingEnabled = true;
+								tradingEnabled = true
 								typeText(levelData[currLevel].locationName[locIndex] +
 											" seems to want to trade with you, but these wares look so expensive!" +
 											" A voice resonates in your deepest being, \"Buy low. Sell high.\"", true)
@@ -837,10 +864,10 @@ function goBaby() {
 							}
 						}
 					} else {  // transitMoves >= 0
-			 			if(levelData[currLevel].visitedLocation[locIndex]) {
+			 			if(levelData[currLevel].visitedLocation[nextLocIndex]) {
 							typeText(levelData[currLevel].RevisitMsg)
-							setHeaderHTML(levelData[currLevel].RevisitHdr1 + levelData[currLevel].locationName[locIndex] +
-								 		levelData[currLevel].RevisitHdr2 + levelData[currLevel].locationLabel[locIndex])
+							setHeaderHTML(levelData[currLevel].RevisitHdr1 + levelData[currLevel].locationName[nextLocIndex] +
+								 		levelData[currLevel].RevisitHdr2 + levelData[currLevel].locationLabel[nextLocIndex])
 						} else {
 							typeText(levelData[currLevel].ExploreMsg)
 							setHeaderHTML(levelData[currLevel].ExploreHdr)
@@ -848,6 +875,9 @@ function goBaby() {
 					}
 				}
 				setupLocationRadioButtons()
+				if(currLevel > 0 || visitedAllLocations()) {
+					updateLocomoteButton()
+				}
 
 				break
 			default:
@@ -1047,7 +1077,7 @@ function goBaby() {
 
 function setupInitialActions() {
 	setActionsHTML(
-			getButtonHTML('locomote', levelData[currLevel].locomotionType)
+			getButtonHTML('locomote', 'thrash about')
 			+ getButtonHTML('pick', 'pick nose')
 			+ getButtonHTML('levelDown', levelData[currLevel].levelDownLabel)
 			+ getButtonHTML('levelUp', levelData[currLevel].levelUpLabel)
@@ -1274,7 +1304,7 @@ button {
 			<div id="actionsGoHere" class="actionsWrapper">
 			</div>
 			<div id="destinationsAndLabel" class="destinationsContainer">
-				<span class="locChoiceLabel">Next destination:</span>
+				<span id="destinationDescGoesHere" class="locChoiceLabel">Next destination:</span>
 				<div id="destinationsGoHere" class="destinationsWrapper">
 				</div>
 			</div>
