@@ -32,6 +32,12 @@
 		* Level title cards, possibly with slightly disturbing ascii art?
 		* Saving game progress
 
+		TODOs resulting from play testing:
+		* Make clear when you are going down a level (confirm)
+		* Make clear that next destination is not the group you enter (name group, name destinations)
+		* Track total Currency
+		* Make clear that you are picking your OWN nose (pick nose card)
+
 
 
 	-->
@@ -210,7 +216,7 @@ levelData = [
 		RevisitMsg: "You thrash your limbs with purpose.",
 		RevisitHdr1: "Thrashing toward ",
 		RevisitHdr2: "'s ",
-		VisitHdr1: "Visiting ",
+		VisitHdr1: "Trading at ",
 		VisitHdr2: " ",
 		VisitHdr3: "'s ",
 		tradeableItems: ['crusty boogers', 'slimy boogers', 'bloody boogers', 'pieces of fuzz'],
@@ -252,7 +258,7 @@ levelData = [
 		RevisitMsg: "You roll determinedly.",
 		RevisitHdr1: "Rolling toward ",
 		RevisitHdr2: "'s ",
-		VisitHdr1: "Visiting ",
+		VisitHdr1: "Trading at ",
 		VisitHdr2: " ",
 		VisitHdr3: "'s ",
 		tradeableItems: ['pieces of fuzz', 'paperclips', 'shiny beads', 'pacifiers'],
@@ -294,7 +300,7 @@ levelData = [
 		RevisitMsg: "You crawl steadily.",
 		RevisitHdr1: "Crawling toward ",
 		RevisitHdr2: "'s ",
-		VisitHdr1: "Visiting ",
+		VisitHdr1: "Trading at ",
 		VisitHdr2: " ",
 		VisitHdr3: "'s ",
 		tradeableItems: ['pacifiers', 'building blocks', 'toy cars', 'candies'],
@@ -519,6 +525,8 @@ function sellInv(index, quantity) {
 		}
 		typeText(sellMsg)
 		inventoryChanged = true;
+	} else {
+		typeText("You do not have " + levelData[currLevel].tradeableItems[index] + " to sell")
 	}
 }
 
@@ -541,6 +549,15 @@ function buyInv(index, quantity) {
 		}
 		typeText(buyMsg)
 		inventoryChanged = true;
+	} else {
+		shortBy = quantity*thisPrice - inv[0]
+		errMsg = "You need " + shortBy + " more "
+		if(shortBy == 1) {
+			errMsg += levelData[currLevel].tradeableItemsSingular[0]
+		} else {
+			errMsg += levelData[currLevel].tradeableItems[0]
+		}
+		typeText(errMsg)
 	}
 }
 
@@ -574,7 +591,7 @@ function buyUpgrade(upgradeType, upgradeAmount, cost) {
 				break
 		}
 	} else {
-		typeText("upgrade error", true)
+		typeText("You need more " + levelData[currLevel].tradeableItems[3] + " to purchase this", true)
 	}
 }
 
@@ -586,8 +603,8 @@ function randomizeStore(initAll=false) {
 			}
 			formerPrice = levelData[currLevel].price[j][i]
 			newPrice = (formerPrice*2+basePrice[i])/3	// Trend back toward the basePrice
-			variancepct = 0.2
-			if(Math.random() < 0.1) variancepct += Math.random()*0.7 // Sometimes have wild price swings
+			variancepct = 0.3
+			if(Math.random() < 0.1) variancepct = 0.5 + Math.random()*0.45 // Sometimes have wild price swings
 			newPrice = Math.round(newPrice + Math.random()*newPrice*variancepct*2 - newPrice*variancepct)
 			if(newPrice > formerPrice*1.2 && formerPrice <= basePrice) {
 				// Prices can sometimes get very high
@@ -857,22 +874,18 @@ function goBaby() {
 														"<td style=\"text-align:center\" class='singleborder'>Travel faster</td>" +
 														"<td style=\"text-align:center\" class='singleborder'>1</td>" +
 														"<td style=\"text-align:left\">"
-						if(inv[3] >= 1) {
-							invHTML += '<button class="upgradeButton" onclick="buyUpgrade(\'travel\',1,1)">buy</button>'
-						} else {
-							invHTML += '<button disabled class="upgradeButton">buy</button>'
-						}
+						invHTML += '<button class="upgradeButton'
+						if(inv[3] < 1) invHTML += ' greyButton'
+						invHTML += '" onclick="buyUpgrade(\'travel\',1,1)">buy</button>'
 						invHTML += "</td></tr>"
 					} else if(levelData[currLevel].travelTime == 2 + (visitedAllLocations() ? 0 : 1)) {
 						invHTML += "<tr><td style=\"text-align:center\" class='singleborder'>" + levelData[currLevel].travelFasterUpgradeButton[1] + "</td>" +
 														"<td style=\"text-align:center\" class='singleborder'>Travel faster</td>" +
 														"<td style=\"text-align:center\" class='singleborder'>5</td>" +
 														"<td style=\"text-align:left\">"
-						if(inv[3] >= 5) {
-							invHTML += '<button class="upgradeButton" onclick="buyUpgrade(\'travel\',1,5)">buy</button>'
-						} else {
-							invHTML += '<button disabled class="upgradeButton"">buy</button>'
-						}
+						invHTML += '<button class="upgradeButton'
+						if(inv[3] < 5) invHTML += ' greyButton'
+						invHTML += '" onclick="buyUpgrade(\'travel\',1,5)">buy</button>'
 						invHTML += "</td></tr>"
 					}
 					cargoPrice = getDisplayNumber(Math.pow(2,levelData[currLevel].cargoSpace/100), "yes")
@@ -880,22 +893,18 @@ function goBaby() {
 														"<td style=\"text-align:center\" class='singleborder'>Hold more</td>" +
 														"<td style=\"text-align:center\" class='singleborder'>" + cargoPrice + "</td>" +
 														"<td style=\"text-align:left\">"
-					if(inv[3] >= cargoPrice) {
-						invHTML += '<button class="upgradeButton" onclick="buyUpgrade(\'cargo\',100,' + cargoPrice + ')">buy</button>'
-					} else {
-						invHTML += '<button disabled class="upgradeButton">buy</button>'
-					}
+					invHTML += '<button class="upgradeButton'
+					if(inv[3] < cargoPrice) invHTML += ' greyButton'
+					invHTML += '" onclick="buyUpgrade(\'cargo\',100,' + cargoPrice + ')">buy</button>'
 					invHTML += "</td></tr>"
 					if(maxLevel == currLevel) {
 						invHTML += "<tr><td style=\"text-align:center\" class='singleborder'>" + levelData[currLevel].levelUpgradeButton + "</td>" +
 														"<td style=\"text-align:center\" class='singleborder'>Travel further</td>" +
 														"<td style=\"text-align:center\" class='singleborder'>20</td>" +
 														"<td style=\"text-align:left\">"
-						if(inv[3] >= 20) {
-							invHTML += '<button class="upgradeButton" onclick="buyUpgrade(\'level\',1,20)">buy</button>'
-						} else {
-							invHTML += '<button disabled class="upgradeButton">buy</button>'
-						}
+						invHTML += '<button class="upgradeButton'
+						if(inv[3] < 20) invHTML += ' greyButton'
+						invHTML += '" onclick="buyUpgrade(\'level\',1,20)">buy</button>'
 						invHTML += "</td></tr>"
 					}
 					invHTML += "</table>"
@@ -926,17 +935,22 @@ function goBaby() {
 						alertStyle = "style='text-align:center; color:rgb(" + alertRed + "," + alertGreen + ",0);'"
 						invHTML += "<tr><td style=\"text-align:right\">"
 						// Sell buttons
-						sellButtons = ""
-						if(inv[i] > 0) {
-							sellButtons = '<button class=tradeButton onclick="sellInv(' + i + ',1)">1</button>'
-							btnAmount = 10
-							while(btnAmount < inv[i] && btnAmount <= 100) {
-								sellButtons = '<button class=tradeButton onclick="sellInv(' + i + ',' + btnAmount + ')">' + getDisplayNumber(btnAmount,"super") + '</button>' + sellButtons
-								btnAmount *= 10
-							}
-							if(inv[i] > 1) {
-								sellButtons = '<button class=tradeButton onclick="sellInv(' + i + ',' + inv[i] + ')">all</button>' + sellButtons
-							}
+						sellButtons = '<button class="tradeButton'
+						if(inv[i] == 0) {
+							sellButtons += ' greyButton'
+						}
+						sellButtons += '" onclick="sellInv(' + i + ',1)">'
+						if(inv[i] < 10) {
+							sellButtons += 'sell '
+						}
+						sellButtons += '1</button>'
+						btnAmount = 10
+						while(btnAmount < inv[i] && btnAmount <= 100) {
+							sellButtons = '<button class="tradeButton" onclick="sellInv(' + i + ',' + btnAmount + ')">' + getDisplayNumber(btnAmount,"super") + '</button>' + sellButtons
+							btnAmount *= 10
+						}
+						if(inv[i] > 1) {
+							sellButtons = '<button class="tradeButton" onclick="sellInv(' + i + ',' + inv[i] + ')">all</button>' + sellButtons
 						}
 						invHTML += sellButtons
 						invHTML += "</td><td class='singleborder' " + alertStyle + ">" + levelData[currLevel].tradeableItems[i]
@@ -944,18 +958,23 @@ function goBaby() {
 						invHTML += "</td><td class='singleborder' style=\"text-align:center\">" + getDisplayNumber(inv[i], "yes")
 						invHTML += "</td><td>"
 						// Buy buttons
-						buyButtons = ""
 						canBuy = Math.floor(inv[0]/displayPrice)
-						if(canBuy > 0) {
-							buyButtons = '<button class=tradeButton onclick="buyInv(' + i + ',1)">1</button>'
-							btnAmount = 10
-							while(btnAmount < canBuy && btnAmount <= 100) {
-								buyButtons = buyButtons + '<button class=tradeButton onclick="buyInv(' + i + ',' + btnAmount + ')">' + getDisplayNumber(btnAmount,"super") + '</button>'
-								btnAmount *= 10
-							}
-							if(canBuy > 1) {
-								buyButtons = buyButtons + '<button class=tradeButton onclick="buyInv(' + i + ',' + canBuy + ')">all</button>'
-							}
+						buyButtons = '<button class="tradeButton'
+						if(canBuy == 0) {
+							buyButtons += ' greyButton'
+						}
+						buyButtons += '" onclick="buyInv(' + i + ',1)">'
+						if(canBuy < 10) {
+							buyButtons += 'buy '
+						}
+						buyButtons += '1</button>'
+						btnAmount = 10
+						while(btnAmount < canBuy && btnAmount <= 100) {
+							buyButtons = buyButtons + '<button class=tradeButton onclick="buyInv(' + i + ',' + btnAmount + ')">' + getDisplayNumber(btnAmount,"super") + '</button>'
+							btnAmount *= 10
+						}
+						if(canBuy > 1) {
+							buyButtons = buyButtons + '<button class=tradeButton onclick="buyInv(' + i + ',' + canBuy + ')">all</button>'
 						}
 						invHTML += buyButtons
 						invHTML += "</td></tr>"
@@ -980,13 +999,15 @@ function goBaby() {
 							}
 							invHTML += "</button></td></tr><tr>"
 						}
-						invHTML += "<td style=\"text-align:right; color:red;\">"
-						invHTML += freeSpace + "</td><td style=\"color:red;\">"
+							invHTML += "<td style=\"text-align:right; color:red;\">"
+							invHTML += "You have " + freeSpace + "</td><td style=\"color:red;\">"
+							invHTML += "too many items"
 					} else {
 						invHTML += "<td style=\"text-align:right\">"
-						invHTML += freeSpace + "</td><td>"
+						invHTML += "Room for " + freeSpace + "</td><td>"
+						invHTML += "more items "
 					}
-					invHTML += "free space (" + spaceUsed + "/" + levelData[currLevel].cargoSpace +
+					invHTML += "(" + spaceUsed + "/" + levelData[currLevel].cargoSpace +
 											")</td></tr></table>"
 				} else {
 					invHTML += "<table>"
@@ -1004,12 +1025,14 @@ function goBaby() {
 					invHTML += "<tr>"
 					if(freeSpace < 0) {
 						invHTML += "<td style=\"text-align:right; color:red;\">"
-						invHTML += freeSpace + "</td><td style=\"color:red;\">"
+						invHTML += "You have " + freeSpace + "</td><td style=\"color:red;\">"
+						invHTML += "too many items"
 					} else {
 						invHTML += "<td style=\"text-align:right\">"
-						invHTML += freeSpace + "</td><td>"
+						invHTML += "Room for " + freeSpace + "</td><td>"
+						invHTML += "more items "
 					}
-					invHTML += "free space (" + spaceUsed + "/" + levelData[currLevel].cargoSpace +
+					invHTML += "(" + spaceUsed + "/" + levelData[currLevel].cargoSpace +
 											")</td></tr></table>"
 				}
 			}
@@ -1231,6 +1254,16 @@ button {
 	margin-left: 0.4vh;
 	margin-right: 0.4vh;
 }
+
+.greyButton {
+	color: grey;
+}
+
+.titleCard {
+	display: none;
+}
+
+
   </style>
 </head>
 <body>
@@ -1255,6 +1288,33 @@ button {
 			</div>
 		</div>
 		<div id="footerGoesHere" class="gameArea footerWrapper">
+		</div>
+	</div>
+	<div id="level0TitleCard" class="titleCard">
+		<div class="titleCardMain">
+			Art asset needed: a baby lying flat on its back, face screwed up and wailing, limbs thrashing, possibly peeing up into the air.
+		</div>
+		<div class="titleCardFooter">
+			<span>Level 0: Buy low, sell high</span>
+			<button class="continueButton">Start</button>
+		</div>
+	</div>
+	<div id="level1TitleCard" class="titleCard">
+		<div class="titleCardMain">
+			Art asset needed: a baby trying to move by rolling over, mouth stuffed full and cheeks bulging.
+		</div>
+		<div class="titleCardFooter">
+			<span>Level 1: Revisit places with good prices</span>
+			<button class="continueButton">Continue</button>
+		</div>
+	</div>
+	<div id="level2TitleCard" class="titleCard">
+		<div class="titleCardMain">
+			Art asset needed: a baby trying to move by rolling over, mouth stuffed full and cheeks bulging.
+		</div>
+		<div class="titleCardFooter">
+			<span>Level 1: Revisit places with good prices</span>
+			<button class="continueButton">Continue</button>
 		</div>
 	</div>
 </body>
