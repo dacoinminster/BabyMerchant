@@ -858,9 +858,9 @@ function goBaby() {
 														"<td style=\"text-align:center\" class='singleborder'>1</td>" +
 														"<td style=\"text-align:left\">"
 						if(inv[3] >= 1) {
-							invHTML += '<button class=upgradeButton onclick="buyUpgrade(\'travel\',1,1)">buy</button>'
+							invHTML += '<button class="upgradeButton" onclick="buyUpgrade(\'travel\',1,1)">buy</button>'
 						} else {
-							invHTML += '<button disabled class=upgradeButton">buy</button>'
+							invHTML += '<button disabled class="upgradeButton">buy</button>'
 						}
 						invHTML += "</td></tr>"
 					} else if(levelData[currLevel].travelTime == 2 + (visitedAllLocations() ? 0 : 1)) {
@@ -869,9 +869,9 @@ function goBaby() {
 														"<td style=\"text-align:center\" class='singleborder'>5</td>" +
 														"<td style=\"text-align:left\">"
 						if(inv[3] >= 5) {
-							invHTML += '<button class=upgradeButton onclick="buyUpgrade(\'travel\',1,5)">buy</button>'
+							invHTML += '<button class="upgradeButton" onclick="buyUpgrade(\'travel\',1,5)">buy</button>'
 						} else {
-							invHTML += '<button disabled class=upgradeButton">buy</button>'
+							invHTML += '<button disabled class="upgradeButton"">buy</button>'
 						}
 						invHTML += "</td></tr>"
 					}
@@ -881,9 +881,9 @@ function goBaby() {
 														"<td style=\"text-align:center\" class='singleborder'>" + cargoPrice + "</td>" +
 														"<td style=\"text-align:left\">"
 					if(inv[3] >= cargoPrice) {
-						invHTML += '<button class=upgradeButton onclick="buyUpgrade(\'cargo\',100,' + cargoPrice + ')">buy</button>'
+						invHTML += '<button class="upgradeButton" onclick="buyUpgrade(\'cargo\',100,' + cargoPrice + ')">buy</button>'
 					} else {
-						invHTML += '<button disabled class=upgradeButton">buy</button>'
+						invHTML += '<button disabled class="upgradeButton">buy</button>'
 					}
 					invHTML += "</td></tr>"
 					if(maxLevel == currLevel) {
@@ -892,9 +892,9 @@ function goBaby() {
 														"<td style=\"text-align:center\" class='singleborder'>20</td>" +
 														"<td style=\"text-align:left\">"
 						if(inv[3] >= 20) {
-							invHTML += '<button class=upgradeButton onclick="buyUpgrade(\'level\',1,20)">buy</button>'
+							invHTML += '<button class="upgradeButton" onclick="buyUpgrade(\'level\',1,20)">buy</button>'
 						} else {
-							invHTML += '<button disabled class=upgradeButton">buy</button>'
+							invHTML += '<button disabled class="upgradeButton">buy</button>'
 						}
 						invHTML += "</td></tr>"
 					}
@@ -1219,24 +1219,24 @@ body {
 	margin-right: 1vh;
 }
 
-.upgradeButton:disabled {
+.upgradeButton {
 	background-color:transparent;
-	border:1px solid #dddddd;
-	padding: 5px;
+	border:0.1vh solid #dddddd;
+	padding: 0.6vh;
 	margin-right: 3px;
 	font-size: 1.7vh;
 }
 
 .tradeButton{
 	background-color:transparent;
-	border:1px solid #dddddd;
+	border:0.1vh solid #dddddd;
 	font-size: 1.7vh;
-	padding-bottom: 1px;
-	padding-top: 1px;
-	padding-left: 2px;
-	padding-right: 2px;
-	margin-left: 2px;
-	margin-right: 2px;
+	padding-bottom: 0.2vh;
+	padding-top: 0.2vh;
+	padding-left: 0.4vh;
+	padding-right: 0.4vh;
+	margin-left: 0.4vh;
+	margin-right: 0.4vh;
 }
   </style>
 </head>
