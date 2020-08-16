@@ -37,7 +37,6 @@
 
 		TODOs resulting from play testing:
 		* Make clear that you are picking your OWN nose (pick nose card)
-		* Make downgrading level more clear
 		* Fix bug where baby's name is undefined - happens on level 1 after going down and up levels and also circumnavigating the whole group
 
 
@@ -680,7 +679,7 @@ function goBaby() {
 			switch(thisAction) {
 			case 'levelUp':
 				if(currLevel < maxLevel) {
-					typeText(levelData[currLevel].levelUpMessage, true)
+					typeText("Advancing to level " + (currLevel+1) + ": " + levelData[currLevel].levelUpMessage, true)
 					document.getElementById("destinationsAndLabel").style.display = "flex"
 
 					// Preserve inventory that can't go up to the next level
@@ -728,7 +727,7 @@ function goBaby() {
 				break
 			case 'levelDown':
 				if(currLevel > 0) {
-					typeText(levelData[currLevel].levelDownMessage, true)
+					typeText("Retreating to level " + (currLevel-1) + ": " + levelData[currLevel].levelDownMessage, true)
 					// Preserve inventory that can't go down to the previous level
 					levelData[currLevel].oldInv = [0,0,0,0]
 					for(i = 1; i < inv.length; i++) {
