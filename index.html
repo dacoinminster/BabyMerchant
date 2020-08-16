@@ -25,6 +25,7 @@
 		* Travel down into massive number of consistently named subworlds
 				* Maybe to earn karma?
 				* Buy upgrades with absurd amoumts of currency from higher levels
+				* Find artifacts based on clues discovered at higher levels
 		* Trading affects supply/demand? (My trading actions affect prices?)
 		* Prices trending over time?
 \		* Narration needs more voice/humor
@@ -33,9 +34,11 @@
 		* Saving game progress
 		* All bolded text should get a title card? For instance, "thrashing explorer" title card
 
+
 		TODOs resulting from play testing:
-		* Track total wealth
 		* Make clear that you are picking your OWN nose (pick nose card)
+		* Make downgrading level more clear
+		* Fix bug where baby's name is undefined - happens on level 1 after going down and up levels and also circumnavigating the whole group
 
 
 
@@ -86,8 +89,13 @@ function isPunctuation(charToCheck) {
 	return(charToCheck == '.' || charToCheck == ',' || charToCheck == '?' || charToCheck == '!' || charToCheck == ':' || charToCheck == ';')
 }
 
-function setHeaderHTML(newHTML) {
-	document.getElementById("headerGoesHere").innerHTML = newHTML
+function setHeaderText(newText) {
+	document.getElementById("headerTextGoesHere").innerHTML = newText
+	document.getElementById("headerGoesHere").style.display = "flex"
+}
+
+function setStatusText(newText) {
+	document.getElementById("headerStatusGoesHere").innerHTML = newText
 	document.getElementById("headerGoesHere").style.display = "flex"
 }
 
@@ -219,8 +227,8 @@ levelData = [
 		VisitHdr1: "Trading at ",
 		VisitHdr2: " ",
 		VisitHdr3: "'s ",
-		tradeableItems: ['crusty boogers', 'slimy boogers', 'bloody boogers', 'pieces of fuzz'],
-		tradeableItemsSingular: ['crusty booger', 'slimy booger', 'bloody booger', 'piece of fuzz'],
+		tradeableItems: ['crusty boogers (ƀ)', 'slimy boogers', 'bloody boogers', 'pieces of fuzz'],
+		tradeableItemsSingular: ['crusty booger (ƀ)', 'slimy booger', 'bloody booger', 'piece of fuzz'],
 		characterType: 'helpless baby',
 		locomotionType: 'thrash',
 		locationLabel: ['spot','spot','spot','spot','spot'],
@@ -507,6 +515,28 @@ function handleLostAndFound() {
 	}
 }
 
+function getNetWorth() {
+	netWorth = 0
+	lvlMultiplier = 1
+	for(i = 0; i < currLevel; i++) {
+		for(j = 0; j < 4; j++) {
+			netWorth += lvlMultiplier * levelData[i].oldInv[j]
+			lvlMultiplier *= 10
+		}
+	}
+	for(j = 0; j < 4; j++) {
+		netWorth += lvlMultiplier * inv[j]
+		lvlMultiplier *= 10
+	}
+	for(i = currLevel + 1; i < maxLevel; i++) {
+		for(j = 0; j < 4; j++) {
+			netWorth += lvlMultiplier * levelData[i].oldInv[j]
+			lvlMultiplier *= 10
+		}
+	}
+	return netWorth
+}
+
 function sellInv(index, quantity) {
 	if(inv[index] >= quantity) {
 		thisPrice = levelData[currLevel].price[locIndex][index]
@@ -690,7 +720,7 @@ function goBaby() {
 					levelUpButton.style.visibility = 'hidden'
 					pickButton.style.display = 'none'
 					setupLocationRadioButtons()
-					setHeaderHTML(levelData[currLevel].VisitHdr1 + levelData[currLevel].characterType +
+					setHeaderText(levelData[currLevel].VisitHdr1 + levelData[currLevel].characterType +
 												levelData[currLevel].VisitHdr2 + levelData[currLevel].locationName[locIndex] +
 												levelData[currLevel].VisitHdr3 + levelData[currLevel].locationLabel[locIndex])
 					updateLocomoteButton()
@@ -729,7 +759,7 @@ function goBaby() {
 					}
 
 					setupLocationRadioButtons()
-					setHeaderHTML(levelData[currLevel].VisitHdr1 + levelData[currLevel+1].characterType +
+					setHeaderText(levelData[currLevel].VisitHdr1 + levelData[currLevel+1].characterType +
 												levelData[currLevel].VisitHdr2 + levelData[currLevel].locationName[locIndex] +
 												levelData[currLevel].VisitHdr3 + levelData[currLevel].locationLabel[locIndex])
 					updateLocomoteButton()
@@ -852,7 +882,7 @@ function goBaby() {
 											" A voice resonates in your deepest being, \"Buy low. Sell high.\"", true)
 							}
 						}
-						setHeaderHTML(levelData[currLevel].VisitHdr1 + ctype +
+						setHeaderText(levelData[currLevel].VisitHdr1 + ctype +
 									levelData[currLevel].VisitHdr2 + levelData[currLevel].locationName[locIndex] +
 									levelData[currLevel].VisitHdr3 + levelData[currLevel].locationLabel[locIndex])
 
@@ -866,11 +896,11 @@ function goBaby() {
 					} else {  // transitMoves >= 0
 			 			if(levelData[currLevel].visitedLocation[nextLocIndex]) {
 							typeText(levelData[currLevel].RevisitMsg)
-							setHeaderHTML(levelData[currLevel].RevisitHdr1 + levelData[currLevel].locationName[nextLocIndex] +
+							setHeaderText(levelData[currLevel].RevisitHdr1 + levelData[currLevel].locationName[nextLocIndex] +
 								 		levelData[currLevel].RevisitHdr2 + levelData[currLevel].locationLabel[nextLocIndex])
 						} else {
 							typeText(levelData[currLevel].ExploreMsg)
-							setHeaderHTML(levelData[currLevel].ExploreHdr)
+							setHeaderText(levelData[currLevel].ExploreHdr)
 						}
 					}
 				}
@@ -1067,6 +1097,16 @@ function goBaby() {
 				}
 			}
 			setInventoryHTML(invHTML)
+
+			netWorth = getNetWorth()
+			statusText = ''
+			if(netWorth > 0) {
+				statusText += getDisplayNumber(netWorth) + "ƀ - lv "
+			} else {
+				statusText += "level "
+			}
+			statusText += currLevel
+			setStatusText(statusText)
 		}
 
 		buttonAction = ''
@@ -1087,7 +1127,7 @@ function setupInitialActions() {
 }
 
 randomizeStore(true)
-setTimeout('setHeaderHTML("You are a " + levelData[0].characterType) ',10*PAUSE_MULT)
+setTimeout('setHeaderText("You are a " + levelData[0].characterType) ',10*PAUSE_MULT)
 setTimeout("setupInitialActions()", 50*PAUSE_MULT)
 setTimeout('goBaby()', 51*PAUSE_MULT)
 
@@ -1165,7 +1205,16 @@ body {
 	height: 3vh;
 	align-items: flex-end;
 	flex: 1 0 auto;
+  flex-direction: row;
 	display: none;
+}
+
+.headerText {
+	flex: 1 0 auto;
+}
+
+.statusText {
+	flex: 0 0 auto;
 }
 
 .inventoryWrapper {
@@ -1299,6 +1348,10 @@ button {
 <body>
 	<div id="normalGameGoesHere" class="gameContainer">
 		<div id="headerGoesHere" class="gameArea bordered headerWrapper">
+			<div id="headerTextGoesHere" class="headerText">
+			</div>
+			<div id="headerStatusGoesHere" class="statusText">
+			</div>
 		</div>
 		<div id="controlsGoHere" class="gameArea bordered controlsWrapper">
 			<div id="actionsGoHere" class="actionsWrapper">
