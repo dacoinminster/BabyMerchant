@@ -805,10 +805,12 @@ function goBaby() {
 					}
 					transitMoves--
 					ctype = levelData[currLevel].characterType;
-					if(nextLocIndex == 0 && currLevel+1 < levelData.length) {
-						ctype = levelData[currLevel+1].characterType;
-					} else {
-						ctype = 'evil'
+					if(nextLocIndex == 0) {
+						if(currLevel+1 < levelData.length) {
+							ctype = levelData[currLevel+1].characterType;
+						} else {
+							ctype = 'evil'
+						}
 					}
 
 					handleLostAndFound()
