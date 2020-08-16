@@ -29,13 +29,11 @@
 		* Trading affects supply/demand? (My trading actions affect prices?)
 		* Prices trending over time?
 \		* Narration needs more voice/humor
-		* Level title cards, possibly with slightly disturbing ascii art?
-		* Saving game progress
-		* All bolded text should get a title card? For instance, "thrashing explorer" title card
+		* Would be cool to have some disturbing art - maybe ASCII?
+		* Saving game progress (refreshing should allow the user to choose new game or continue game)
 
 
 		TODOs resulting from play testing:
-		* Make clear that you are picking your OWN nose (pick nose card)
 		* Fix bug where baby's name is undefined - happens on level 1 after going down and up levels and also circumnavigating the whole group
 
 
@@ -85,6 +83,51 @@ Math.seedrandom(gameSeed)	// replaces Math.random with predictable pseudorandom 
 
 function isPunctuation(charToCheck) {
 	return(charToCheck == '.' || charToCheck == ',' || charToCheck == '?' || charToCheck == '!' || charToCheck == ':' || charToCheck == ';')
+}
+
+waitingTitleCards = 0
+waitingTitleHeader = []
+waitingTitleFooter = []
+waitingTitleText = []
+waitingTitleButton = []
+function hideTitleCard() {
+	if(waitingTitleCards > 0) {
+		document.getElementById("titleMainTextGoesHere").innerHTML = waitingTitleText[0]
+		document.getElementById("titleHeaderTextGoesHere").innerHTML = waitingTitleHeader[0]
+		document.getElementById("titleFooterTextGoesHere").innerHTML = waitingTitleFooter[0]
+		document.getElementById("continueButton").innerHTML = waitingTitleButton[0]
+		for(i = 0; i < waitingTitleCards - 1; i++) {
+			waitingTitleHeader[i] = waitingTitleHeader[i+1]
+			waitingTitleFooter[i] = waitingTitleFooter[i+1]
+			waitingTitleText[i] = waitingTitleText[i+1]
+			waitingTitleButton[i] = waitingTitleButton[i+1]
+		}
+		waitingTitleCards--
+	} else {
+		document.getElementById("titleCard").style.display = "none"
+		document.getElementById("normalGameGoesHere").style.display = "flex"
+	}
+}
+
+function displayTitleCard(mainText, headerText, footerText, buttonText="OK") {
+	// Make sure header is capitalized
+	headerText = headerText.charAt(0).toUpperCase() + headerText.slice(1);
+
+	if(document.getElementById("titleCard").style.display == "flex") {
+		// Already have a title card displayed, so queue this one up
+		waitingTitleHeader[waitingTitleCards] = headerText
+		waitingTitleFooter[waitingTitleCards] = footerText
+		waitingTitleText[waitingTitleCards] = mainText
+		waitingTitleButton[waitingTitleCards] = buttonText
+		waitingTitleCards++
+	} else {
+		document.getElementById("titleMainTextGoesHere").innerHTML = mainText
+		document.getElementById("titleHeaderTextGoesHere").innerHTML = headerText
+		document.getElementById("titleFooterTextGoesHere").innerHTML = footerText
+		document.getElementById("continueButton").innerHTML = buttonText
+		document.getElementById("normalGameGoesHere").style.display = "none"
+		document.getElementById("titleCard").style.display = "flex"
+	}
 }
 
 function setHeaderText(newText) {
@@ -188,12 +231,19 @@ function typeNextText() {
 	}
 }
 
-
-function typeText(whatToType, bolded = false) {
+// If titleCardFooter and/or titleCardHeader is passed, then text will be
+// displayed as a title card with a header and footer and text will be bolded
+// when user returns from title card
+function typeText(whatToType, titleCardHeader = "", titleCardFooter = "", titleCardButton = "OK") {
 	//textBelow = '<br><br>' + alreadyTyped + textBelow
 	//alreadyTyped = ''
+	showTitleCard = (titleCardFooter.length > 0 || titleCardHeader.length > 0)
+	if(showTitleCard) {
+		displayTitleCard(whatToType, titleCardHeader, titleCardFooter, titleCardButton)
+		whatToType = titleCardHeader + " " + whatToType
+	}
 	textToType[waitingMessagesToType] = '\n\n' + whatToType
-	textToTypeBolded[waitingMessagesToType] = bolded
+	textToTypeBolded[waitingMessagesToType] = showTitleCard
 	waitingMessagesToType++
 	if(!typingText) {
 		typingText = true
@@ -236,8 +286,10 @@ levelData = [
 		cargoUpgradeButton: 'Tighter Grip',
 		levelUpgradeMsg: ' teaches you how to roll over to travel further to reach other groups of babies.',
 		levelUpgradeButton: 'Roll Over',
+		levelUpgradeHeaderMsg: "You learned to roll over!",
 		loseMsg: 'As you thrashed your limbs, you accidentally flung away ',
 		foundMsg: 'As you thrashed your limbs, you managed to find ',
+		exploreMsg: 'You have visited every baby in this group and are starting to get better at thrashing about.',
 		lastLocation: 1,
 		travelTime: 4,
 		numLocations: 5,
@@ -278,8 +330,10 @@ levelData = [
 		cargoUpgradeButton: 'Stretchier Cheeks',
 		levelUpgradeMsg: ' teaches you how to crawl and thereby reach other rooms.',
 		levelUpgradeButton: 'Crawl',
+		levelUpgradeHeaderMsg: "You learned to crawl!",
 		loseMsg: 'While rolling, you choked and accidentally swallowed ',
 		foundMsg: 'While rolling, you managed to find ',
+		exploreMsg: 'You have visited every group in this room and you notice your rolling skills have improved.',
 		lastLocation: 1,
 		travelTime: 4,
 		numLocations: 5,
@@ -320,8 +374,10 @@ levelData = [
 		cargoUpgradeButton: 'Bigger Diaper',
 		levelUpgradeMsg: ' teaches you how to push elevator buttons to access other floors.',
 		levelUpgradeButton: 'Use Elevator',
+		levelUpgradeHeaderMsg: "You learned to use the elevator!",
 		loseMsg: 'Your diaper loosened while crawling, and you lost ',
 		foundMsg: 'You kept out a sharp eye while crawling and managed to find ',
+		exploreMsg: 'You have visited every room on this floor and you notice your crawling skills have improved.',
 		lastLocation: 1,
 		travelTime: 4,
 		numLocations: 5,
@@ -486,11 +542,15 @@ function handleLostAndFound() {
 		if(amount > 0) {
 			inv[whichInv] -= amount
 			if(amount == 1) {
-				typeText(negativeExclamation() + " " + levelData[currLevel].loseMsg + " " +
-								amount + " " + levelData[currLevel].tradeableItemsSingular[whichInv] + "!", true)
+				typeText(levelData[currLevel].loseMsg + " " +
+								amount + " " + levelData[currLevel].tradeableItemsSingular[whichInv] + "!",
+								levelData[currLevel].tradeableItemsSingular[whichInv] + " lost.",
+								negativeExclamation())
 			} else {
-				typeText(negativeExclamation() + " " + levelData[currLevel].loseMsg + " " +
-								amount + " " + levelData[currLevel].tradeableItems[whichInv] + "!", true)
+				typeText(levelData[currLevel].loseMsg + " " +
+								amount + " " + levelData[currLevel].tradeableItems[whichInv] + "!",
+								levelData[currLevel].tradeableItems[whichInv] + " lost.",
+								negativeExclamation())
 			}
 		}
 	} else if(whaHappen > 0.975 && hasAnything()) {
@@ -503,11 +563,15 @@ function handleLostAndFound() {
 		if(amount > 0) {
 			inv[whichInv] += amount
 			if(amount == 1) {
-				typeText(positiveExclamation() + " " + levelData[currLevel].foundMsg + " " +
-								amount + " " + levelData[currLevel].tradeableItemsSingular[whichInv] + "!", true)
+				typeText(levelData[currLevel].foundMsg + " " +
+								amount + " " + levelData[currLevel].tradeableItemsSingular[whichInv] + "!",
+								levelData[currLevel].tradeableItemsSingular[whichInv] + " found.",
+								positiveExclamation())
 			} else {
-				typeText(positiveExclamation() + " " + levelData[currLevel].foundMsg + " " +
-								amount + " " + levelData[currLevel].tradeableItems[whichInv] + "!", true)
+				typeText(levelData[currLevel].foundMsg + " " +
+								amount + " " + levelData[currLevel].tradeableItems[whichInv] + "!",
+								levelData[currLevel].tradeableItems[whichInv] + " found.",
+								positiveExclamation())
 			}
 		}
 	}
@@ -604,9 +668,13 @@ function buyUpgrade(upgradeType, upgradeAmount, cost) {
 					inv[3] -= cost
 					inventoryChanged = true;
 					if(levelData[currLevel].travelTime > 1) {
-						typeText(levelData[currLevel].locationName[locIndex] + levelData[currLevel].travelFasterUpgradeMsg[0], true)
+						typeText(levelData[currLevel].locationName[locIndex] + levelData[currLevel].travelFasterUpgradeMsg[0],
+												"Travel Speed Upgraded.",
+												"Go Baby!")
 					} else {
-						typeText(levelData[currLevel].locationName[locIndex] + levelData[currLevel].travelFasterUpgradeMsg[1], true)
+						typeText(levelData[currLevel].locationName[locIndex] + levelData[currLevel].travelFasterUpgradeMsg[1],
+												"Travel Speed Upgraded.",
+												"Go Baby!")
 					}
 				}
 				break
@@ -614,18 +682,27 @@ function buyUpgrade(upgradeType, upgradeAmount, cost) {
 				levelData[currLevel].cargoSpace += upgradeAmount
 				inv[3] -= cost
 				inventoryChanged = true
-				typeText(levelData[currLevel].locationName[locIndex] + levelData[currLevel].cargoUpgradeMsg, true)
+				typeText(levelData[currLevel].locationName[locIndex] + levelData[currLevel].cargoUpgradeMsg,
+											"Cargo space upgraded.",
+											"More Room!")
 				break
 			case 'level':
-				maxLevel++
-				inv[3] -= cost
-				inventoryChanged = true
-				document.getElementById('buttonIDlevelUp').style.visibility = 'visible'
-				typeText(levelData[currLevel].locationName[locIndex] + levelData[currLevel].levelUpgradeMsg, true)
+				if(maxLevel < levelData.length - 1) {
+					maxLevel++
+					inv[3] -= cost
+					inventoryChanged = true
+					document.getElementById('buttonIDlevelUp').style.visibility = 'visible'
+					typeText(levelData[currLevel].locationName[locIndex] + levelData[currLevel].levelUpgradeMsg,
+											levelData[currLevel].levelUpgradeHeaderMsg,
+											"Level " + maxLevel + " Available!")
+				} else {
+					typeText("You have completed Baby Merchant! Hopefully more will be written soon.",
+										"You win!", "Thanks for playing")
+				}
 				break
 		}
 	} else {
-		typeText("You need more " + levelData[currLevel].tradeableItems[3] + " to purchase this", true)
+		typeText("You need more " + levelData[currLevel].tradeableItems[3] + " to purchase this")
 	}
 }
 
@@ -683,7 +760,9 @@ function goBaby() {
 			switch(thisAction) {
 			case 'levelUp':
 				if(currLevel < maxLevel) {
-					typeText("Advancing to level " + (currLevel+1) + ": " + levelData[currLevel].levelUpMessage, true)
+					typeText(levelData[currLevel].levelUpMessage,
+										"Advancing to level " + (currLevel+1) + ":",
+										"Go Baby!")
 					document.getElementById("destinationsAndLabel").style.display = "flex"
 
 					// Preserve inventory that can't go up to the next level
@@ -731,7 +810,9 @@ function goBaby() {
 				break
 			case 'levelDown':
 				if(currLevel > 0) {
-					typeText("Retreating to level " + (currLevel-1) + ": " + levelData[currLevel].levelDownMessage, true)
+					typeText(levelData[currLevel].levelDownMessage,
+										"Retreating to level " + (currLevel-1) + ":",
+										"Humble thyself")
 					// Preserve inventory that can't go down to the previous level
 					levelData[currLevel].oldInv = [0,0,0,0]
 					for(i = 1; i < inv.length; i++) {
@@ -758,6 +839,7 @@ function goBaby() {
 					levelUpButton.style.visibility = 'visible'
 					if(currLevel == 0) {
 						levelDownButton.style.visibility = 'hidden'
+						document.getElementById("destinationsAndLabel").style.display = "none"
 						pickButton.style.display = 'block'
 					}
 
@@ -784,7 +866,9 @@ function goBaby() {
 						typeText("You draw forth a " + levelData[currLevel].tradeableItemsSingular[1] + "!")
 					} else {
 						inv[2]++
-						typeText(positiveExclamation() + " You found a " + levelData[currLevel].tradeableItemsSingular[2] + "!!", true)
+						typeText("To your incredible delight, you have drawn forth that rarest of boogers, the bloody booger!",
+											"You found a " + levelData[currLevel].tradeableItemsSingular[2] + "!!",
+											positiveExclamation())
 					}
 				}
 				setTimeout("document.getElementById('buttonIDpick').disabled = false", 40*PAUSE_MULT)
@@ -814,7 +898,7 @@ function goBaby() {
 						if(currLevel+1 < levelData.length) {
 							ctype = levelData[currLevel+1].characterType;
 						} else {
-							ctype = 'evil'
+							ctype = 'evil baby'
 						}
 					}
 
@@ -827,7 +911,8 @@ function goBaby() {
 						if(nextLocIndex >= levelData[currLevel].numLocations) {
 							nextLocIndex = 0
 						}
-						coolLocation = false
+						coolLocationFooter = ""
+						coolLocationHeader = ""
 						if(currLevel > 0) {
 							document.getElementById("destinationsAndLabel").style.display = "flex"
 							if(locIndex > 0){
@@ -841,17 +926,16 @@ function goBaby() {
 							levelData[currLevel].visitedLocation[locIndex] = true
 							if(visitedAllLocations()) {
 								levelData[currLevel].travelTime--
-								comfortMsg = "You have visited every location and are starting to feel comfortable in this mode of travel."
+								exploreMsg = levelData[currLevel].exploreMsg
 								if(currLevel == 0) {
-
 									nextCtype = levelData[currLevel].characterType
 									if(nextLocIndex == 0) {
 										nextCtype = levelData[currLevel+1].characterType
 									}
-									comfortMsg += " Looking around, you see that continued thrashing will bring you full circle to revisit " +
+									exploreMsg += " Looking around, you see that continued thrashing will bring you full circle to revisit " +
 												nextCtype + " " + levelData[currLevel].locationName[nextLocIndex] + "."
 								}
-								typeText(comfortMsg, true)
+								typeText(exploreMsg, "Exploration complete!", "Go Baby!")
 							}
 							if(locIndex > 0) {
 								locationMessage += levelData[currLevel].discoveryMsg1 + ctype +
@@ -863,16 +947,18 @@ function goBaby() {
 									pickingEnabled = true
 									locationMessage += " You notice " + levelData[currLevel].locationName[locIndex]  +
 														" has a finger in each nostril. Hmmmm."
-									coolLocation = true
+									coolLocationHeader = "Meeting " + ctype + " " + levelData[currLevel].locationName[locIndex] + ":"
+									coolLocationFooter = "Nose picking is cool"
 								}
 							} else {
 								locationMessage += levelData[currLevel].BossDiscoveryMsg1 + ctype +
 											levelData[currLevel].BossDiscoveryMsg2 + levelData[currLevel].locationName[locIndex] +
 											levelData[currLevel].BossDiscoveryMsg3 + levelData[currLevel].tradeableItems[3] +
 											levelData[currLevel].BossDiscoveryMsg4
-								coolLocation = true
+								coolLocationHeader = "Meeting " + ctype + " " + levelData[currLevel].locationName[locIndex] + ":"
+								coolLocationFooter = "Upgrades for sale"
 							}
-							typeText(locationMessage, coolLocation)
+							typeText(locationMessage, coolLocationHeader, coolLocationFooter)
 						} else {
 							typeText(levelData[currLevel].ArrivalMsg1 + levelData[currLevel].locationName[locIndex] +
 										levelData[currLevel].ArrivalMsg2 + levelData[currLevel].locationLabel[locIndex])
@@ -886,7 +972,9 @@ function goBaby() {
 								tradingEnabled = true
 								typeText(levelData[currLevel].locationName[locIndex] +
 											" seems to want to trade with you, but these wares look so expensive!" +
-											" A voice resonates in your deepest being, \"Buy low. Sell high.\"", true)
+											" A voice resonates in your deepest being . . .  \"Buy low. Sell high.\"",
+											"Meeting " + ctype + " " + levelData[currLevel].locationName[locIndex] + ":",
+											"Time to Trade!")
 							}
 						}
 						setHeaderText(levelData[currLevel].VisitHdr1 + ctype +
@@ -1347,6 +1435,57 @@ button {
 
 .titleCard {
 	display: none;
+	flex-direction: column;
+  width: calc(100vw - 35px);
+}
+
+.titleCardMain {
+	display: flex;
+	width: 100%;
+  height: 100%;
+	position: relative;
+	align-items: center;
+  flex: 1 1 auto;
+}
+
+.titleCardFooter {
+	display: flex;
+	width: 100%;
+	flex-direction: row;
+  flex: 0 0 auto;
+	margin-top: 8px;
+}
+
+.titleCardHeader {
+	display: flex;
+	width: 100%;
+  flex: 0 0 auto;
+	margin-bottom: 8px;
+}
+
+.titleCardMainText {
+	padding: 15px;
+	font-size: 3vh;
+	text-align: center;
+}
+
+.titleCardFooterText {
+	padding: 15px;
+	flex: 1 1 auto;
+	font-size: 3vh;
+}
+
+.titleCardHeaderText {
+	width: 100%;
+	padding: 15px;
+	font-size: 3vh;
+	text-align: center;
+}
+
+.continueButton {
+	flex: 0 0 auto;
+	font-size: 3vh;
+	margin: 9px;
 }
 
 
@@ -1380,31 +1519,16 @@ button {
 		<div id="footerGoesHere" class="gameArea footerWrapper">
 		</div>
 	</div>
-	<div id="level0TitleCard" class="titleCard">
-		<div class="titleCardMain">
-			Art asset needed: a baby lying flat on its back, face screwed up and wailing, limbs thrashing, possibly peeing up into the air.
+	<div id="titleCard" class="titleCard gameContainer">
+		<div class="titleCardHeader bordered">
+			<span id="titleHeaderTextGoesHere" class="titleCardHeaderText"></span>
 		</div>
-		<div class="titleCardFooter">
-			<span>Level 0: Buy low, sell high</span>
-			<button class="continueButton">Start</button>
+		<div class="titleCardMain bordered">
+			<span id="titleMainTextGoesHere" class="titleCardMainText"></span>
 		</div>
-	</div>
-	<div id="level1TitleCard" class="titleCard">
-		<div class="titleCardMain">
-			Art asset needed: a baby trying to move by rolling over, mouth stuffed full and cheeks bulging.
-		</div>
-		<div class="titleCardFooter">
-			<span>Level 1: Revisit places with good prices</span>
-			<button class="continueButton">Continue</button>
-		</div>
-	</div>
-	<div id="level2TitleCard" class="titleCard">
-		<div class="titleCardMain">
-			Art asset needed: a baby trying to move by rolling over, mouth stuffed full and cheeks bulging.
-		</div>
-		<div class="titleCardFooter">
-			<span>Level 1: Revisit places with good prices</span>
-			<button class="continueButton">Continue</button>
+		<div class="titleCardFooter bordered">
+			<span id="titleFooterTextGoesHere" class="titleCardFooterText"></span>
+			<button id="continueButton" class="continueButton" onclick="hideTitleCard()">OK</button>
 		</div>
 	</div>
 </body>
