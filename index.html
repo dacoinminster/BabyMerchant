@@ -517,19 +517,24 @@ function getNetWorth() {
 	netWorth = 0
 	lvlMultiplier = 1
 	for(i = 0; i < currLevel; i++) {
-		for(j = 0; j < 4; j++) {
-			netWorth += lvlMultiplier * levelData[i].oldInv[j]
+		netWorth += lvlMultiplier * levelData[i].oldInv[0]
+		for(j = 1; j < 4; j++) {
 			lvlMultiplier *= 10
+			netWorth += lvlMultiplier * levelData[i].oldInv[j]
 		}
 	}
-	for(j = 0; j < 4; j++) {
-		netWorth += lvlMultiplier * inv[j]
+	netWorth += lvlMultiplier * inv[0]
+	for(j = 1; j < 4; j++) {
 		lvlMultiplier *= 10
+		netWorth += lvlMultiplier * inv[j]
 	}
-	for(i = currLevel + 1; i < maxLevel; i++) {
-		for(j = 0; j < 4; j++) {
-			netWorth += lvlMultiplier * levelData[i].oldInv[j]
-			lvlMultiplier *= 10
+	for(i = currLevel + 1; i < levelData.length; i++) {
+		if(levelData[i].oldInv) {
+			netWorth += lvlMultiplier * levelData[i].oldInv[0]
+			for(j = 1; j < 4; j++) {
+				lvlMultiplier *= 10
+				netWorth += lvlMultiplier * levelData[i].oldInv[j]
+			}
 		}
 	}
 	return netWorth
