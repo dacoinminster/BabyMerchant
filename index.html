@@ -248,7 +248,7 @@ levelData = [
 	},
 	{
 		levelDownMessage: "You lie on your back and prepare to move by thrashing about and to hold boogers and fuzz in your hands.",
-		levelUpMessage: "You decide you are ready to crawl to other rooms of babies. You put on a diaper, which seems useful for item storage.",
+		levelUpMessage: "You decide you are ready to crawl to other rooms of babies. You need your mouth for babbling, so you put on a diaper, which seems useful for item storage.",
 		levelDownLabel: "Enter ",
 		levelUpLabel: "Crawl to another baby room",
 		discoveryMsg1: "You roll to another ",
@@ -1100,7 +1100,7 @@ function goBaby() {
 			netWorth = getNetWorth()
 			statusText = '&nbsp;&nbsp;&nbsp;'
 			if(netWorth > 0) {
-				statusText += getDisplayNumber(netWorth) + "ƀ - lv "
+				statusText += getDisplayNumber(netWorth) + " ƀ - lv "
 			} else {
 				statusText += "level "
 			}
