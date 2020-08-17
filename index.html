@@ -73,20 +73,6 @@
 'use strict';
 
 Math.seedrandom()	// Start out truly random
-var waitingTitleCards = 0
-var waitingTitleHeader = []
-var waitingTitleFooter = []
-var waitingTitleText = []
-var waitingTitleButton = []
-var lastChar = ' '
-var alreadyTyped = ''
-//gradientHTML = '<div id="textGradient"  class="gradientback">'
-var textBelow = ''
-var textToType = []
-var textToTypeBolded = []
-var waitingMessagesToType = 0
-var typingText = false
-var lastLineWasBold = false
 var buttonAction = ''
 var basePrice = [1,10,100,1000]
 
@@ -233,6 +219,18 @@ deepFreeze(levelData)
 var GAME_DATA_STARTS = "here"
 var gameVersion = "0.1.0"
 var gameSeed = Math.floor(Math.random()*Number.MAX_SAFE_INTEGER)
+var waitingTitleCards = 0
+var waitingTitleHeader = []
+var waitingTitleFooter = []
+var waitingTitleText = []
+var waitingTitleButton = []
+var lastChar = ' '
+var alreadyTyped = ''
+var textBelow = ''
+var textToType = []
+var textToTypeBolded = []
+var waitingMessagesToType = 0
+var lastLineWasBold = false
 var currLevel = 0
 var locIndex = 0
 var nextLocIndex = 1
@@ -264,6 +262,9 @@ if(devMode) {
 	PAUSE_MULT = 1
 }
 
+var typingText = false
+var needToSave = false
+
 function saveGameState() {
 	lastGameHTML = document.getElementById('normalGameGoesHere').innerHTML
 
@@ -277,6 +278,7 @@ function saveGameState() {
 		}
 		if(key == 'GAME_DATA_ENDS') saveThis = false
 	}
+	needToSave = false
 	// console.log("Save complete")
 }
 
@@ -450,6 +452,9 @@ function typeNextText() {
 			}
 		} else {
 			typingText = false
+			if(needToSave) {
+				saveGameState()
+			}
 		}
 	}
 	lastChar = thisChar
@@ -1268,7 +1273,7 @@ function goBaby() {
 			}
 			statusText += currLevel
 			setStatusText(statusText)
-			saveGameState()
+			needToSave = true
 		}
 
 		buttonAction = ''
@@ -1291,6 +1296,19 @@ function setupInitialActions() {
 
 function startNewGame() {
 		// Make sure all game variables are set to initial values
+
+		waitingTitleCards = 0
+		waitingTitleHeader = []
+		waitingTitleFooter = []
+		waitingTitleText = []
+		waitingTitleButton = []
+		lastChar = ' '
+		alreadyTyped = ''
+		textBelow = ''
+		textToType = []
+		textToTypeBolded = []
+		waitingMessagesToType = 0
+		lastLineWasBold = false
 		currLevel = 0
 		locIndex = 0
 		nextLocIndex = 1
