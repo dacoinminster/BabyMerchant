@@ -1410,13 +1410,15 @@ body {
 	position: absolute;
   padding: 10px;
 	height: calc(100vh - 35px);
+	width: calc(100vw - 35px);
 	height: -webkit-fill-available;
 	/* width: 100%;
   max-width: 100vw; */
 }
 
 .gameArea {
-	width: calc(100vw - 60px);
+	width: 100%;
+	max-width: 80vh;
   /* min-width: 400px; */
 	margin: 0.3vh;
 	padding: 0.7vh;
@@ -1584,12 +1586,13 @@ button {
 .titleCard {
 	display: none;
 	flex-direction: column;
-  width: calc(100vw - 35px);
+  width: 100%;
 }
 
 .titleCardMain {
 	display: flex;
 	width: 100%;
+	max-width: 80vh;
   height: 100%;
 	position: relative;
 	align-items: center;
@@ -1599,6 +1602,7 @@ button {
 .titleCardFooter {
 	display: flex;
 	width: 100%;
+	max-width: 80vh;
 	flex-direction: row;
   flex: 0 0 auto;
 	margin-top: 8px;
@@ -1608,12 +1612,14 @@ button {
 .titleCardBottomFloater {
 	display: flex;
 	width: 100%;
+	max-width: 80vh;
 	flex: 0 0 0px;
 }
 
 .titleCardHeader {
 	display: flex;
 	width: 100%;
+	max-width: 80vh;
   flex: 0 0 auto;
 	margin-bottom: 8px;
 }
