@@ -71,188 +71,45 @@
 
 	<script type='text/javascript'>
 
+'use strict';
+
 Math.seedrandom()	// Start out truly random
-gameSeed = Math.floor(Math.random()*Number.MAX_SAFE_INTEGER)
-PAUSE_MULT = 100 // Pause multiplier
-devMode = false
-if(devMode) {
-	gameSeed = 1
-	PAUSE_MULT = 1
-}
-Math.seedrandom(gameSeed)	// replaces Math.random with predictable pseudorandom generator
-
-function isPunctuation(charToCheck) {
-	return(charToCheck == '.' || charToCheck == ',' || charToCheck == '?' || charToCheck == '!' || charToCheck == ':' || charToCheck == ';')
-}
-
-waitingTitleCards = 0
-waitingTitleHeader = []
-waitingTitleFooter = []
-waitingTitleText = []
-waitingTitleButton = []
-function hideTitleCard() {
-	if(waitingTitleCards > 0) {
-		document.getElementById("titleMainTextGoesHere").innerHTML = waitingTitleText[0]
-		document.getElementById("titleHeaderTextGoesHere").innerHTML = waitingTitleHeader[0]
-		document.getElementById("titleFooterTextGoesHere").innerHTML = waitingTitleFooter[0]
-		document.getElementById("continueButton").innerHTML = waitingTitleButton[0]
-		for(i = 0; i < waitingTitleCards - 1; i++) {
-			waitingTitleHeader[i] = waitingTitleHeader[i+1]
-			waitingTitleFooter[i] = waitingTitleFooter[i+1]
-			waitingTitleText[i] = waitingTitleText[i+1]
-			waitingTitleButton[i] = waitingTitleButton[i+1]
-		}
-		waitingTitleCards--
-	} else {
-		document.getElementById("titleCard").style.display = "none"
-		document.getElementById("normalGameGoesHere").style.display = "flex"
-	}
-}
-
-function displayTitleCard(mainText, headerText, footerText, buttonText="OK") {
-	// Make sure header is capitalized
-	headerText = headerText.charAt(0).toUpperCase() + headerText.slice(1);
-
-	if(document.getElementById("titleCard").style.display == "flex") {
-		// Already have a title card displayed, so queue this one up
-		waitingTitleHeader[waitingTitleCards] = headerText
-		waitingTitleFooter[waitingTitleCards] = footerText
-		waitingTitleText[waitingTitleCards] = mainText
-		waitingTitleButton[waitingTitleCards] = buttonText
-		waitingTitleCards++
-	} else {
-		document.getElementById("titleMainTextGoesHere").innerHTML = mainText
-		document.getElementById("titleHeaderTextGoesHere").innerHTML = headerText
-		document.getElementById("titleFooterTextGoesHere").innerHTML = footerText
-		document.getElementById("continueButton").innerHTML = buttonText
-		document.getElementById("normalGameGoesHere").style.display = "none"
-		document.getElementById("titleCard").style.display = "flex"
-	}
-}
-
-function setHeaderText(newText) {
-	document.getElementById("headerTextGoesHere").innerHTML = newText
-	document.getElementById("headerGoesHere").style.display = "flex"
-}
-
-function setStatusText(newText) {
-	document.getElementById("headerStatusGoesHere").innerHTML = newText
-	document.getElementById("headerGoesHere").style.display = "flex"
-}
-
-function setInventoryHTML(newHTML) {
-	document.getElementById("inventoryGoesHere").innerHTML = newHTML
-	if(newHTML == "")
-		document.getElementById("inventoryGoesHere").style.display = "none"
-	else
-		document.getElementById("inventoryGoesHere").style.display = "flex"
-}
-
-function setActionsHTML(newHTML) {
-	document.getElementById("actionsGoHere").innerHTML = newHTML
-	document.getElementById("actionsGoHere").style.display = "flex"
-	document.getElementById("controlsGoHere").style.display = "flex"
-}
-
-function setDestinationsHTML(newHTML) {
-	document.getElementById("destinationsGoHere").innerHTML = newHTML
-}
-
-function setOutputHTML(newHTML) {
-	document.getElementById("outputGoesHere").innerHTML = newHTML
-	document.getElementById("outputAndGradient").style.visibility = "visible"
-}
-
-lastChar = ' '
-alreadyTyped = ''
+var waitingTitleCards = 0
+var waitingTitleHeader = []
+var waitingTitleFooter = []
+var waitingTitleText = []
+var waitingTitleButton = []
+var lastChar = ' '
+var alreadyTyped = ''
 //gradientHTML = '<div id="textGradient"  class="gradientback">'
-textBelow = ''
-textToType = []
-textToTypeBolded = []
-waitingMessagesToType = 0
-typingText = false
-lastLineWasBold = false
+var textBelow = ''
+var textToType = []
+var textToTypeBolded = []
+var waitingMessagesToType = 0
+var typingText = false
+var lastLineWasBold = false
+var buttonAction = ''
+var basePrice = [1,10,100,1000]
 
-function typeCharacter(characterToType, bolded) {
-	if(characterToType == '\n') {
-		if(lastLineWasBold) {
-			textBelow = '<br><strong class="outputSpan">' + alreadyTyped + '</strong>' + textBelow
-			lastLineWasBold = false
-		} else {
-			textBelow = '<br><span class="outputSpan">' + alreadyTyped + '</span>' + textBelow
-		}
-		alreadyTyped = ''
-	} else {
-		alreadyTyped += characterToType
-	}
-	if(bolded) {
-		lastLineWasBold = true
-		setOutputHTML('<strong class="outputSpan">' + alreadyTyped + '</strong>' + textBelow.substring(0,4000))
-	} else {
-		setOutputHTML('<span class="outputSpan">' + alreadyTyped + '</span>' + textBelow.substring(0,4000))
-	}
+function deepFreeze(object) {
+
+  // Retrieve the property names defined on object
+  var propNames = Object.getOwnPropertyNames(object);
+
+  // Freeze properties before freezing self
+
+  for (let name of propNames) {
+    let value = object[name];
+
+    if(value && typeof value === "object") {
+      deepFreeze(value);
+    }
+  }
+
+  return Object.freeze(object);
 }
 
-function typeNextText() {
-	thisChar = textToType[0].substring(0,1)
-	typeCharacter(thisChar, textToTypeBolded[0])
-	textToType[0] = textToType[0].substring(1,textToType[0].length)
-	nextWait = 500
-	if(textToType[0].length > 0) {
-		nextChar = textToType[0].substring(0,1)
-		nextWait = 25 + Math.random()*50
-		if(isPunctuation(lastChar) && !isPunctuation(thisChar)) {
-			// Pause after punctuation
-			nextWait += 200 + Math.random()*200
-		} else if(thisChar != '\n' && nextChar == '\n') {
-			// Pause before linebreak
-			nextWait += 200 + Math.random()*200
-		} else if(thisChar ==' ') {
-			// Slight pause after space
-			nextWait += 50 + Math.random()*50
-		}
-	} else {
-		waitingMessagesToType--
-		if(waitingMessagesToType > 0) {
-			for(i = 0; i < waitingMessagesToType; i++) {
-				textToType[i] = textToType[i+1]
-				textToTypeBolded[i] = textToTypeBolded[i+1]
-			}
-		} else {
-			typingText = false
-		}
-	}
-	lastChar = thisChar
-	if(typingText) {
-		if(devMode || true) {
-			nextWait = nextWait / 100
-		}
-		setTimeout('typeNextText()', nextWait)
-	}
-}
-
-// If titleCardFooter and/or titleCardHeader is passed, then text will be
-// displayed as a title card with a header and footer and text will be bolded
-// when user returns from title card
-function typeText(whatToType, titleCardHeader = "", titleCardFooter = "", titleCardButton = "OK") {
-	//textBelow = '<br><br>' + alreadyTyped + textBelow
-	//alreadyTyped = ''
-	showTitleCard = (titleCardFooter.length > 0 || titleCardHeader.length > 0)
-	if(showTitleCard) {
-		displayTitleCard(whatToType, titleCardHeader, titleCardFooter, titleCardButton)
-		whatToType = titleCardHeader + " " + whatToType
-	}
-	textToType[waitingMessagesToType] = '\n\n' + whatToType
-	textToTypeBolded[waitingMessagesToType] = showTitleCard
-	waitingMessagesToType++
-	if(!typingText) {
-		typingText = true
-		typeNextText()
-	}
-}
-
-
-levelData = [
+const levelData = [
 	{
 		levelDownMessage: "err",
 		levelUpMessage: "You decide you are ready to roll to other groups of babies. You need your hands for rolling, so you put the pieces of fuzz in your mouth.",
@@ -290,12 +147,7 @@ levelData = [
 		loseMsg: 'As you thrashed your limbs, you accidentally flung away ',
 		foundMsg: 'As you thrashed your limbs, you managed to find ',
 		exploreMsg: 'You have visited every baby in this group and are starting to get better at thrashing about.',
-		lastLocation: 1,
-		travelTime: 4,
 		numLocations: 5,
-		visitedLocation: [false, false, false, false, false],
-		cargoSpace: 100,
-		price: [[1,10,100,1000],[1,10,100,1000],[1,10,100,1000],[1,10,100,1000],[1,10,100,1000]]
 	},
 	{
 		levelDownMessage: "You lie on your back and prepare to move by thrashing about and to hold boogers and fuzz in your hands.",
@@ -334,12 +186,7 @@ levelData = [
 		loseMsg: 'While rolling, you choked and accidentally swallowed ',
 		foundMsg: 'While rolling, you managed to find ',
 		exploreMsg: 'You have visited every group in this room and you notice your rolling skills have improved.',
-		lastLocation: 1,
-		travelTime: 4,
 		numLocations: 5,
-		visitedLocation: [false, false, false, false, false],
-		cargoSpace: 100,
-		price: [[1,10,100,1000],[1,10,100,1000],[1,10,100,1000],[1,10,100,1000],[1,10,100,1000]]
 	},
 	{
 		levelDownMessage: "You remove your diaper, lie down, and prepare to move by rolling over",
@@ -378,31 +225,280 @@ levelData = [
 		loseMsg: 'Your diaper loosened while crawling, and you lost ',
 		foundMsg: 'You kept out a sharp eye while crawling and managed to find ',
 		exploreMsg: 'You have visited every room on this floor and you notice your crawling skills have improved.',
-		lastLocation: 1,
-		travelTime: 4,
 		numLocations: 5,
-		visitedLocation: [false, false, false, false, false],
-		cargoSpace: 100,
-		price: [[1,10,100,1000],[1,10,100,1000],[1,10,100,1000],[1,10,100,1000],[1,10,100,1000]]
 	},
 ]
+deepFreeze(levelData)
+
+// These are the variables to save between sessions
+var GAME_DATA_STARTS = "here"
+var gameVersion = "0.1.0"
+var gameSeed = Math.floor(Math.random()*Number.MAX_SAFE_INTEGER)
+var currLevel = 0
+var locIndex = 0
+var nextLocIndex = 1
+var transitMoves = 4
+var pickingEnabled = false
+var tradingEnabled = false
+var storeVisible = false
+var upgradesVisible = false
+var lastGameHTML = ""
+var inv = [0,0,0,0]
+var oldInv = []
+var oldLocIndex = []
+var travelTime = []
+var visitedLocation = []
+var cargoSpace = []
+var price = []
+var locationName = []
+var levelSeed = []
+var levelChildSeed = []
+var maxLevel = 0
+var inventoryChanged = false
+var GAME_DATA_ENDS = "here"
+// End variables to save betweens sessions
+
+var PAUSE_MULT = 100 // Pause multiplier
+var devMode = true
+if(devMode) {
+	gameSeed = 1
+	PAUSE_MULT = 1
+}
+
+function saveGameState() {
+	lastGameHTML = document.getElementById('normalGameGoesHere').innerHTML
+
+	var saveThis = false;
+	// console.log("Starting save")
+	for (const key of Object.keys(window)) {
+		if(key == 'GAME_DATA_STARTS') saveThis = true
+		if(saveThis) {
+			// console.log("Saving " + key + "=" + JSON.stringify(window[key]))
+			localStorage.setItem(key, JSON.stringify(window[key]))
+		}
+		if(key == 'GAME_DATA_ENDS') saveThis = false
+	}
+	// console.log("Save complete")
+}
+
+function loadGameState() {
+	var loadThis = false;
+	for (const key of Object.keys(window)) {
+		if(key == 'GAME_DATA_STARTS') loadThis = true
+		if(loadThis && key != 'gameVersion') {
+			window[key] = JSON.parse(localStorage.getItem(key))
+		}
+		if(key == 'GAME_DATA_ENDS') loadThis = false
+	}
+
+	document.getElementById('normalGameGoesHere').innerHTML = lastGameHTML
+
+	document.getElementById('buttonIDlocomote').style.display = "block"
+	document.getElementById('buttonIDlocomote').style.visiblity = "visible"
+	document.getElementById('buttonIDlocomote').disabled = false
+	if(currLevel > 0) {
+		document.getElementById("destinationsAndLabel").style.display = "flex"
+		document.getElementById('buttonIDpick').style.display = "none"
+	} else {
+		document.getElementById('buttonIDpick').style.display = "block"
+		if(pickingEnabled) {
+			document.getElementById('buttonIDpick').style.visibility = "visible"
+			document.getElementById('buttonIDpick').disabled = false
+		}
+	}
+
+	if(currLevel < maxLevel) {
+		document.getElementById('buttonIDlevelUp').style.display = "block"
+		document.getElementById('buttonIDlevelUp').style.visiblity = "visible"
+	}
+
+	if(currLevel > 0) {
+		document.getElementById('buttonIDlevelDown').style.display = "block"
+		document.getElementById('buttonIDlevelDown').style.visiblity = "visible"
+	}
+
+	setTimeout('goBaby()', 100)
+}
+
+Math.seedrandom(gameSeed)	// replaces Math.random with predictable pseudorandom generator
+
+function isPunctuation(charToCheck) {
+	return(charToCheck == '.' || charToCheck == ',' || charToCheck == '?' || charToCheck == '!' || charToCheck == ':' || charToCheck == ';')
+}
+
+function setupTitleCard(text, header, footer, button)  {
+	document.getElementById("titleMainTextGoesHere").innerHTML = text
+	document.getElementById("titleHeaderTextGoesHere").innerHTML = header
+	if(button == "" && footer == "") {
+		document.getElementById("titleCardFooter").style.display = "none"
+	} else {
+		document.getElementById("titleFooterTextGoesHere").innerHTML = footer
+		document.getElementById("continueButton").innerHTML = button
+		document.getElementById("titleCardFooter").style.display = "flex"
+	}
+	document.getElementById("normalGameGoesHere").style.display = "none"
+	document.getElementById("titleCard").style.display = "flex"
+}
+
+function hideTitleCard() {
+	if(waitingTitleCards > 0) {
+		setupTitleCard(waitingTitleText[0], waitingTitleHeader[0], waitingTitleFooter[0], waitingTitleButton[0])
+		for(i = 0; i < waitingTitleCards - 1; i++) {
+			waitingTitleHeader[i] = waitingTitleHeader[i+1]
+			waitingTitleFooter[i] = waitingTitleFooter[i+1]
+			waitingTitleText[i] = waitingTitleText[i+1]
+			waitingTitleButton[i] = waitingTitleButton[i+1]
+		}
+		waitingTitleCards--
+	} else {
+		document.getElementById("titleCard").style.display = "none"
+		document.getElementById("normalGameGoesHere").style.display = "flex"
+	}
+}
+
+function displayTitleCard(mainText, headerText, footerText, buttonText="OK") {
+	// Make sure header is capitalized
+
+	if(document.getElementById("titleCard").style.display == "flex") {
+		// Already have a title card displayed, so queue this one up
+		waitingTitleHeader[waitingTitleCards] = headerText
+		waitingTitleFooter[waitingTitleCards] = footerText
+		waitingTitleText[waitingTitleCards] = mainText
+		waitingTitleButton[waitingTitleCards] = buttonText
+		waitingTitleCards++
+	} else {
+		setupTitleCard(mainText, headerText, footerText, buttonText)
+	}
+}
+
+function setHeaderText(newText) {
+	document.getElementById("headerTextGoesHere").innerHTML = newText
+	document.getElementById("headerGoesHere").style.display = "flex"
+}
+
+function setStatusText(newText) {
+	document.getElementById("headerStatusGoesHere").innerHTML = newText
+	document.getElementById("headerGoesHere").style.display = "flex"
+}
+
+function setInventoryHTML(newHTML) {
+	document.getElementById("inventoryGoesHere").innerHTML = newHTML
+	if(newHTML == "")
+		document.getElementById("inventoryGoesHere").style.display = "none"
+	else
+		document.getElementById("inventoryGoesHere").style.display = "flex"
+}
+
+function setActionsHTML(newHTML) {
+	document.getElementById("actionsGoHere").innerHTML = newHTML
+	document.getElementById("actionsGoHere").style.display = "flex"
+	document.getElementById("controlsGoHere").style.display = "flex"
+}
+
+function setDestinationsHTML(newHTML) {
+	document.getElementById("destinationsGoHere").innerHTML = newHTML
+}
+
+function setOutputHTML(newHTML) {
+	document.getElementById("outputGoesHere").innerHTML = newHTML
+	document.getElementById("outputAndGradient").style.visibility = "visible"
+}
+
+function typeCharacter(characterToType, bolded) {
+	if(characterToType == '\n') {
+		if(lastLineWasBold) {
+			textBelow = '<br><strong class="outputSpan">' + alreadyTyped + '</strong>' + textBelow
+			lastLineWasBold = false
+		} else {
+			textBelow = '<br><span class="outputSpan">' + alreadyTyped + '</span>' + textBelow
+		}
+		alreadyTyped = ''
+	} else {
+		alreadyTyped += characterToType
+	}
+	if(bolded) {
+		lastLineWasBold = true
+		setOutputHTML('<strong class="outputSpan">' + alreadyTyped + '</strong>' + textBelow.substring(0,4000))
+	} else {
+		setOutputHTML('<span class="outputSpan">' + alreadyTyped + '</span>' + textBelow.substring(0,4000))
+	}
+}
+
+function typeNextText() {
+	var thisChar = textToType[0].substring(0,1)
+	typeCharacter(thisChar, textToTypeBolded[0])
+	textToType[0] = textToType[0].substring(1,textToType[0].length)
+	var nextWait = 500
+	if(textToType[0].length > 0) {
+		var nextChar = textToType[0].substring(0,1)
+		nextWait = 25 + Math.random()*50
+		if(isPunctuation(lastChar) && !isPunctuation(thisChar)) {
+			// Pause after punctuation
+			nextWait += 200 + Math.random()*200
+		} else if(thisChar != '\n' && nextChar == '\n') {
+			// Pause before linebreak
+			nextWait += 200 + Math.random()*200
+		} else if(thisChar ==' ') {
+			// Slight pause after space
+			nextWait += 50 + Math.random()*50
+		}
+	} else {
+		waitingMessagesToType--
+		if(waitingMessagesToType > 0) {
+			for(i = 0; i < waitingMessagesToType; i++) {
+				textToType[i] = textToType[i+1]
+				textToTypeBolded[i] = textToTypeBolded[i+1]
+			}
+		} else {
+			typingText = false
+		}
+	}
+	lastChar = thisChar
+	if(typingText) {
+		if(devMode || true) {
+			nextWait = nextWait / 100
+		}
+		setTimeout('typeNextText()', nextWait)
+	}
+}
+
+// If titleCardFooter and/or titleCardHeader is passed, then text will be
+// displayed as a title card with a header and footer and text will be bolded
+// when user returns from title card
+function typeText(whatToType, titleCardHeader = "", titleCardFooter = "", titleCardButton = "OK") {
+	//textBelow = '<br><br>' + alreadyTyped + textBelow
+	//alreadyTyped = ''
+	var showTitleCard = (titleCardFooter.length > 0 || titleCardHeader.length > 0)
+	if(showTitleCard) {
+		titleCardHeader = titleCardHeader.charAt(0).toUpperCase() + titleCardHeader.slice(1)
+		displayTitleCard(whatToType, titleCardHeader, titleCardFooter, titleCardButton)
+		whatToType = titleCardHeader + " " + whatToType
+	}
+	textToType[waitingMessagesToType] = '\n\n' + whatToType
+	textToTypeBolded[waitingMessagesToType] = showTitleCard
+	waitingMessagesToType++
+	if(!typingText) {
+		typingText = true
+		typeNextText()
+	}
+}
 
 function setupLevel(index, seed, mainLocationName) {
-	levelData[index].seed = seed
+	levelSeed[index] = seed
 	Math.seedrandom(seed)
-	levelData[index].childSeed = []
+	levelChildSeed[index] = []
 	for(var i = 1; i < levelData[index].numLocations; i++) {
-		levelData[index].childSeed[i] = Math.floor(Math.random()*Number.MAX_SAFE_INTEGER)
+		levelChildSeed[index][i] = Math.floor(Math.random()*Number.MAX_SAFE_INTEGER)
 	}
-	levelData[index].locationName = []
-	levelData[index].locationName[0] = mainLocationName
+	locationName[index] = []
+	locationName[index][0] = mainLocationName
 	for(var i = 1; i < levelData[index].numLocations; i++) {
-		levelData[index].locationName[i] = getRandomName()
+		locationName[index][i] = getRandomName()
 	}
 }
 
 function setupLocationRadioButtons() {
-	rbHTML = '';
+	var rbHTML = '';
 	for(var i = 0; i < levelData[currLevel].numLocations; i++) {
 		rbHTML += '<div class="locChoice">'
 		rbHTML += '<input class="locRadioButton" type="radio" id="nextLoc' + i + '" name="nextLoc" value="' + i + '"'
@@ -416,8 +512,8 @@ function setupLocationRadioButtons() {
 			rbHTML += 'class="locRadioLabel">'
 		}
 
-		if(levelData[currLevel].visitedLocation[i]) {
-			rbHTML += levelData[currLevel].locationName[i]
+		if(visitedLocation[currLevel][i]) {
+			rbHTML += locationName[currLevel][i]
 		} else {
 			rbHTML += levelData[currLevel].locationLabel[i]
 			if(i > 0) {
@@ -429,21 +525,13 @@ function setupLocationRadioButtons() {
 	setDestinationsHTML(rbHTML)
 }
 
-i = levelData.length-1
-setupLevel(i, Math.floor(Math.random()*Number.MAX_SAFE_INTEGER), "final boss")
-i--
-while(i >= 0) {
-	setupLevel(i, levelData[i+1].childSeed[1], levelData[i+1].locationName[1])
-	i--
-}
-
 function positiveExclamation() {
-	exclamationChoice = ["Good Joss!", "Yay!", "Hooray!", "Incredible!", "Yes!", "Fantastic!", "Lucky you!", "Fabulous!", "Excellent!", "Splendid!"]
+	var exclamationChoice = ["Good Joss!", "Yay!", "Hooray!", "Incredible!", "Yes!", "Fantastic!", "Lucky you!", "Fabulous!", "Excellent!", "Splendid!"]
 	return exclamationChoice[Math.floor(Math.random()*exclamationChoice.length)]
 }
 
 function negativeExclamation() {
-	exclamationChoice = ["Bad Joss!", "Oh no!", "Boo!", "Terrible news!", "No!", "Bummer!", "Bad luck!", "Turnip farts!", "Dagnabbit!", "Poodoo!"]
+	var exclamationChoice = ["Bad Joss!", "Oh no!", "Boo!", "Terrible news!", "No!", "Bummer!", "Bad luck!", "Turnip farts!", "Dagnabbit!", "Poodoo!"]
 	return exclamationChoice[Math.floor(Math.random()*exclamationChoice.length)]
 }
 
@@ -455,21 +543,6 @@ function getButtonHTML(actionName, buttonText) {
 	return '<button class=babyButton id="buttonID' + actionName + '" onclick="doButtonAction(\'' + actionName +'\')">' + buttonText + '</button>'
 }
 
-buttonAction = ''
-currLevel = 0
-locIndex = 0
-nextLocIndex = 1
-transitMoves = 4
-pickingEnabled = false
-tradingEnabled = false
-storeVisible = false
-upgradesVisible = false
-inv = [0,0,0,0]
-// inv = [0,0,0,100]
-basePrice = [1,10,100,1000]
-inventoryChanged = false
-maxLevel = 0
-
 function hasAnything() {
 	for(var i = 0; i < inv.length; i++) {
 		if(inv[i] > 0) return true
@@ -479,15 +552,15 @@ function hasAnything() {
 
 function visitedAllLocations() {
 	for(var i = 0; i < levelData[currLevel].numLocations; i++ ) {
-		if(!levelData[currLevel].visitedLocation[i]) return false
+		if(!visitedLocation[currLevel][i]) return false
 	}
 	return true
 }
 
 function getDisplayNumber(num, compact="") {
-	modIndex = Math.floor(Math.log10(num)/3) - 1
+	var modIndex = Math.floor(Math.log10(num)/3) - 1
 	if(compact != "") {
-			mod = ['k','m','b','t','qd','qn','sx','sp','oc','nn','dc']
+			var mod = ['k','m','b','t','qd','qn','sx','sp','oc','nn','dc']
 			if(num < 1000 || compact != "super" && num < 2000) {
 				return num.toLocaleString()
 			} else if(modIndex < mod.length) {
@@ -506,7 +579,7 @@ function getDisplayNumber(num, compact="") {
 			}
 	} else {
 		modIndex--
-		mod = ['million','billion','trillion','quadrillion','quintillion','sextillion',
+		var mod = ['million','billion','trillion','quadrillion','quintillion','sextillion',
 						'septillion','octillion','nonillion','decillion','undecillion',
 						'duodecillion','tredecillion', 'quattuordecillion','quindecillion',
 						'sexdecillion','septendecillion','octodecillion','novemdecillion',
@@ -523,7 +596,7 @@ function getDisplayNumber(num, compact="") {
 }
 
 function calculateFreeSpace() {
-	freeSpace = levelData[currLevel].cargoSpace
+	var freeSpace = cargoSpace[currLevel]
 	for(var i = 0; i < inv.length; i++) {
 		freeSpace -= inv[i]
 	}
@@ -531,14 +604,14 @@ function calculateFreeSpace() {
 }
 
 function handleLostAndFound() {
-	whaHappen = Math.random()
+	var whaHappen = Math.random()
 	if(whaHappen < 0.07) {
 		// Lost something, mebbe
-		whichInv = inv.length - 1
+		var whichInv = inv.length - 1
 		while(whichInv > 0 && Math.random() < 0.5) {
 			whichInv--
 		}
-		amount = Math.floor(Math.random()*inv[whichInv]*0.5)
+		var amount = Math.floor(Math.random()*inv[whichInv]*0.5)
 		if(amount > 0) {
 			inv[whichInv] -= amount
 			if(amount == 1) {
@@ -554,12 +627,12 @@ function handleLostAndFound() {
 			}
 		}
 	} else if(whaHappen > 0.975 && hasAnything()) {
-		whichInv = 0;
+		var whichInv = 0
 		while(whichInv < inv.length && Math.random() < 0.1) {
 			whichInv++
 		}
-		maxAmountFound = calculateFreeSpace() / 2
-		amount = Math.floor(Math.random()*maxAmountFound*0.5)
+		var maxAmountFound = calculateFreeSpace() / 2
+		var amount = Math.floor(Math.random()*maxAmountFound*0.5)
 		if(amount > 0) {
 			inv[whichInv] += amount
 			if(amount == 1) {
@@ -578,13 +651,13 @@ function handleLostAndFound() {
 }
 
 function getNetWorth() {
-	netWorth = 0
-	lvlMultiplier = 1
+	var netWorth = 0
+	var lvlMultiplier = 1
 	for(i = 0; i < currLevel; i++) {
-		netWorth += lvlMultiplier * levelData[i].oldInv[0]
+		netWorth += lvlMultiplier * oldInv[i][0]
 		for(j = 1; j < 4; j++) {
 			lvlMultiplier *= 10
-			netWorth += lvlMultiplier * levelData[i].oldInv[j]
+			netWorth += lvlMultiplier * oldInv[i][j]
 		}
 	}
 	netWorth += lvlMultiplier * inv[0]
@@ -593,12 +666,10 @@ function getNetWorth() {
 		netWorth += lvlMultiplier * inv[j]
 	}
 	for(i = currLevel + 1; i < levelData.length; i++) {
-		if(levelData[i].oldInv) {
-			netWorth += lvlMultiplier * levelData[i].oldInv[0]
-			for(j = 1; j < 4; j++) {
-				lvlMultiplier *= 10
-				netWorth += lvlMultiplier * levelData[i].oldInv[j]
-			}
+		netWorth += lvlMultiplier * oldInv[i][0]
+		for(j = 1; j < 4; j++) {
+			lvlMultiplier *= 10
+			netWorth += lvlMultiplier * oldInv[i][j]
 		}
 	}
 	return netWorth
@@ -606,10 +677,10 @@ function getNetWorth() {
 
 function sellInv(index, quantity) {
 	if(inv[index] >= quantity) {
-		thisPrice = levelData[currLevel].price[locIndex][index]
+		var thisPrice = price[currLevel][locIndex][index]
 		inv[index] -= quantity
 		inv[0] += quantity*thisPrice
-		sellMsg = "You sell " + getDisplayNumber(quantity) + " "
+		var sellMsg = "You sell " + getDisplayNumber(quantity) + " "
 		if(quantity == 1) {
 			sellMsg += levelData[currLevel].tradeableItemsSingular[index]
 		} else {
@@ -622,18 +693,18 @@ function sellInv(index, quantity) {
 			sellMsg += levelData[currLevel].tradeableItems[0]
 		}
 		typeText(sellMsg)
-		inventoryChanged = true;
+		inventoryChanged = true
 	} else {
 		typeText("You do not have " + levelData[currLevel].tradeableItems[index] + " to sell")
 	}
 }
 
 function buyInv(index, quantity) {
-	thisPrice = levelData[currLevel].price[locIndex][index]
+	var thisPrice = price[currLevel][locIndex][index]
 	if(inv[0] >= quantity*thisPrice) {
 		inv[index] += quantity
 		inv[0] -= quantity*thisPrice
-		buyMsg = "You buy " + getDisplayNumber(quantity) + " "
+		var buyMsg = "You buy " + getDisplayNumber(quantity) + " "
 		if(quantity == 1) {
 			buyMsg += levelData[currLevel].tradeableItemsSingular[index]
 		} else {
@@ -646,10 +717,10 @@ function buyInv(index, quantity) {
 			buyMsg += levelData[currLevel].tradeableItems[0]
 		}
 		typeText(buyMsg)
-		inventoryChanged = true;
+		inventoryChanged = true
 	} else {
-		shortBy = quantity*thisPrice - inv[0]
-		errMsg = "You need " + shortBy + " more "
+		var shortBy = quantity*thisPrice - inv[0]
+		var errMsg = "You need " + shortBy + " more "
 		if(shortBy == 1) {
 			errMsg += levelData[currLevel].tradeableItemsSingular[0]
 		} else {
@@ -663,26 +734,26 @@ function buyUpgrade(upgradeType, upgradeAmount, cost) {
 	if(cost <= inv[3]) {
 		switch(upgradeType) {
 			case 'travel':
-				if(levelData[currLevel].travelTime > 1) {
-					levelData[currLevel].travelTime--;
+				if(travelTime[currLevel] > 1) {
+					travelTime[currLevel]--
 					inv[3] -= cost
-					inventoryChanged = true;
-					if(levelData[currLevel].travelTime > 1) {
-						typeText(levelData[currLevel].locationName[locIndex] + levelData[currLevel].travelFasterUpgradeMsg[0],
+					inventoryChanged = true
+					if(travelTime[currLevel] > 1) {
+						typeText(locationName[currLevel][locIndex] + levelData[currLevel].travelFasterUpgradeMsg[0],
 												"Travel Speed Upgraded.",
 												"Go Baby!")
 					} else {
-						typeText(levelData[currLevel].locationName[locIndex] + levelData[currLevel].travelFasterUpgradeMsg[1],
+						typeText(locationName[currLevel][locIndex] + levelData[currLevel].travelFasterUpgradeMsg[1],
 												"Travel Speed Upgraded.",
 												"Go Baby!")
 					}
 				}
 				break
 			case 'cargo':
-				levelData[currLevel].cargoSpace += upgradeAmount
+				cargoSpace[currLevel] += upgradeAmount
 				inv[3] -= cost
 				inventoryChanged = true
-				typeText(levelData[currLevel].locationName[locIndex] + levelData[currLevel].cargoUpgradeMsg,
+				typeText(locationName[currLevel][locIndex] + levelData[currLevel].cargoUpgradeMsg,
 											"Cargo space upgraded.",
 											"More Room!")
 				break
@@ -692,7 +763,7 @@ function buyUpgrade(upgradeType, upgradeAmount, cost) {
 					inv[3] -= cost
 					inventoryChanged = true
 					document.getElementById('buttonIDlevelUp').style.visibility = 'visible'
-					typeText(levelData[currLevel].locationName[locIndex] + levelData[currLevel].levelUpgradeMsg,
+					typeText(locationName[currLevel][locIndex] + levelData[currLevel].levelUpgradeMsg,
 											levelData[currLevel].levelUpgradeHeaderMsg,
 											"Level " + maxLevel + " Available!")
 				} else {
@@ -710,18 +781,18 @@ function randomizeStore(initAll=false) {
 	for(i = 1; i < inv.length; i++) {
 		for(j = 0; j < levelData[currLevel].numLocations; j++) {
 			if(initAll) {
-				levelData[currLevel].price[j][i] = basePrice[i]
+				price[currLevel][j][i] = basePrice[i]
 			}
-			formerPrice = levelData[currLevel].price[j][i]
-			newPrice = (formerPrice*2+basePrice[i])/3	// Trend back toward the basePrice
-			variancepct = 0.3
+			var formerPrice = price[currLevel][j][i]
+			var newPrice = (formerPrice*2+basePrice[i])/3	// Trend back toward the basePrice
+			var variancepct = 0.3
 			if(Math.random() < 0.1) variancepct = 0.5 + Math.random()*0.45 // Sometimes have wild price swings
 			newPrice = Math.round(newPrice + Math.random()*newPrice*variancepct*2 - newPrice*variancepct)
 			if(newPrice > formerPrice*1.2 && formerPrice <= basePrice) {
 				// Prices can sometimes get very high
 				while(Math.random() < 0.7 && newPrice < basePrice[i]*10) newPrice = Math.round(newPrice*1.2)
 			}
-			levelData[currLevel].price[j][i] = newPrice
+			price[currLevel][j][i] = newPrice
 		}
 	}
 }
@@ -733,29 +804,29 @@ function updateLocomoteButton() {
 			nextLocIndex = i
 		}
 	}
-	newLocomoteText = levelData[currLevel].locomotionType + " to "
-	if(levelData[currLevel].visitedLocation[nextLocIndex]) {
-		newLocomoteText += levelData[currLevel].locationName[nextLocIndex] +
+	var newLocomoteText = levelData[currLevel].locomotionType + " to "
+	if(visitedLocation[currLevel][nextLocIndex]) {
+		newLocomoteText += locationName[currLevel][nextLocIndex] +
 															levelData[currLevel].VisitHdr3 + levelData[currLevel].locationLabel[nextLocIndex]
 	} else {
 		newLocomoteText += levelData[currLevel].locationLabel[nextLocIndex]
 		if(nextLocIndex > 0) newLocomoteText += " #" + nextLocIndex
 	}
-	locomoteButton.innerHTML = newLocomoteText
+	document.getElementById('buttonIDlocomote').innerHTML = newLocomoteText
 }
 
 function goBaby() {
 	if(!typingText) {	// Can't do anything if we are still typing text
-		thisAction = buttonAction
+		var thisAction = buttonAction
 		if(buttonAction != '') {
 
-			locomoteButton = document.getElementById('buttonIDlocomote')
-			pickButton = document.getElementById('buttonIDpick')
-			levelUpButton = document.getElementById('buttonIDlevelUp')
-			levelDownButton = document.getElementById('buttonIDlevelDown')
+			var locomoteButton = document.getElementById('buttonIDlocomote')
+			var pickButton = document.getElementById('buttonIDpick')
+			var levelUpButton = document.getElementById('buttonIDlevelUp')
+			var levelDownButton = document.getElementById('buttonIDlevelDown')
 
-			freeSpace = calculateFreeSpace()
-			spaceUsed = levelData[currLevel].cargoSpace - freeSpace
+			var freeSpace = calculateFreeSpace()
+			var spaceUsed = cargoSpace[currLevel]- freeSpace
 
 			switch(thisAction) {
 			case 'levelUp':
@@ -766,44 +837,39 @@ function goBaby() {
 					document.getElementById("destinationsAndLabel").style.display = "flex"
 
 					// Preserve inventory that can't go up to the next level
-					levelData[currLevel].oldInv = [0,0,0,0]
-					for(i = 0; i < inv.length-1; i++) {
-						levelData[currLevel].oldInv[i] = inv[i]
+					oldInv[currLevel] = [0,0,0,0]
+					for(var i = 0; i < inv.length-1; i++) {
+						oldInv[currLevel][i] = inv[i]
 					}
-					levelData[currLevel].lastLocation = locIndex
+					oldLocIndex[currLevel] = locIndex
 
 					// This level's most expensive item is next level's currency
 					inv[0] = inv[inv.length-1]
 					currLevel++
 
 					// Restore inventory from the last time we were on the higher level
-					if(levelData[currLevel].oldInv != null) {
-						for(i = 1; i < inv.length; i++) {
-							inv[i] = levelData[currLevel].oldInv[i]
-						}
-					} else {
-						for(i = 1; i < inv.length; i++) {
-							inv[i] = 0
-						}
+					for(i = 1; i < inv.length; i++) {
+						inv[i] = oldInv[currLevel][i]
 					}
-					locIndex = levelData[currLevel].lastLocation
+					oldInv[currLevel] = [0,0,0,0]
+					locIndex = oldLocIndex[currLevel]
 					nextLocIndex = locIndex + 1
 					if(nextLocIndex > levelData[currLevel].numLocations) {
 						nextLocIndex = 0
 					}
-					levelData[currLevel].visitedLocation[locIndex] = true
+					visitedLocation[currLevel][locIndex] = true
 					upgradesVisible = false
 					storeVisible = true
 					randomizeStore(locIndex, true)
 					levelDownButton.style.visibility = 'visible'
-					levelDownButton.innerHTML = levelData[currLevel].levelDownLabel + levelData[currLevel].locationName[locIndex]  +
+					levelDownButton.innerHTML = levelData[currLevel].levelDownLabel + locationName[currLevel][locIndex]  +
 																				levelData[currLevel].VisitHdr3 + levelData[currLevel].locationLabel[locIndex]
 					levelUpButton.innerHTML = levelData[currLevel].levelUpLabel
 					levelUpButton.style.visibility = 'hidden'
 					pickButton.style.display = 'none'
 					setupLocationRadioButtons()
 					setHeaderText(levelData[currLevel].VisitHdr1 + levelData[currLevel].characterType +
-												levelData[currLevel].VisitHdr2 + levelData[currLevel].locationName[locIndex] +
+												levelData[currLevel].VisitHdr2 + locationName[currLevel][locIndex] +
 												levelData[currLevel].VisitHdr3 + levelData[currLevel].locationLabel[locIndex])
 					updateLocomoteButton()
 				}
@@ -814,12 +880,12 @@ function goBaby() {
 										"Retreating to level " + (currLevel-1) + ":",
 										"Humble thyself")
 					// Preserve inventory that can't go down to the previous level
-					levelData[currLevel].oldInv = [0,0,0,0]
-					for(i = 1; i < inv.length; i++) {
-						levelData[currLevel].oldInv[i] = inv[i]
+					oldInv[currLevel] = [0,0,0,0]
+					for(var i = 1; i < inv.length; i++) {
+						oldInv[currLevel][i] = inv[i]
 					}
-					setupLevel(currLevel-1, levelData[currLevel].childSeed[locIndex], levelData[currLevel].locationName[locIndex])
-					levelData[currLevel].lastLocation = locIndex
+					setupLevel(currLevel-1, levelChildSeed[currLevel][locIndex], locationName[currLevel][locIndex])
+					oldLocIndex[currLevel] = locIndex
 
 					// This level's currency is next level's most expensive item
 					inv[inv.length-1] = inv[0]
@@ -827,13 +893,14 @@ function goBaby() {
 
 					// Restore inventory from the last time we were on the lower level
 					for(i = 0; i < inv.length-1; i++) {
-						inv[i] = levelData[currLevel].oldInv[i]
+						inv[i] = oldInv[currLevel][i]
 					}
-					locIndex = levelData[currLevel].lastLocation
+					oldInv[currLevel] = [0,0,0,0]
+					locIndex = oldLocIndex[currLevel]
 					storeVisible = false
 					randomizeStore(locIndex, true)
 					upgradesVisible = true
-					levelDownButton.innerHTML = levelData[currLevel].levelDownLabel + levelData[currLevel].locationName[locIndex]  +
+					levelDownButton.innerHTML = levelData[currLevel].levelDownLabel + locationName[currLevel][locIndex]  +
 																				levelData[currLevel].VisitHdr3 + levelData[currLevel].locationLabel[locIndex]
 					levelUpButton.innerHTML = levelData[currLevel].levelUpLabel
 					levelUpButton.style.visibility = 'visible'
@@ -845,19 +912,19 @@ function goBaby() {
 
 					setupLocationRadioButtons()
 					setHeaderText(levelData[currLevel].VisitHdr1 + levelData[currLevel+1].characterType +
-												levelData[currLevel].VisitHdr2 + levelData[currLevel].locationName[locIndex] +
+												levelData[currLevel].VisitHdr2 + locationName[currLevel][locIndex] +
 												levelData[currLevel].VisitHdr3 + levelData[currLevel].locationLabel[locIndex])
 					updateLocomoteButton()
 				}
 				break
 			case 'pick':
 				if(locIndex == 0 && transitMoves == 0) {
-					typeText(levelData[currLevel].locationName[locIndex] + " glares at you, and you decide to wait.")
+					typeText(locationName[currLevel][locIndex] + " glares at you, and you decide to wait.")
 				} else if(freeSpace == 0 && transitMoves > 0) {
 					typeText("You would be overencumbered!")
 				} else {
 					pickButton.disabled = true
-					pickResult = Math.random()
+					var pickResult = Math.random()
 					if(pickResult < 0.9) {
 						inv[0]++
 						typeText("You withdraw a " + levelData[currLevel].tradeableItemsSingular[0])
@@ -885,7 +952,7 @@ function goBaby() {
 					if(transitMoves == 0) {
 						// Handle things related to departing a location
 						document.getElementById("destinationsAndLabel").style.display = "none"
-						transitMoves = levelData[currLevel].travelTime
+						transitMoves = travelTime[currLevel]
 						storeVisible = false
 						levelUpButton.style.visibility = 'hidden'
 						levelDownButton.style.visibility = 'hidden'
@@ -893,10 +960,10 @@ function goBaby() {
 						randomizeStore()
 					}
 					transitMoves--
-					ctype = levelData[currLevel].characterType;
+					var ctype = levelData[currLevel].characterType
 					if(nextLocIndex == 0) {
 						if(currLevel+1 < levelData.length) {
-							ctype = levelData[currLevel+1].characterType;
+							ctype = levelData[currLevel+1].characterType
 						} else {
 							ctype = 'evil baby'
 						}
@@ -911,57 +978,56 @@ function goBaby() {
 						if(nextLocIndex >= levelData[currLevel].numLocations) {
 							nextLocIndex = 0
 						}
-						coolLocationFooter = ""
-						coolLocationHeader = ""
+						var coolLocationFooter = ""
+						var coolLocationHeader = ""
+						var locationMessage = ''
 						if(currLevel > 0) {
 							document.getElementById("destinationsAndLabel").style.display = "flex"
 							if(locIndex > 0){
-								levelDownButton.innerHTML = levelData[currLevel].levelDownLabel + levelData[currLevel].locationName[locIndex]  +
+								levelDownButton.innerHTML = levelData[currLevel].levelDownLabel + locationName[currLevel][locIndex]  +
 																							levelData[currLevel].VisitHdr3 + levelData[currLevel].locationLabel[locIndex]
 								levelDownButton.style.visibility = 'visible'
 							}
 						}
-						if(!levelData[currLevel].visitedLocation[locIndex]) {
-							locationMessage = ''
-							levelData[currLevel].visitedLocation[locIndex] = true
+						if(!visitedLocation[currLevel][locIndex]) {
+							visitedLocation[currLevel][locIndex] = true
 							if(visitedAllLocations()) {
-								levelData[currLevel].travelTime--
-								exploreMsg = levelData[currLevel].exploreMsg
+								travelTime[currLevel]--
+								var exploreMsg = levelData[currLevel].exploreMsg
 								if(currLevel == 0) {
-									nextCtype = levelData[currLevel].characterType
+									var nextCtype = levelData[currLevel].characterType
 									if(nextLocIndex == 0) {
 										nextCtype = levelData[currLevel+1].characterType
 									}
 									exploreMsg += " Looking around, you see that continued thrashing will bring you full circle to revisit " +
-												nextCtype + " " + levelData[currLevel].locationName[nextLocIndex] + "."
+												nextCtype + " " + locationName[currLevel][nextLocIndex] + "."
 								}
 								typeText(exploreMsg, "Exploration complete!", "Go Baby!")
 							}
 							if(locIndex > 0) {
 								locationMessage += levelData[currLevel].discoveryMsg1 + ctype +
-											levelData[currLevel].discoveryMsg2 + levelData[currLevel].locationName[locIndex] +
+											levelData[currLevel].discoveryMsg2 + locationName[currLevel][locIndex] +
 											levelData[currLevel].discoveryMsg3
 
 								if(!pickingEnabled) {
 									pickButton.style.visibility = "visible"
 									pickingEnabled = true
-									locationMessage += " You notice " + levelData[currLevel].locationName[locIndex]  +
+									locationMessage += " You notice " + locationName[currLevel][locIndex]  +
 														" has a finger in each nostril. Hmmmm."
-									coolLocationHeader = "Meeting " + ctype + " " + levelData[currLevel].locationName[locIndex] + ":"
+									coolLocationHeader = "Meeting " + ctype + " " + locationName[currLevel][locIndex] + ":"
 									coolLocationFooter = "Nose picking is cool"
 								}
 							} else {
 								locationMessage += levelData[currLevel].BossDiscoveryMsg1 + ctype +
-											levelData[currLevel].BossDiscoveryMsg2 + levelData[currLevel].locationName[locIndex] +
+											levelData[currLevel].BossDiscoveryMsg2 + locationName[currLevel][locIndex] +
 											levelData[currLevel].BossDiscoveryMsg3 + levelData[currLevel].tradeableItems[3] +
 											levelData[currLevel].BossDiscoveryMsg4
-								coolLocationHeader = "Meeting " + ctype + " " + levelData[currLevel].locationName[locIndex] + ":"
+								coolLocationHeader = "Meeting " + ctype + " " + locationName[currLevel][locIndex] + ":"
 								coolLocationFooter = "Upgrades for sale"
 							}
-							typeText(locationMessage, coolLocationHeader, coolLocationFooter)
 						} else {
-							typeText(levelData[currLevel].ArrivalMsg1 + levelData[currLevel].locationName[locIndex] +
-										levelData[currLevel].ArrivalMsg2 + levelData[currLevel].locationLabel[locIndex])
+							locationMessage += levelData[currLevel].ArrivalMsg1 + locationName[currLevel][locIndex] +
+										levelData[currLevel].ArrivalMsg2 + levelData[currLevel].locationLabel[locIndex]
 						}
 						if(locIndex == 0) {
 							if(currLevel < maxLevel) {
@@ -970,15 +1036,16 @@ function goBaby() {
 						} else {
 							if(!tradingEnabled && hasAnything() ) {
 								tradingEnabled = true
-								typeText(levelData[currLevel].locationName[locIndex] +
+								locationMessage += " " + locationName[currLevel][locIndex] +
 											" seems to want to trade with you, but these wares look so expensive!" +
-											" A voice resonates in your deepest being . . .  \"Buy low. Sell high.\"",
-											"Meeting " + ctype + " " + levelData[currLevel].locationName[locIndex] + ":",
-											"Time to Trade!")
+											" A voice resonates in your deepest being . . .  \"Buy low. Sell high.\""
+								coolLocationHeader = "Meeting " + ctype + " " + locationName[currLevel][locIndex] + ":"
+								coolLocationFooter = "Time to Trade!"
 							}
 						}
+						typeText(locationMessage, coolLocationHeader, coolLocationFooter)
 						setHeaderText(levelData[currLevel].VisitHdr1 + ctype +
-									levelData[currLevel].VisitHdr2 + levelData[currLevel].locationName[locIndex] +
+									levelData[currLevel].VisitHdr2 + locationName[currLevel][locIndex] +
 									levelData[currLevel].VisitHdr3 + levelData[currLevel].locationLabel[locIndex])
 
 						if(tradingEnabled) {
@@ -989,9 +1056,9 @@ function goBaby() {
 							}
 						}
 					} else {  // transitMoves >= 0
-			 			if(levelData[currLevel].visitedLocation[nextLocIndex]) {
+			 			if(visitedLocation[currLevel][nextLocIndex]) {
 							typeText(levelData[currLevel].RevisitMsg)
-							setHeaderText(levelData[currLevel].RevisitHdr1 + levelData[currLevel].locationName[nextLocIndex] +
+							setHeaderText(levelData[currLevel].RevisitHdr1 + locationName[currLevel][nextLocIndex] +
 								 		levelData[currLevel].RevisitHdr2 + levelData[currLevel].locationLabel[nextLocIndex])
 						} else {
 							typeText(levelData[currLevel].ExploreMsg)
@@ -1012,11 +1079,11 @@ function goBaby() {
 
 		if(buttonAction != '' || inventoryChanged) {
 			// Get updated freeSpace and spaceUsed numbers
-			freeSpace = calculateFreeSpace()
-			spaceUsed = levelData[currLevel].cargoSpace - freeSpace
+			var freeSpace = calculateFreeSpace()
+			var spaceUsed = cargoSpace[currLevel] - freeSpace
 
 			// Update inventory area
-			invHTML = ""
+			var invHTML = ""
 			if(hasAnything()) {
 				if(upgradesVisible) {
 					invHTML += "<table class='collapseborder'>"
@@ -1024,7 +1091,7 @@ function goBaby() {
 													"<td style=\"text-align:center\" class='singleborder'>Description</td>" +
 													"<td style=\"text-align:center\" class='singleborder'>Price</td>" +
 													"<td style=\"text-align:center\"></td></tr>"
-					if(levelData[currLevel].travelTime == 3 + (visitedAllLocations() ? 0 : 1)) {
+					if(travelTime[currLevel] == 3 + (visitedAllLocations() ? 0 : 1)) {
 						invHTML += "<tr><td style=\"text-align:center\" class='singleborder'>" + levelData[currLevel].travelFasterUpgradeButton[0] + "</td>" +
 														"<td style=\"text-align:center\" class='singleborder'>Travel faster</td>" +
 														"<td style=\"text-align:center\" class='singleborder'>1</td>" +
@@ -1033,7 +1100,7 @@ function goBaby() {
 						if(inv[3] < 1) invHTML += ' greyButton'
 						invHTML += '" onclick="buyUpgrade(\'travel\',1,1)">buy</button>'
 						invHTML += "</td></tr>"
-					} else if(levelData[currLevel].travelTime == 2 + (visitedAllLocations() ? 0 : 1)) {
+					} else if(travelTime[currLevel] == 2 + (visitedAllLocations() ? 0 : 1)) {
 						invHTML += "<tr><td style=\"text-align:center\" class='singleborder'>" + levelData[currLevel].travelFasterUpgradeButton[1] + "</td>" +
 														"<td style=\"text-align:center\" class='singleborder'>Travel faster</td>" +
 														"<td style=\"text-align:center\" class='singleborder'>5</td>" +
@@ -1043,7 +1110,7 @@ function goBaby() {
 						invHTML += '" onclick="buyUpgrade(\'travel\',1,5)">buy</button>'
 						invHTML += "</td></tr>"
 					}
-					cargoPrice = getDisplayNumber(Math.pow(2,levelData[currLevel].cargoSpace/100), "yes")
+					var cargoPrice = getDisplayNumber(Math.pow(2,cargoSpace[currLevel]/100), "yes")
 					invHTML += "<tr><td style=\"text-align:center\" class='singleborder'>" + levelData[currLevel].cargoUpgradeButton + "</td>" +
 														"<td style=\"text-align:center\" class='singleborder'>Hold more</td>" +
 														"<td style=\"text-align:center\" class='singleborder'>" + cargoPrice + "</td>" +
@@ -1077,9 +1144,9 @@ function goBaby() {
 													"<td style=\"text-align:center\" class='singleborder'>Held</td>" +
 													"<td width=26% style=\"text-align:center\">Buy</td></tr>"
 					for(i = inv.length-1; i >= 1; i--) {
-						alertRed = 0
-						alertGreen = 0
-						displayPrice = levelData[currLevel].price[locIndex][i]
+						var alertRed = 0
+						var alertGreen = 0
+						var displayPrice = price[currLevel][locIndex][i]
 						if(displayPrice > basePrice[i]) {
 							alertRed = Math.floor(255*2*(displayPrice/basePrice[i]-1))
 							if(alertRed > 255) alertRed = 255
@@ -1087,10 +1154,10 @@ function goBaby() {
 							alertGreen = Math.floor(255*(basePrice[i]/displayPrice-1))
 							if(alertGreen > 255) alertGreen = 255
 						}
-						alertStyle = "style='text-align:center; color:rgb(" + alertRed + "," + alertGreen + ",0);'"
+						var alertStyle = "style='text-align:center; color:rgb(" + alertRed + "," + alertGreen + ",0);'"
 						invHTML += "<tr><td style=\"text-align:right\">"
 						// Sell buttons
-						sellButtons = '<button class="tradeButton'
+						var sellButtons = '<button class="tradeButton'
 						if(inv[i] == 0) {
 							sellButtons += ' greyButton'
 						}
@@ -1099,7 +1166,7 @@ function goBaby() {
 							sellButtons += 'sell '
 						}
 						sellButtons += '1</button>'
-						btnAmount = 10
+						var btnAmount = 10
 						while(btnAmount < inv[i] && btnAmount <= 100) {
 							sellButtons = '<button class="tradeButton" onclick="sellInv(' + i + ',' + btnAmount + ')">' + getDisplayNumber(btnAmount,"super") + '</button>' + sellButtons
 							btnAmount *= 10
@@ -1113,8 +1180,8 @@ function goBaby() {
 						invHTML += "</td><td class='singleborder' style=\"text-align:center\">" + getDisplayNumber(inv[i], "yes")
 						invHTML += "</td><td>"
 						// Buy buttons
-						canBuy = Math.floor(inv[0]/displayPrice)
-						buyButtons = '<button class="tradeButton'
+						var canBuy = Math.floor(inv[0]/displayPrice)
+						var buyButtons = '<button class="tradeButton'
 						if(canBuy == 0) {
 							buyButtons += ' greyButton'
 						}
@@ -1144,7 +1211,7 @@ function goBaby() {
 					invHTML += " to spend</td></tr><tr>"
 					if(freeSpace < 0) {
 						if(inv[0] > 0) {
-							discardNum = -freeSpace
+							var discardNum = -freeSpace
 							if(discardNum > inv[0]) discardNum = inv[0]
 							invHTML += "<td colspan=2><button class=discardButton onclick='inv[0] -= " + discardNum + "; inventoryChanged=true;'>Discard " + discardNum + " "
 							if(inv[0] == 1) {
@@ -1162,7 +1229,7 @@ function goBaby() {
 						invHTML += "Room for " + freeSpace + "</td><td>"
 						invHTML += "more items "
 					}
-					invHTML += "(" + spaceUsed + "/" + levelData[currLevel].cargoSpace +
+					invHTML += "(" + spaceUsed + "/" + cargoSpace[currLevel] +
 											")</td></tr></table>"
 				} else {
 					invHTML += "<table>"
@@ -1187,14 +1254,14 @@ function goBaby() {
 						invHTML += "Room for " + freeSpace + "</td><td>"
 						invHTML += "more items "
 					}
-					invHTML += "(" + spaceUsed + "/" + levelData[currLevel].cargoSpace +
+					invHTML += "(" + spaceUsed + "/" + cargoSpace[currLevel] +
 											")</td></tr></table>"
 				}
 			}
 			setInventoryHTML(invHTML)
 
-			netWorth = getNetWorth()
-			statusText = '&nbsp;&nbsp;&nbsp;'
+			var netWorth = getNetWorth()
+			var statusText = '&nbsp;&nbsp;&nbsp;'
 			if(netWorth > 0) {
 				statusText += getDisplayNumber(netWorth) + " ƀ - lv "
 			} else {
@@ -1202,6 +1269,7 @@ function goBaby() {
 			}
 			statusText += currLevel
 			setStatusText(statusText)
+			saveGameState()
 		}
 
 		buttonAction = ''
@@ -1221,10 +1289,73 @@ function setupInitialActions() {
 	setupLocationRadioButtons()
 }
 
-randomizeStore(true)
-setTimeout('setHeaderText("You are a " + levelData[0].characterType) ',10*PAUSE_MULT)
-setTimeout("setupInitialActions()", 50*PAUSE_MULT)
-setTimeout('goBaby()', 51*PAUSE_MULT)
+
+function startNewGame() {
+		// Make sure all game variables are set to initial values
+		currLevel = 0
+		locIndex = 0
+		nextLocIndex = 1
+		transitMoves = 4
+		pickingEnabled = false
+		tradingEnabled = false
+		storeVisible = false
+		upgradesVisible = false
+		lastGameHTML = ""
+		inv = [0,0,0,0]
+		oldInv = []
+		oldLocIndex = []
+		travelTime = []
+		visitedLocation = []
+		cargoSpace = []
+		price = []
+		locationName = []
+		levelSeed = []
+		levelChildSeed = []
+		for(i = 0; i < levelData.length; i++) {
+			oldInv[i] = [0,0,0,0]
+			oldLocIndex[i] = 1
+			travelTime[i] = 4
+			cargoSpace[i] = 100
+			visitedLocation[i] = []
+			price[i] = []
+			locationName[i] = []
+			levelSeed[i] = 0
+			levelChildSeed[i] = []
+			for(j = 0; j < levelData[i].numLocations; j++) {
+				visitedLocation[i][j] = false
+				price[i][j] = [1,10,100,1000]
+				locationName[i][j] = ""
+			}
+		}
+		maxLevel = 0
+		inventoryChanged = false
+
+		i = levelData.length-1
+		setupLevel(i, Math.floor(Math.random()*Number.MAX_SAFE_INTEGER), "final boss")
+		i--
+		while(i >= 0) {
+			setupLevel(i, levelChildSeed[i+1][1], locationName[i+1][1])
+			i--
+		}
+
+		randomizeStore(true)
+		setTimeout('setHeaderText("You are a " + levelData[0].characterType) ',10*PAUSE_MULT)
+		setTimeout("setupInitialActions()", 50*PAUSE_MULT)
+		setTimeout('goBaby()', 51*PAUSE_MULT)
+}
+
+function askToContinue() {
+	displayTitleCard("<button onclick='startNewGame(); hideTitleCard();' class='continueButton'>Start New Game</button><br><br>" +
+									 "<button onclick='loadGameState(); hideTitleCard();'  class='continueButton'>Continue Previous Game</button>",
+									 "Baby Merchant", "", "")
+}
+
+var oldGameVersion = JSON.parse(localStorage.getItem('gameVersion'))
+if(oldGameVersion == null || oldGameVersion != gameVersion) {
+	startNewGame()
+} else {
+	setTimeout('askToContinue()',1)
+}
 
 	</script>
 
@@ -1475,6 +1606,7 @@ button {
 	padding: 15px;
 	font-size: 3vh;
 	text-align: center;
+	width: 100%
 }
 
 .titleCardFooterText {
@@ -1534,7 +1666,7 @@ button {
 		<div class="titleCardMain bordered">
 			<span id="titleMainTextGoesHere" class="titleCardMainText"></span>
 		</div>
-		<div class="titleCardFooter bordered">
+		<div id="titleCardFooter" class="titleCardFooter bordered">
 			<span id="titleFooterTextGoesHere" class="titleCardFooterText"></span>
 			<button id="continueButton" class="continueButton" onclick="hideTitleCard()">OK</button>
 		</div>
