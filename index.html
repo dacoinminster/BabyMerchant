@@ -215,7 +215,6 @@ const levelData = [
 deepFreeze(levelData)
 
 // These are the variables to save between sessions
-var GAME_DATA_STARTS = "here"
 var gameVersion = "0.1.0"
 var gameSeed = Math.floor(Math.random()*Number.MAX_SAFE_INTEGER)
 var waitingTitleCards = 0
@@ -251,8 +250,17 @@ var levelSeed = []
 var levelChildSeed = []
 var maxLevel = 0
 var inventoryChanged = false
-var GAME_DATA_ENDS = "here"
 // End variables to save betweens sessions
+const varsToSave = ['gameVersion', 'gameSeed', 'waitingTitleCards',
+			'waitingTitleHeader', 'waitingTitleFooter', 'waitingTitleText',
+			'waitingTitleButton', 'lastChar', 'alreadyTyped', 'textBelow',
+			'textToType', 'textToTypeBolded', 'waitingMessagesToType',
+			'lastLineWasBold', 'currLevel', 'locIndex', 'nextLocInde', 'transitMoves',
+			'pickingEnabled', 'tradingEnabled', 'storeVisible', 'upgradesVisible',
+			'lastGameHTML', 'inv', 'oldInv', 'oldLocIndex', 'travelTime',
+			'visitedLocation', 'cargoSpace', 'price', 'locationName', 'levelSeed',
+			'levelChildSeed', 'maxLevel', 'inventoryChanged']
+deepFreeze(varsToSave)
 
 var PAUSE_MULT = 100 // Pause multiplier
 var devMode = false
@@ -267,28 +275,25 @@ var needToSave = false
 function saveGameState() {
 	lastGameHTML = document.getElementById('normalGameGoesHere').innerHTML
 
-	var saveThis = false;
 	// console.log("Starting save")
-	for (const key of Object.keys(window)) {
-		if(key == 'GAME_DATA_STARTS') saveThis = true
-		if(saveThis) {
-			// console.log("Saving " + key + "=" + JSON.stringify(window[key]))
-			localStorage.setItem(key, JSON.stringify(window[key]))
-		}
-		if(key == 'GAME_DATA_ENDS') saveThis = false
+	for (const key of varsToSave) {
+		// console.log("Saving " + key + "=" + JSON.stringify(window[key]))
+		localStorage.setItem(key, JSON.stringify(window[key]))
 	}
 	needToSave = false
 	// console.log("Save complete")
 }
 
 function loadGameState() {
-	var loadThis = false;
-	for (const key of Object.keys(window)) {
-		if(key == 'GAME_DATA_STARTS') loadThis = true
-		if(loadThis && key != 'gameVersion') {
-			window[key] = JSON.parse(localStorage.getItem(key))
+
+	for (const key of varsToSave) {
+		if(key != 'gameVersion') {
+			// console.log(key + "=" + localStorage.getItem(key));
+			var value = localStorage.getItem(key)
+			if(value != null && value != 'undefined') {
+				window[key] = JSON.parse(value)
+			}
 		}
-		if(key == 'GAME_DATA_ENDS') loadThis = false
 	}
 
 	document.getElementById('normalGameGoesHere').innerHTML = lastGameHTML
@@ -1292,59 +1297,62 @@ function setupInitialActions() {
 	setupLocationRadioButtons()
 }
 
+function clearGameVariables() {
+	// Make sure all game variables are set to initial values
+
+	waitingTitleCards = 0
+	waitingTitleHeader = []
+	waitingTitleFooter = []
+	waitingTitleText = []
+	waitingTitleButton = []
+	lastChar = ' '
+	alreadyTyped = ''
+	textBelow = ''
+	textToType = []
+	textToTypeBolded = []
+	waitingMessagesToType = 0
+	lastLineWasBold = false
+	currLevel = 0
+	locIndex = 0
+	nextLocIndex = 1
+	transitMoves = 4
+	pickingEnabled = false
+	tradingEnabled = false
+	storeVisible = false
+	upgradesVisible = false
+	lastGameHTML = ""
+	inv = [0,0,0,0]
+	oldInv = []
+	oldLocIndex = []
+	travelTime = []
+	visitedLocation = []
+	cargoSpace = []
+	price = []
+	locationName = []
+	levelSeed = []
+	levelChildSeed = []
+	for(i = 0; i < levelData.length; i++) {
+		oldInv[i] = [0,0,0,0]
+		oldLocIndex[i] = 1
+		travelTime[i] = 4
+		cargoSpace[i] = 100
+		visitedLocation[i] = []
+		price[i] = []
+		locationName[i] = []
+		levelSeed[i] = 0
+		levelChildSeed[i] = []
+		for(j = 0; j < levelData[i].numLocations; j++) {
+			visitedLocation[i][j] = false
+			price[i][j] = [1,10,100,1000]
+			locationName[i][j] = ""
+		}
+	}
+	maxLevel = 0
+	inventoryChanged = false
+}
 
 function startNewGame() {
-		// Make sure all game variables are set to initial values
-
-		waitingTitleCards = 0
-		waitingTitleHeader = []
-		waitingTitleFooter = []
-		waitingTitleText = []
-		waitingTitleButton = []
-		lastChar = ' '
-		alreadyTyped = ''
-		textBelow = ''
-		textToType = []
-		textToTypeBolded = []
-		waitingMessagesToType = 0
-		lastLineWasBold = false
-		currLevel = 0
-		locIndex = 0
-		nextLocIndex = 1
-		transitMoves = 4
-		pickingEnabled = false
-		tradingEnabled = false
-		storeVisible = false
-		upgradesVisible = false
-		lastGameHTML = ""
-		inv = [0,0,0,0]
-		oldInv = []
-		oldLocIndex = []
-		travelTime = []
-		visitedLocation = []
-		cargoSpace = []
-		price = []
-		locationName = []
-		levelSeed = []
-		levelChildSeed = []
-		for(i = 0; i < levelData.length; i++) {
-			oldInv[i] = [0,0,0,0]
-			oldLocIndex[i] = 1
-			travelTime[i] = 4
-			cargoSpace[i] = 100
-			visitedLocation[i] = []
-			price[i] = []
-			locationName[i] = []
-			levelSeed[i] = 0
-			levelChildSeed[i] = []
-			for(j = 0; j < levelData[i].numLocations; j++) {
-				visitedLocation[i][j] = false
-				price[i][j] = [1,10,100,1000]
-				locationName[i][j] = ""
-			}
-		}
-		maxLevel = 0
-		inventoryChanged = false
+		clearGameVariables()
 
 		i = levelData.length-1
 		setupLevel(i, Math.floor(Math.random()*Number.MAX_SAFE_INTEGER), "final boss")
