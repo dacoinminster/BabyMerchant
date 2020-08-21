@@ -17,6 +17,7 @@
 		Goals I'd like to implement:
 		* Each level adds a new gameplay wrinkle
 		* Health, Battles, Upgradeable weapons and/or number of weapons
+			* Weapons should take cargo space
 		* Borrowing from a money lender
 		* Banking Deposits
 		* Owning multiple ships
@@ -30,10 +31,13 @@
 		* Prices trending over time?
 \		* Narration needs more voice/humor
 		* Would be cool to have some disturbing art - maybe ASCII?
+		* Purchase upgrade to get pricing info about locations on level 1
 
 
 		TODOs resulting from play testing:
 		* Need more play testing!
+		* Feels awfully repetitive
+
 
 
 
@@ -96,7 +100,7 @@ function deepFreeze(object) {
 const levelData = [
 	{
 		levelDownMessage: "err",
-		levelUpMessage: "You decide you are ready to roll to other groups of babies. You need your hands for rolling, so you put the pieces of fuzz in your mouth.",
+		levelUpMessage: "You decide you are ready to roll to other groups of babies. You need your hands for rolling, so you put the pieces of fuzz in your mouth. NEW THIS LEVEL: You can choose your next destination and revisit places with favorable prices.",
 		levelDownLabel: "err",
 		levelUpLabel: "Roll to another group",
 		discoveryMsg1: "You bump into another ",
@@ -123,7 +127,7 @@ const levelData = [
 		locationLabel: ['spot','spot','spot','spot','spot'],
 		travelFasterUpgradeMsg: [" reaches into a nearby diaper and liberally applies grease to your back.", " shows you how to thrash about more efficiently."],
 		travelFasterUpgradeButton: ['Back Grease', 'Super Trash'],
-		cargoUpgradeMsg: ' teaches you how to hold more boogers at once.',
+		cargoUpgradeMsg: ' teaches you how to hold 100 more boogers at once.',
 		cargoUpgradeButton: 'Tighter Grip',
 		levelUpgradeMsg: ' teaches you how to roll over to travel further to reach other groups of babies.',
 		levelUpgradeButton: 'Roll Over',
@@ -135,7 +139,7 @@ const levelData = [
 	},
 	{
 		levelDownMessage: "You lie on your back and prepare to move by thrashing about and to hold boogers and fuzz in your hands.",
-		levelUpMessage: "You decide you are ready to crawl to other rooms of babies. You need your mouth for babbling, so you put on a diaper, which seems useful for item storage.",
+		levelUpMessage: "You decide you are ready to crawl to other rooms of babies. You need your mouth for babbling, so you put on a diaper, which seems useful for item storage. NEW THIS LEVEL: Combat! (Coming soon)",
 		levelDownLabel: "Enter ",
 		levelUpLabel: "Crawl to another baby room",
 		discoveryMsg1: "You roll to another ",
@@ -162,7 +166,7 @@ const levelData = [
 		locationLabel: ['doorway','group','group','group','group'],
 		travelFasterUpgradeMsg: [" reaches into a nearby diaper and liberally applies grease to your tummy.", " shows you how to roll more efficiently."],
 		travelFasterUpgradeButton: ['Tummy Grease', 'Mega Roll'],
-		cargoUpgradeMsg: ' teaches you how to hold more items in your mouth.',
+		cargoUpgradeMsg: ' violently stretches your cheeks. They will now hold 100 more items.',
 		cargoUpgradeButton: 'Stretchier Cheeks',
 		levelUpgradeMsg: ' teaches you how to crawl and thereby reach other rooms.',
 		levelUpgradeButton: 'Crawl',
@@ -174,7 +178,7 @@ const levelData = [
 	},
 	{
 		levelDownMessage: "You remove your diaper, lie down, and prepare to move by rolling over",
-		levelUpMessage: "You decide you are ready to ride the elevator to visit other floors full of babies. You find a plastic baggy to carry your precious candies.",
+		levelUpMessage: "You decide you are ready to ride the elevator to visit other floors full of babies. You find a plastic baggy to carry your precious candies. NEW THIS LEVEL: ????? (TBD, coming eventually)",
 		levelDownLabel: "Enter ",
 		levelUpLabel: "Use Elevator",
 		discoveryMsg1: "You crawl to another ",
@@ -622,14 +626,15 @@ function handleLostAndFound() {
 		var amount = Math.floor(Math.random()*inv[whichInv]*0.5)
 		if(amount > 0) {
 			inv[whichInv] -= amount
+			const suggestion = " Perhaps if you learn to travel faster there will be fewer opportunities to lose your cargo."
 			if(amount == 1) {
 				typeText(levelData[currLevel].loseMsg + " " +
-								amount + " " + levelData[currLevel].tradeableItemsSingular[whichInv] + "!",
+								amount + " " + levelData[currLevel].tradeableItemsSingular[whichInv] + "!" + suggestion,
 								levelData[currLevel].tradeableItemsSingular[whichInv] + " lost.",
 								negativeExclamation())
 			} else {
 				typeText(levelData[currLevel].loseMsg + " " +
-								amount + " " + levelData[currLevel].tradeableItems[whichInv] + "!",
+								amount + " " + levelData[currLevel].tradeableItems[whichInv] + "!" + suggestion,
 								levelData[currLevel].tradeableItems[whichInv] + " lost.",
 								negativeExclamation())
 			}
@@ -1120,7 +1125,7 @@ function goBaby() {
 					}
 					var cargoPrice = getDisplayNumber(Math.pow(2,cargoSpace[currLevel]/100), "yes")
 					invHTML += "<tr><td style=\"text-align:center\" class='singleborder'>" + levelData[currLevel].cargoUpgradeButton + "</td>" +
-														"<td style=\"text-align:center\" class='singleborder'>Hold more</td>" +
+														"<td style=\"text-align:center\" class='singleborder'>Hold 100 more</td>" +
 														"<td style=\"text-align:center\" class='singleborder'>" + cargoPrice + "</td>" +
 														"<td style=\"text-align:left\">"
 					invHTML += '<button class="upgradeButton'
