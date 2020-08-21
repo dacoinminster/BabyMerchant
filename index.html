@@ -1128,10 +1128,10 @@ function goBaby() {
 						invHTML += '" onclick="buyUpgrade(\'travel\',1,5)">buy</button>'
 						invHTML += "</td></tr>"
 					}
-					var cargoPrice = getDisplayNumber(Math.pow(2,cargoSpace[currLevel]/100), "yes")
+					var cargoPrice = Math.pow(2,cargoSpace[currLevel]/100)
 					invHTML += "<tr><td style=\"text-align:center\" class='singleborder'>" + levelData[currLevel].cargoUpgradeButton + "</td>" +
 														"<td style=\"text-align:center\" class='singleborder'>Hold 100 more</td>" +
-														"<td style=\"text-align:center\" class='singleborder'>" + cargoPrice + "</td>" +
+														"<td style=\"text-align:center\" class='singleborder'>" + getDisplayNumber(cargoPrice, "yes") + "</td>" +
 														"<td style=\"text-align:left\">"
 					invHTML += '<button class="upgradeButton'
 					if(inv[3] < cargoPrice) invHTML += ' greyButton'
