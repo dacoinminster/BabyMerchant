@@ -100,7 +100,8 @@ function deepFreeze(object) {
 const levelData = [
 	{
 		levelDownMessage: "err",
-		levelUpMessage: "You decide you are ready to roll to other groups of babies. You need your hands for rolling, so you put the pieces of fuzz in your mouth. NEW THIS LEVEL: You can choose your next destination and revisit places with favorable prices.",
+		levelUpMessage: "You decide you are ready to roll to other groups of babies. You need your hands for rolling, so you put the pieces of fuzz in your mouth.",
+		levelUpAwesomeness: "You can choose your next destination and revisit places with favorable prices.",
 		levelDownLabel: "err",
 		levelUpLabel: "Roll to another group",
 		discoveryMsg1: "You bump into another ",
@@ -139,7 +140,8 @@ const levelData = [
 	},
 	{
 		levelDownMessage: "You lie on your back and prepare to move by thrashing about and to hold boogers and fuzz in your hands.",
-		levelUpMessage: "You decide you are ready to crawl to other rooms of babies. You need your mouth for babbling, so you put on a diaper, which seems useful for item storage. NEW THIS LEVEL: Combat! (Coming soon)",
+		levelUpMessage: "You decide you are ready to crawl to other rooms of babies. You need your mouth for babbling, so you put on a diaper, which seems useful for item storage.",
+		levelUpAwesomeness: "Combat! (Coming soon)",
 		levelDownLabel: "Enter ",
 		levelUpLabel: "Crawl to another baby room",
 		discoveryMsg1: "You roll to another ",
@@ -178,7 +180,8 @@ const levelData = [
 	},
 	{
 		levelDownMessage: "You remove your diaper, lie down, and prepare to move by rolling over",
-		levelUpMessage: "You decide you are ready to ride the elevator to visit other floors full of babies. You find a plastic baggy to carry your precious candies. NEW THIS LEVEL: ????? (TBD, coming eventually)",
+		levelUpMessage: "You decide you are ready to ride the elevator to visit other floors full of babies. You find a plastic baggy to carry your precious candies.",
+		levelUpAwesomeness: "?????? (TBD, coming eventually)",
 		levelDownLabel: "Enter ",
 		levelUpLabel: "Use Elevator",
 		discoveryMsg1: "You crawl to another ",
@@ -776,7 +779,8 @@ function buyUpgrade(upgradeType, upgradeAmount, cost) {
 					inv[3] -= cost
 					inventoryChanged = true
 					document.getElementById('buttonIDlevelUp').style.visibility = 'visible'
-					typeText(locationName[currLevel][locIndex] + levelData[currLevel].levelUpgradeMsg,
+					typeText(locationName[currLevel][locIndex] + levelData[currLevel].levelUpgradeMsg +
+											" You can now advance to level " + (currLevel + 1) + " (\"" + levelData[currLevel].levelUpLabel + "\").",
 											levelData[currLevel].levelUpgradeHeaderMsg,
 											"Level " + maxLevel + " Available!")
 				} else {
@@ -844,7 +848,8 @@ function goBaby() {
 			switch(thisAction) {
 			case 'levelUp':
 				if(currLevel < maxLevel) {
-					typeText(levelData[currLevel].levelUpMessage,
+					typeText(levelData[currLevel].levelUpMessage + " NEW THIS LEVEL: " +
+										levelData[currLevel].levelUpAwesomeness,
 										"Advancing to level " + (currLevel+1) + ":",
 										"Go Baby!")
 					document.getElementById("destinationsAndLabel").style.display = "flex"
