@@ -38,7 +38,6 @@
 		TODOs resulting from play testing:
 		* Need more play testing!
 		* Feels awfully repetitive
-		* Don't lose cargo upgrades (upgrade once per level instead?)
 
 
 
@@ -105,7 +104,7 @@ function deepFreeze(object) {
 const levelData = [
 	{
 		levelDownMessage: "err",
-		levelUpMessage: "You decide you are ready to roll to other groups of babies. You need your hands for rolling, so you put the pieces of fuzz in your mouth.",
+		levelUpMessage: "You decide you are ready to roll to other groups of babies",
 		levelUpAwesomeness: "You can choose your next destination and revisit places with favorable prices.",
 		levelDownLabel: "err",
 		levelUpLabel: "Roll to another group",
@@ -133,7 +132,7 @@ const levelData = [
 		locationLabel: ['spot','spot','spot','spot','spot'],
 		travelFasterUpgradeMsg: [" reaches into a nearby diaper and liberally applies grease to your back.", " shows you how to thrash about more efficiently."],
 		travelFasterUpgradeButton: ['Back Grease', 'Super Trash'],
-		cargoUpgradeMsg: ' teaches you how to hold 100 more boogers at once.',
+		cargoUpgradeMsg: ' teaches you how to grip 100 more boogers at once.',
 		cargoUpgradeButton: 'Tighter Grip',
 		levelUpgradeMsg: ' teaches you how to roll over to travel further to reach other groups of babies.',
 		levelUpgradeButton: 'Roll Over',
@@ -144,8 +143,8 @@ const levelData = [
 		numLocations: 5,
 	},
 	{
-		levelDownMessage: "You lie on your back and prepare to move by thrashing about and to hold boogers and fuzz in your hands.",
-		levelUpMessage: "You decide you are ready to crawl to other rooms of babies. You need your mouth for babbling, so you put on a diaper, which seems useful for item storage.",
+		levelDownMessage: "You lie on your back and prepare to move by thrashing about",
+		levelUpMessage: "You decide you are ready to crawl to other rooms of babies",
 		levelUpAwesomeness: "Combat! (Coming soon)",
 		levelDownLabel: "Enter ",
 		levelUpLabel: "Crawl to another baby room",
@@ -184,8 +183,8 @@ const levelData = [
 		numLocations: 5,
 	},
 	{
-		levelDownMessage: "You remove your diaper, lie down, and prepare to move by rolling over",
-		levelUpMessage: "You decide you are ready to ride the elevator to visit other floors full of babies. You find a plastic baggy to carry your precious candies.",
+		levelDownMessage: "You lie down, and prepare to move by rolling over",
+		levelUpMessage: "You decide you are ready to ride the elevator to visit other floors full of babies",
 		levelUpAwesomeness: "?????? (TBD, coming eventually)",
 		levelDownLabel: "Enter ",
 		levelUpLabel: "Use Elevator",
@@ -255,7 +254,7 @@ var oldInv = []
 var oldLocIndex = []
 var travelTime = []
 var visitedLocation = []
-var cargoSpace = []
+var cargoRoom = 100
 var price = []
 var locationName = []
 var levelSeed = []
@@ -270,7 +269,7 @@ const varsToSave = ['gameVersion', 'gameSeed', 'waitingTitleCards',
 			'lastLineWasBold', 'currLevel', 'locIndex', 'nextLocIndex', 'transitMoves',
 			'pickingEnabled', 'tradingEnabled', 'storeVisible', 'upgradesVisible',
 			'lastGameHTML', 'inv', 'oldInv', 'oldLocIndex', 'travelTime',
-			'visitedLocation', 'cargoSpace', 'price', 'locationName', 'levelSeed',
+			'visitedLocation', 'cargoRoom', 'price', 'locationName', 'levelSeed',
 			'levelChildSeed', 'maxLevel', 'inventoryChanged']
 deepFreeze(varsToSave)
 
@@ -344,7 +343,7 @@ function isPunctuation(charToCheck) {
 }
 
 function setupTitleCard(text, header, footer, button)  {
-	document.getElementById("titleMainTextGoesHere").innerHTML = text
+	document.getElementById("titleMainTextGoesHere").innerHTML = text.replace(/\n/g,'<br/>')
 	document.getElementById("titleHeaderTextGoesHere").innerHTML = header
 	if(button == "" && footer == "") {
 		document.getElementById("titleCardFooter").style.display = "none"
@@ -611,7 +610,7 @@ function getDisplayNumber(num, compact="") {
 }
 
 function calculateFreeSpace() {
-	var freeSpace = cargoSpace[currLevel]
+	var freeSpace = cargoRoom
 	for(var i = 0; i < inv.length; i++) {
 		freeSpace -= inv[i]
 	}
@@ -629,7 +628,10 @@ function handleLostAndFound() {
 		var amount = Math.floor(Math.random()*inv[whichInv]*0.5)
 		if(amount > 0) {
 			inv[whichInv] -= amount
-			const suggestion = " Perhaps if you learn to travel faster there will be fewer opportunities to lose your cargo."
+			var suggestion = " Perhaps if you learn to travel faster there will be fewer opportunities to lose your cargo."
+			if(travelTime[currLevel] == 1) {
+				suggestion = ""
+			}
 			if(amount == 1) {
 				typeText(levelData[currLevel].loseMsg + " " +
 								amount + " " + levelData[currLevel].tradeableItemsSingular[whichInv] + "!" + suggestion,
@@ -766,7 +768,7 @@ function buyUpgrade(upgradeType, upgradeAmount, cost) {
 				}
 				break
 			case 'cargo':
-				cargoSpace[currLevel] += upgradeAmount
+				cargoRoom += upgradeAmount
 				inv[3] -= cost
 				inventoryChanged = true
 				typeText(locationName[currLevel][locIndex] + levelData[currLevel].cargoUpgradeMsg,
@@ -843,12 +845,22 @@ function goBaby() {
 			var levelDownButton = document.getElementById('buttonIDlevelDown')
 
 			var freeSpace = calculateFreeSpace()
-			var spaceUsed = cargoSpace[currLevel]- freeSpace
+			var spaceUsed = cargoRoom - freeSpace
 
 			switch(thisAction) {
 			case 'levelUp':
-				if(currLevel < maxLevel) {
-					typeText(levelData[currLevel].levelUpMessage + " NEW THIS LEVEL: " +
+				if(inv[3] < 10 && getNetWorth() < 1000 ** (currLevel+2)) &&
+							oldInv[currLevel+1][1] == 0 &&
+							oldInv[currLevel+1][2] == 0 &&
+							oldInv[currLevel+1][3] == 0) {
+					typeText("You should really have at least 10 " + levelData[currLevel].tradeableItems[3] +
+										" before proceeding to level " + (currLevel + 1),
+										"Get more " + levelData[currLevel].tradeableItems[3],
+										"Too poor!")
+				} else if(currLevel < maxLevel) {
+					typeText(levelData[currLevel].levelUpMessage +
+										", taking only your " + levelData[currLevel].tradeableItems[3] + " with you." +
+										"\n\nNEW THIS LEVEL: " +
 										levelData[currLevel].levelUpAwesomeness,
 										"Advancing to level " + (currLevel+1) + ":",
 										"Go Baby!")
@@ -894,7 +906,8 @@ function goBaby() {
 				break
 			case 'levelDown':
 				if(currLevel > 0) {
-					typeText(levelData[currLevel].levelDownMessage,
+					typeText(levelData[currLevel].levelDownMessage +
+										", taking only your " + levelData[currLevel].tradeableItems[0] + " with you.",
 										"Retreating to level " + (currLevel-1) + ":",
 										"Humble thyself")
 					// Preserve inventory that can't go down to the previous level
@@ -1098,10 +1111,11 @@ function goBaby() {
 		if(buttonAction != '' || inventoryChanged) {
 			// Get updated freeSpace and spaceUsed numbers
 			var freeSpace = calculateFreeSpace()
-			var spaceUsed = cargoSpace[currLevel] - freeSpace
+			var spaceUsed = cargoRoom - freeSpace
 
 			// Update inventory area
 			var invHTML = ""
+			var allUpgradesBought = true
 			if(hasAnything()) {
 				if(upgradesVisible) {
 					invHTML += "<table class='collapseborder'>"
@@ -1109,43 +1123,57 @@ function goBaby() {
 													"<td style=\"text-align:center\" class='singleborder'>Description</td>" +
 													"<td style=\"text-align:center\" class='singleborder'>Price</td>" +
 													"<td style=\"text-align:center\"></td></tr>"
+					var travelPrice = 1 * (currLevel + 1)
 					if(travelTime[currLevel] == 3 + (visitedAllLocations() ? 0 : 1)) {
 						invHTML += "<tr><td style=\"text-align:center\" class='singleborder'>" + levelData[currLevel].travelFasterUpgradeButton[0] + "</td>" +
 														"<td style=\"text-align:center\" class='singleborder'>Travel faster</td>" +
-														"<td style=\"text-align:center\" class='singleborder'>1</td>" +
+														"<td style=\"text-align:center\" class='singleborder'>" + getDisplayNumber(travelPrice, "yes") + "</td>" +
 														"<td style=\"text-align:left\">"
 						invHTML += '<button class="upgradeButton'
-						if(inv[3] < 1) invHTML += ' greyButton'
-						invHTML += '" onclick="buyUpgrade(\'travel\',1,1)">buy</button>'
+						if(inv[3] < travelPrice) invHTML += ' greyButton'
+						invHTML += '" onclick="buyUpgrade(\'travel\',1,' + travelPrice + ')">buy</button>'
 						invHTML += "</td></tr>"
+						allUpgradesBought = false
 					} else if(travelTime[currLevel] == 2 + (visitedAllLocations() ? 0 : 1)) {
+						travelPrice = 5 * (currLevel + 1)
 						invHTML += "<tr><td style=\"text-align:center\" class='singleborder'>" + levelData[currLevel].travelFasterUpgradeButton[1] + "</td>" +
 														"<td style=\"text-align:center\" class='singleborder'>Travel faster</td>" +
-														"<td style=\"text-align:center\" class='singleborder'>5</td>" +
+														"<td style=\"text-align:center\" class='singleborder'>" + getDisplayNumber(travelPrice, "yes") + "</td>" +
 														"<td style=\"text-align:left\">"
 						invHTML += '<button class="upgradeButton'
-						if(inv[3] < 5) invHTML += ' greyButton'
-						invHTML += '" onclick="buyUpgrade(\'travel\',1,5)">buy</button>'
+						if(inv[3] < travelPrice) invHTML += ' greyButton'
+						invHTML += '" onclick="buyUpgrade(\'travel\',1,' + travelPrice + ')">buy</button>'
 						invHTML += "</td></tr>"
+						allUpgradesBought = false
 					}
-					var cargoPrice = Math.pow(2,cargoSpace[currLevel]/100)
-					invHTML += "<tr><td style=\"text-align:center\" class='singleborder'>" + levelData[currLevel].cargoUpgradeButton + "</td>" +
-														"<td style=\"text-align:center\" class='singleborder'>Hold 100 more</td>" +
-														"<td style=\"text-align:center\" class='singleborder'>" + getDisplayNumber(cargoPrice, "yes") + "</td>" +
-														"<td style=\"text-align:left\">"
-					invHTML += '<button class="upgradeButton'
-					if(inv[3] < cargoPrice) invHTML += ' greyButton'
-					invHTML += '" onclick="buyUpgrade(\'cargo\',100,' + cargoPrice + ')">buy</button>'
-					invHTML += "</td></tr>"
+					if(cargoRoom < 100 * (currLevel + 2)) {
+						var cargoPrice = 10 * (currLevel + 1)
+						invHTML += "<tr><td style=\"text-align:center\" class='singleborder'>" + levelData[currLevel].cargoUpgradeButton + "</td>" +
+															"<td style=\"text-align:center\" class='singleborder'>Hold 100 more</td>" +
+															"<td style=\"text-align:center\" class='singleborder'>" + getDisplayNumber(cargoPrice, "yes") + "</td>" +
+															"<td style=\"text-align:left\">"
+						invHTML += '<button class="upgradeButton'
+						if(inv[3] < cargoPrice) invHTML += ' greyButton'
+						invHTML += '" onclick="buyUpgrade(\'cargo\',100,' + cargoPrice + ')">buy</button>'
+						invHTML += "</td></tr>"
+						allUpgradesBought = false
+					}
+
 					if(maxLevel == currLevel) {
+						var levelPrice = 20 * (currLevel + 1)
 						invHTML += "<tr><td style=\"text-align:center\" class='singleborder'>" + levelData[currLevel].levelUpgradeButton + "</td>" +
 														"<td style=\"text-align:center\" class='singleborder'>Travel further</td>" +
-														"<td style=\"text-align:center\" class='singleborder'>20</td>" +
+														"<td style=\"text-align:center\" class='singleborder'>" + getDisplayNumber(levelPrice, "yes") + "</td>" +
 														"<td style=\"text-align:left\">"
 						invHTML += '<button class="upgradeButton'
-						if(inv[3] < 20) invHTML += ' greyButton'
-						invHTML += '" onclick="buyUpgrade(\'level\',1,20)">buy</button>'
+						if(inv[3] < levelPrice) invHTML += ' greyButton'
+						invHTML += '" onclick="buyUpgrade(\'level\',1,' + levelPrice + ')">buy</button>'
 						invHTML += "</td></tr>"
+						allUpgradesBought = false
+					}
+					if(allUpgradesBought) {
+						invHTML += "<tr><td colspan=3 style=\"text-align:center\" class='singleborder'>" +
+												"<br>All upgrades on this level have been purchased!<br>&nbsp;</td><td></td></tr>"
 					}
 					invHTML += "</table>"
 					invHTML += "Currency: " + getDisplayNumber(inv[3]) + " "
@@ -1247,7 +1275,7 @@ function goBaby() {
 						invHTML += "Room for " + freeSpace + "</td><td>"
 						invHTML += "more items "
 					}
-					invHTML += "(" + spaceUsed + "/" + cargoSpace[currLevel] +
+					invHTML += "(" + spaceUsed + "/" + cargoRoom +
 											")</td></tr></table>"
 				} else {
 					invHTML += "<table>"
@@ -1272,7 +1300,7 @@ function goBaby() {
 						invHTML += "Room for " + freeSpace + "</td><td>"
 						invHTML += "more items "
 					}
-					invHTML += "(" + spaceUsed + "/" + cargoSpace[currLevel] +
+					invHTML += "(" + spaceUsed + "/" + cargoRoom +
 											")</td></tr></table>"
 				}
 			}
@@ -1336,7 +1364,7 @@ function clearGameVariables() {
 	oldLocIndex = []
 	travelTime = []
 	visitedLocation = []
-	cargoSpace = []
+	cargoRoom = 100
 	price = []
 	locationName = []
 	levelSeed = []
@@ -1345,7 +1373,6 @@ function clearGameVariables() {
 		oldInv[i] = [0,0,0,0]
 		oldLocIndex[i] = 1
 		travelTime[i] = 4
-		cargoSpace[i] = 100
 		visitedLocation[i] = []
 		price[i] = []
 		locationName[i] = []
@@ -1452,6 +1479,7 @@ body {
 .collapseborder {
 	border-collapse: collapse;
 	width: 100%;
+	margin-bottom: 7px;
 }
 
 .singleborder {
