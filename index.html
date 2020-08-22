@@ -32,7 +32,7 @@
 \		* Narration needs more voice/humor
 		* Would be cool to have some disturbing art - maybe ASCII?
 		* Purchase upgrade to get pricing info about locations on level 1 - "gossip?"
-		* 'glowing pill' mechanic allows expensive upgrades that restart the game with perks
+		* 'glowing pill' mechanic allows expensive upgrades that restart the game with perks - only shows up when you can afford it
 
 
 		TODOs resulting from play testing:
@@ -131,11 +131,11 @@ const levelData = [
 		locomotionType: 'thrash',
 		locationLabel: ['spot','spot','spot','spot','spot'],
 		travelFasterUpgradeMsg: [" reaches into a nearby diaper and liberally applies grease to your back.", " shows you how to thrash about more efficiently."],
-		travelFasterUpgradeButton: ['Back Grease', 'Super Trash'],
+		travelFasterUpgradeDesc: ['Back Grease', 'Super Trash'],
 		cargoUpgradeMsg: ' teaches you how to grip 100 more boogers at once.',
-		cargoUpgradeButton: 'Tighter Grip',
+		cargoUpgradeDesc: 'Tighter Grip',
 		levelUpgradeMsg: ' teaches you how to roll over to travel further to reach other groups of babies.',
-		levelUpgradeButton: 'Roll Over',
+		levelUpgradeDesc: 'Roll Over',
 		levelUpgradeHeaderMsg: "You learned to roll over!",
 		loseMsg: 'As you thrashed your limbs, you accidentally flung away ',
 		foundMsg: 'As you thrashed your limbs, you managed to find ',
@@ -171,11 +171,11 @@ const levelData = [
 		locomotionType: 'roll',
 		locationLabel: ['doorway','group','group','group','group'],
 		travelFasterUpgradeMsg: [" reaches into a nearby diaper and liberally applies grease to your tummy.", " shows you how to roll more efficiently."],
-		travelFasterUpgradeButton: ['Tummy Grease', 'Mega Roll'],
+		travelFasterUpgradeDesc: ['Tummy Grease', 'Mega Roll'],
 		cargoUpgradeMsg: ' violently stretches your cheeks. They will now hold 100 more items.',
-		cargoUpgradeButton: 'Stretchier Cheeks',
+		cargoUpgradeDesc: 'Stretchier Cheeks',
 		levelUpgradeMsg: ' teaches you how to crawl and thereby reach other rooms.',
-		levelUpgradeButton: 'Crawl',
+		levelUpgradeDesc: 'Crawl',
 		levelUpgradeHeaderMsg: "You learned to crawl!",
 		loseMsg: 'While rolling, you choked and accidentally swallowed ',
 		foundMsg: 'While rolling, you managed to find ',
@@ -211,11 +211,11 @@ const levelData = [
 		locomotionType: 'crawl',
 		locationLabel: ['elevator','doorway','doorway','doorway','doorway'],
 		travelFasterUpgradeMsg: [" reaches into a nearby diaper and liberally applies grease to your elbows.", " shows you how to crawl more efficiently."],
-		travelFasterUpgradeButton: ['Elbow Grease', 'Hyper Crawl'],
+		travelFasterUpgradeDesc: ['Elbow Grease', 'Hyper Crawl'],
 		cargoUpgradeMsg: ' provides you with a roomier diaper.',
-		cargoUpgradeButton: 'Bigger Diaper',
+		cargoUpgradeDesc: 'Bigger Diaper',
 		levelUpgradeMsg: ' teaches you how to push elevator buttons to access other floors.',
-		levelUpgradeButton: 'Use Elevator',
+		levelUpgradeDesc: 'Use Elevator',
 		levelUpgradeHeaderMsg: "You learned to use the elevator!",
 		loseMsg: 'Your diaper loosened while crawling, and you lost ',
 		foundMsg: 'You kept out a sharp eye while crawling and managed to find ',
@@ -1125,7 +1125,7 @@ function goBaby() {
 													"<td style=\"text-align:center\"></td></tr>"
 					var travelPrice = 2 * (currLevel + 1)
 					if(travelTime[currLevel] == 3 + (visitedAllLocations() ? 0 : 1)) {
-						invHTML += "<tr><td style=\"text-align:center\" class='singleborder'>" + levelData[currLevel].travelFasterUpgradeButton[0] + "</td>" +
+						invHTML += "<tr><td style=\"text-align:center\" class='singleborder'>" + levelData[currLevel].travelFasterUpgradeDesc[0] + "</td>" +
 														"<td style=\"text-align:center\" class='singleborder'>Travel faster</td>" +
 														"<td style=\"text-align:center\" class='singleborder'>" + getDisplayNumber(travelPrice, "yes") + "</td>" +
 														"<td style=\"text-align:left\">"
@@ -1136,7 +1136,7 @@ function goBaby() {
 						allUpgradesBought = false
 					} else if(travelTime[currLevel] == 2 + (visitedAllLocations() ? 0 : 1)) {
 						travelPrice = 5 * (currLevel + 1)
-						invHTML += "<tr><td style=\"text-align:center\" class='singleborder'>" + levelData[currLevel].travelFasterUpgradeButton[1] + "</td>" +
+						invHTML += "<tr><td style=\"text-align:center\" class='singleborder'>" + levelData[currLevel].travelFasterUpgradeDesc[1] + "</td>" +
 														"<td style=\"text-align:center\" class='singleborder'>Travel faster</td>" +
 														"<td style=\"text-align:center\" class='singleborder'>" + getDisplayNumber(travelPrice, "yes") + "</td>" +
 														"<td style=\"text-align:left\">"
@@ -1148,7 +1148,7 @@ function goBaby() {
 					}
 					if(cargoRoom < 100 * (currLevel + 2)) {
 						var cargoPrice = 10 * (currLevel + 1)
-						invHTML += "<tr><td style=\"text-align:center\" class='singleborder'>" + levelData[currLevel].cargoUpgradeButton + "</td>" +
+						invHTML += "<tr><td style=\"text-align:center\" class='singleborder'>" + levelData[currLevel].cargoUpgradeDesc + "</td>" +
 															"<td style=\"text-align:center\" class='singleborder'>Hold 100 more</td>" +
 															"<td style=\"text-align:center\" class='singleborder'>" + getDisplayNumber(cargoPrice, "yes") + "</td>" +
 															"<td style=\"text-align:left\">"
@@ -1161,7 +1161,7 @@ function goBaby() {
 
 					if(cargoRoom >= 100 * (currLevel + 2) && maxLevel == currLevel) {
 						var levelPrice = 20 * (currLevel + 1)
-						invHTML += "<tr><td style=\"text-align:center\" class='singleborder'>" + levelData[currLevel].levelUpgradeButton + "</td>" +
+						invHTML += "<tr><td style=\"text-align:center\" class='singleborder'>" + levelData[currLevel].levelUpgradeDesc + "</td>" +
 														"<td style=\"text-align:center\" class='singleborder'>Travel further</td>" +
 														"<td style=\"text-align:center\" class='singleborder'>" + getDisplayNumber(levelPrice, "yes") + "</td>" +
 														"<td style=\"text-align:left\">"
