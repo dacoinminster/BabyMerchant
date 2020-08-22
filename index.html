@@ -1159,7 +1159,7 @@ function goBaby() {
 						allUpgradesBought = false
 					}
 
-					if(maxLevel == currLevel) {
+					if(cargoRoom >= 100 * (currLevel + 2) && maxLevel == currLevel) {
 						var levelPrice = 20 * (currLevel + 1)
 						invHTML += "<tr><td style=\"text-align:center\" class='singleborder'>" + levelData[currLevel].levelUpgradeButton + "</td>" +
 														"<td style=\"text-align:center\" class='singleborder'>Travel further</td>" +
