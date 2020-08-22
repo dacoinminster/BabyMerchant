@@ -67,10 +67,13 @@
 	<meta name="theme-color" content="#ffffff">
 
 <!-- From https://github.com/davidbau/seedrandom -->
-<script src=seedrandom.min.js>
+<script src='seedrandom.min.js'>
 </script>
 
-<script src=nameGenerator.js>
+<script src='nameGenerator.js'>
+</script>
+
+<script src='bigNumbers.js'>
 </script>
 
 	<script type='text/javascript'>
@@ -596,16 +599,11 @@ function getDisplayNumber(num, compact="") {
 			}
 	} else {
 		modIndex--
-		var mod = ['million','billion','trillion','quadrillion','quintillion','sextillion',
-						'septillion','octillion','nonillion','decillion','undecillion',
-						'duodecillion','tredecillion', 'quattuordecillion','quindecillion',
-						'sexdecillion','septendecillion','octodecillion','novemdecillion',
-						'vigintillion']
 		if(num < 2000000) {
 			return num.toLocaleString()
-		} else if(modIndex < mod.length) {
+		} else if(modIndex < 998) {
 				num /= Math.pow(1000,(modIndex+2))
-				return num.toPrecision(4) + " " + mod[modIndex]
+				return num.toPrecision(4) + " " + numberScaleNameShortScale(modIndex+2)
 		} else {
 			return num.toExponential(5)
 		}
