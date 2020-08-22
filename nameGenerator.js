@@ -1,3 +1,4 @@
+'use strict';
 var nameParts = {
 
 	firstCons: [
@@ -281,7 +282,8 @@ for(var i in nameParts.endVowel) {
 }
 
 function generateConsonant(wordPart) {
-	consonant = '';
+	var consonant = '';
+	var whichCons;
 	if(wordPart == 0) {
 		whichCons = Math.floor(Math.random()*firstConsTotal);
 		consonant = firstConsArr[whichCons];
@@ -297,7 +299,8 @@ function generateConsonant(wordPart) {
 
 
 function generateVowel(wordPart) {
-	vowel = '';
+	var vowel = '';
+	var whichVowel;
 	if(wordPart == 0) {
 		whichVowel = Math.floor(Math.random()*firstVowelTotal);
 		vowel = firstVowelArr[whichVowel];
@@ -353,7 +356,7 @@ function generateName(numSyllables) {
 
 function getRandomName() {
 	var numSyllables = 1;
-	roll = Math.random();
+	var roll = Math.random();
 	if(roll > 0.1) {
 		do {
 			numSyllables++;
