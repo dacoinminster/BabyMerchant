@@ -1126,9 +1126,11 @@ function goBaby() {
 													"<td style=\"text-align:center\"></td></tr>"
 					var travelPrice = 2 * (currLevel + 1)
 					if(travelTime[currLevel] == 3 + (visitedAllLocations() ? 0 : 1)) {
-						invHTML += "<tr><td style=\"text-align:center\" class='singleborder'>" + levelData[currLevel].travelFasterUpgradeDesc[0] + "</td>" +
+						invHTML += "<tr><td style=\"text-align:center\" class='singleborder'>" +
+														levelData[currLevel].travelFasterUpgradeDesc[0] + "</td>" +
 														"<td style=\"text-align:center\" class='singleborder'>Travel faster</td>" +
-														"<td style=\"text-align:center\" class='singleborder'>" + getDisplayNumber(travelPrice, "yes") + "</td>" +
+														"<td style=\"text-align:center\" class='singleborder'>" +
+														getDisplayNumber(travelPrice, "yes") + "</td>" +
 														"<td style=\"text-align:left\">"
 						invHTML += '<button class="upgradeButton'
 						if(inv[3] < travelPrice) invHTML += ' greyButton'
@@ -1139,7 +1141,8 @@ function goBaby() {
 						travelPrice = 5 * (currLevel + 1)
 						invHTML += "<tr><td style=\"text-align:center\" class='singleborder'>" + levelData[currLevel].travelFasterUpgradeDesc[1] + "</td>" +
 														"<td style=\"text-align:center\" class='singleborder'>Travel faster</td>" +
-														"<td style=\"text-align:center\" class='singleborder'>" + getDisplayNumber(travelPrice, "yes") + "</td>" +
+														"<td style=\"text-align:center\" class='singleborder'>" +
+														getDisplayNumber(travelPrice, "yes") + "</td>" +
 														"<td style=\"text-align:left\">"
 						invHTML += '<button class="upgradeButton'
 						if(inv[3] < travelPrice) invHTML += ' greyButton'
@@ -1149,9 +1152,11 @@ function goBaby() {
 					}
 					if(cargoRoom < 100 * (currLevel + 2)) {
 						var cargoPrice = 10 * (currLevel + 1)
-						invHTML += "<tr><td style=\"text-align:center\" class='singleborder'>" + levelData[currLevel].cargoUpgradeDesc + "</td>" +
+						invHTML += "<tr><td style=\"text-align:center\" class='singleborder'>" +
+															levelData[currLevel].cargoUpgradeDesc + "</td>" +
 															"<td style=\"text-align:center\" class='singleborder'>Hold 100 more</td>" +
-															"<td style=\"text-align:center\" class='singleborder'>" + getDisplayNumber(cargoPrice, "yes") + "</td>" +
+															"<td style=\"text-align:center\" class='singleborder'>" +
+															getDisplayNumber(cargoPrice, "yes") + "</td>" +
 															"<td style=\"text-align:left\">"
 						invHTML += '<button class="upgradeButton'
 						if(inv[3] < cargoPrice) invHTML += ' greyButton'
@@ -1162,9 +1167,11 @@ function goBaby() {
 
 					if(cargoRoom >= 100 * (currLevel + 2) && maxLevel == currLevel) {
 						var levelPrice = 20 * (currLevel + 1)
-						invHTML += "<tr><td style=\"text-align:center\" class='singleborder'>" + levelData[currLevel].levelUpgradeDesc + "</td>" +
+						invHTML += "<tr><td style=\"text-align:center\" class='singleborder'>" +
+														levelData[currLevel].levelUpgradeDesc + "</td>" +
 														"<td style=\"text-align:center\" class='singleborder'>Travel further</td>" +
-														"<td style=\"text-align:center\" class='singleborder'>" + getDisplayNumber(levelPrice, "yes") + "</td>" +
+														"<td style=\"text-align:center\" class='singleborder'>" +
+														getDisplayNumber(levelPrice, "yes") + "</td>" +
 														"<td style=\"text-align:left\">"
 						invHTML += '<button class="upgradeButton'
 						if(inv[3] < levelPrice) invHTML += ' greyButton'
@@ -1338,6 +1345,7 @@ function setupInitialActions() {
 
 function clearGameVariables() {
 	// Make sure all game variables are set to initial values
+	// (not including values which persist between games)
 
 	waitingTitleCards = 0
 	waitingTitleHeader = []
