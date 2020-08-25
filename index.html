@@ -262,6 +262,8 @@ var levelSeed = []
 var levelChildSeed = []
 var maxLevel = 0
 var inventoryChanged = false
+var showingGossipColors = false
+var gossipLocation = 0
 // End variables to save betweens sessions
 const varsToSave = ['gameVersion', 'gameSeed', 'waitingTitleCards',
 			'waitingTitleHeader', 'waitingTitleFooter', 'waitingTitleText',
@@ -271,7 +273,8 @@ const varsToSave = ['gameVersion', 'gameSeed', 'waitingTitleCards',
 			'pickingEnabled', 'tradingEnabled', 'storeVisible', 'upgradesVisible',
 			'lastGameHTML', 'inv', 'oldInv', 'oldLocIndex', 'travelTime',
 			'visitedLocation', 'cargoRoom', 'price', 'locationName', 'levelSeed',
-			'levelChildSeed', 'maxLevel', 'inventoryChanged']
+			'levelChildSeed', 'maxLevel', 'inventoryChanged', 'showingGossipColors',
+			'gossipLocation']
 deepFreeze(varsToSave)
 
 var PAUSE_MULT = 100 // Pause multiplier
@@ -526,6 +529,11 @@ function setupLocationRadioButtons() {
 		if(i == nextLocIndex) rbHTML += ' checked'
 		rbHTML +='>'
 		rbHTML += '<label for="nextLoc' + i + '" '
+		if(showingGossipColors) {
+			if(i == gossipLocation) {
+				rbHTML += "style='color:rgb(0,200,0);' "
+			}
+		}
 		if(i == locIndex) {
 			rbHTML += 'class="locRadioLabelDisabled">'
 		} else {
@@ -749,9 +757,127 @@ function buyInv(index, quantity) {
 	}
 }
 
+function getGossipText() {
+	// console.log("Starting to figure out gossip")
+	var gossipText = "Prices look unfavorable everywhere!"
+	var msgCount = 0
+	var thisBuyRatio = 1
+	var bestBuyRatio = 1
+	var thisProfit = 0
+	var bestProfit = 0
+	var bestBuyIndex = 0
+	var bestSellIndex = 0
+	var bestBuyLoc = 0
+	var expensiveCount = 0
+	for(var i = 3; i >= 0; i--) {
+		if(inv[i] > 0) {
+			// console.log ("Checking selling " + levelData[currLevel].tradeableItems[i])
+			// Find good places to sell this
+			if(i > 0) {
+				// We don't already have a ton of the next less expensive item, so see about buying some
+				for(var j = 1; j < levelData[currLevel].numLocations; j++) {
+					for(var k = 0; k < i; k++) {
+						// console.log (" and buying " + levelData[currLevel].tradeableItems[k] + " at " + locationName[currLevel][j])
+						thisBuyRatio = price[currLevel][j][i] / (price[currLevel][j][k]*(10 ** (i-k)))
+						if(thisBuyRatio > 1) {
+							thisProfit = inv[i]*(thisBuyRatio-1) * (10 ** i)
+							var actualSpace = cargoRoom - expensiveCount
+							for(var m = k; m < i; m++) {
+								actualSpace -= inv[m];
+							}
+							var neededSpace = (inv[i])*thisBuyRatio*(10 ** (i-k))+1
+							// console.log("Needed space: " + neededSpace + ", original profit: " + thisProfit + ", actual space: " + actualSpace)
+							neededSpace -= actualSpace
+							var reduceCount = 0
+							while(neededSpace > 0) {
+								// Maybe if we don't sell one of them
+								neededSpace = neededSpace - thisBuyRatio*(10 ** (i-k)) + 1
+								thisProfit -= (thisBuyRatio-1) * (10 ** i)
+								reduceCount++
+							}
+							// if(reduceCount > 0) {
+							// 	console.log("reduced by " + reduceCount)
+							// }
+							// console.log("Expected profit: " + thisProfit)
+							if(thisProfit > bestProfit) {
+								bestProfit = thisProfit
+								bestBuyIndex = k
+								bestSellIndex = i
+								bestBuyLoc = j
+								bestBuyRatio = thisBuyRatio
+							}
+						}
+					}
+				}
+			}
+			expensiveCount += inv[i]
+			if(i < 3) {
+				// See about buying the more expensive item
+				for(var j = 1; j < levelData[currLevel].numLocations; j++) {
+					for(var k = i+1; k <= 3; k++) {
+						// console.log (" and buying " + levelData[currLevel].tradeableItems[k] + " at " + locationName[currLevel][j])
+						thisBuyRatio = (price[currLevel][j][i]*(10 ** (k-i))) / price[currLevel][j][k]
+						if(thisBuyRatio > 1) {
+							var buyCount = Math.floor(inv[i]*thisBuyRatio/(10 ** (k-i)))
+							thisProfit = buyCount*(thisBuyRatio-1) * (10 ** k)
+							// console.log("Expected profit: " + thisProfit)
+							if(thisProfit > bestProfit) {
+								bestProfit = thisProfit
+								bestBuyIndex = k
+								bestSellIndex = i
+								bestBuyLoc = j
+								bestBuyRatio = thisBuyRatio
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// console.log(price[currLevel])
+	if(bestProfit > 0) {
+		var gossipSize = ""
+		if(bestBuyRatio < 1.1) {
+			gossipSize = "tolerable"
+		} else if(bestBuyRatio < 1.2) {
+			gossipSize = "ok"
+		} else if(bestBuyRatio < 1.3) {
+			gossipSize = "good"
+		} else if(bestBuyRatio < 1.4) {
+			gossipSize = "very good"
+		} else if(bestBuyRatio < 1.6) {
+			gossipSize = "great"
+		} else {
+			gossipSize = "fabulous"
+		}
+		// console.log(bestBuyLoc, bestProfit, bestBuyIndex, bestSellIndex, bestBuyRatio, gossipSize)
+		gossipText = locationName[currLevel][bestBuyLoc] + " has " +
+										gossipSize + " prices for those looking"
+		if(bestSellIndex > 0) {
+			gossipText += " to sell " + levelData[currLevel].tradeableItems[bestSellIndex]
+		}
+		if(bestBuyIndex > 0) {
+			gossipText += " to buy " + levelData[currLevel].tradeableItems[bestBuyIndex]
+		}
+		gossipLocation = bestBuyLoc
+	}
+	return gossipText
+}
+
 function buyUpgrade(upgradeType, upgradeAmount, cost) {
 	if(cost <= inv[3]) {
 		switch(upgradeType) {
+			case 'gossip':
+				if(visitedAllLocations() && !showingGossipColors) {
+					showingGossipColors = true
+					inv[3] -= cost
+					randomizeStore()
+					typeText('"' + getGossipText() + '"', "Price Rumors: ", "Go Baby!")
+					setupLocationRadioButtons()
+					inventoryChanged = true
+				}
+				break
 			case 'travel':
 				if(travelTime[currLevel] > 1) {
 					travelTime[currLevel]--
@@ -989,7 +1115,9 @@ function goBaby() {
 						levelUpButton.style.visibility = 'hidden'
 						levelDownButton.style.visibility = 'hidden'
 						upgradesVisible = false
-						randomizeStore()
+						if(!showingGossipColors) {
+							randomizeStore()
+						}
 					}
 					transitMoves--
 					var ctype = levelData[currLevel].characterType
@@ -1005,6 +1133,7 @@ function goBaby() {
 
 					if(transitMoves == 0) {
 						// Handle things related to arriving at a location
+						showingGossipColors = false
 						locIndex = nextLocIndex
 						nextLocIndex++
 						if(nextLocIndex >= levelData[currLevel].numLocations) {
@@ -1124,6 +1253,19 @@ function goBaby() {
 													"<td style=\"text-align:center\" class='singleborder'>Description</td>" +
 													"<td style=\"text-align:center\" class='singleborder'>Price</td>" +
 													"<td style=\"text-align:center\"></td></tr>"
+					if(currLevel > 0 && visitedAllLocations() && !showingGossipColors) {
+						var gossipPrice = 1 * (currLevel)
+						invHTML += "<tr><td style=\"text-align:center\" class='singleborder'>Gossip</td>" +
+														"<td style=\"text-align:center\" class='singleborder'>Price rumors</td>" +
+														"<td style=\"text-align:center\" class='singleborder'>" +
+														getDisplayNumber(gossipPrice, "yes") + "</td>" +
+														"<td style=\"text-align:left\">"
+						invHTML += '<button class="upgradeButton'
+						if(inv[3] < gossipPrice) invHTML += ' greyButton'
+						invHTML += '" onclick="buyUpgrade(\'gossip\',1,' + gossipPrice + ')">buy</button>'
+						invHTML += "</td></tr>"
+						allUpgradesBought = false
+					}
 					var travelPrice = 2 * (currLevel + 1)
 					if(travelTime[currLevel] == 3 + (visitedAllLocations() ? 0 : 1)) {
 						invHTML += "<tr><td style=\"text-align:center\" class='singleborder'>" +
@@ -1395,6 +1537,8 @@ function clearGameVariables() {
 	}
 	maxLevel = 0
 	inventoryChanged = false
+	showingGossipColors = false
+	gossipLocation = 0
 }
 
 function startNewGame() {
