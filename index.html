@@ -1357,7 +1357,7 @@ function goBaby() {
 							sellButtons += ' greyButton'
 						}
 						sellButtons += '" onclick="sellInv(' + i + ',1)">'
-						if(inv[i] < 10) {
+						if(inv[i] <= 10) {
 							sellButtons += 'sell '
 						}
 						sellButtons += '1</button>'
@@ -1381,7 +1381,7 @@ function goBaby() {
 							buyButtons += ' greyButton'
 						}
 						buyButtons += '" onclick="buyInv(' + i + ',1)">'
-						if(canBuy < 10) {
+						if(canBuy <= 10) {
 							buyButtons += 'buy '
 						}
 						buyButtons += '1</button>'
