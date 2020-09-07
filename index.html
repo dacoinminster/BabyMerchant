@@ -11,7 +11,7 @@
 
 	  gtag('config', 'UA-177414002-1');
 	</script>
-	
+
 	<meta charset="UTF-8"/>
 	<!--
 		👶 Baby Merchant 👶
@@ -348,6 +348,7 @@ function loadGameState() {
 	}
 
 	setTimeout('goBaby()', 100)
+	ga('send', 'event', "gameState", "load")
 }
 
 Math.seedrandom(gameSeed)	// replaces Math.random with predictable pseudorandom generator
@@ -886,6 +887,7 @@ function buyUpgrade(upgradeType, upgradeAmount, cost) {
 					typeText('"' + getGossipText() + '"', "Price Rumors: ", "Go Baby!")
 					setupLocationRadioButtons()
 					inventoryChanged = true
+					ga('send', 'event', "upgradeBought", "gossip", "", currLevel)
 				}
 				break
 			case 'travel':
@@ -897,10 +899,12 @@ function buyUpgrade(upgradeType, upgradeAmount, cost) {
 						typeText(locationName[currLevel][locIndex] + levelData[currLevel].travelFasterUpgradeMsg[0],
 												"Travel Speed Upgraded.",
 												"Go Baby!")
+						ga('send', 'event', "upgradeBought", "travelSpeed", "intermediate", currLevel)
 					} else {
 						typeText(locationName[currLevel][locIndex] + levelData[currLevel].travelFasterUpgradeMsg[1],
 												"Travel Speed Upgraded.",
 												"Go Baby!")
+						ga('send', 'event', "upgradeBought", "travelSpeed", "final", currLevel)
 					}
 				}
 				break
@@ -911,6 +915,7 @@ function buyUpgrade(upgradeType, upgradeAmount, cost) {
 				typeText(locationName[currLevel][locIndex] + levelData[currLevel].cargoUpgradeMsg,
 											"Cargo space upgraded.",
 											"More Room!")
+				ga('send', 'event', "upgradeBought", "cargo")
 				break
 			case 'level':
 				if(maxLevel < levelData.length - 1) {
@@ -922,9 +927,11 @@ function buyUpgrade(upgradeType, upgradeAmount, cost) {
 											" You can now advance to level " + (currLevel + 1) + " (\"" + levelData[currLevel].levelUpLabel + "\").",
 											levelData[currLevel].levelUpgradeHeaderMsg,
 											"Level " + maxLevel + " Available!")
+					ga('send', 'event', "upgradeBought", "level", "", maxLevel)
 				} else {
 					typeText("You have completed Baby Merchant! Hopefully more will be written soon.",
 										"You win!", "Thanks for playing")
+					ga('send', 'event', "gameState", "win", "", currLevel)
 				}
 				break
 		}
@@ -1039,6 +1046,8 @@ function goBaby() {
 												levelData[currLevel].VisitHdr2 + locationName[currLevel][locIndex] +
 												levelData[currLevel].VisitHdr3 + levelData[currLevel].locationLabel[locIndex])
 					updateLocomoteButton()
+
+					ga('send', 'event', "levelChange", "up", "", currLevel)
 				}
 				break
 			case 'levelDown':
@@ -1083,6 +1092,7 @@ function goBaby() {
 												levelData[currLevel].VisitHdr2 + locationName[currLevel][locIndex] +
 												levelData[currLevel].VisitHdr3 + levelData[currLevel].locationLabel[locIndex])
 					updateLocomoteButton()
+					ga('send', 'event', "levelChange", "down", "", currLevel)
 				}
 				break
 			case 'pick':
@@ -1174,6 +1184,7 @@ function goBaby() {
 												nextCtype + " " + locationName[currLevel][nextLocIndex] + "."
 								}
 								typeText(exploreMsg, "Exploration complete!", "Go Baby!")
+								ga('send', 'event', "milestone", "exploration", "", currLevel)
 							}
 							if(locIndex > 0) {
 								locationMessage += levelData[currLevel].discoveryMsg1 + ctype +
@@ -1187,6 +1198,7 @@ function goBaby() {
 														" has a finger in each nostril. Hmmmm."
 									coolLocationHeader = "Meeting " + ctype + " " + locationName[currLevel][locIndex] + ":"
 									coolLocationFooter = "Nose picking is cool"
+									ga('send', 'event', "milestone", "picking")
 								}
 							} else {
 								locationMessage += levelData[currLevel].BossDiscoveryMsg1 + ctype +
@@ -1212,6 +1224,7 @@ function goBaby() {
 											" A voice resonates in your deepest being . . .  \"Buy low. Sell high.\""
 								coolLocationHeader = "Meeting " + ctype + " " + locationName[currLevel][locIndex] + ":"
 								coolLocationFooter = "Time to Trade!"
+								ga('send', 'event', "milestone", "trading")
 							}
 						}
 						typeText(locationMessage, coolLocationHeader, coolLocationFooter)
@@ -1566,6 +1579,8 @@ function startNewGame() {
 		setTimeout('setHeaderText("You are a " + levelData[0].characterType) ',10*PAUSE_MULT)
 		setTimeout("setupInitialActions()", 50*PAUSE_MULT)
 		setTimeout('goBaby()', 51*PAUSE_MULT)
+
+		ga('send', 'event', "gameState", "new")
 }
 
 function askToContinue() {
