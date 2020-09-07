@@ -895,7 +895,7 @@ function buyUpgrade(upgradeType, upgradeAmount, cost) {
 					travelTime[currLevel]--
 					inv[3] -= cost
 					inventoryChanged = true
-					if(travelTime[currLevel] > 1) {
+					if(travelTime[currLevel] > 1 + (visitedAllLocations() ? 0 : 1)) {
 						typeText(locationName[currLevel][locIndex] + levelData[currLevel].travelFasterUpgradeMsg[0],
 												"Travel Speed Upgraded.",
 												"Go Baby!")
