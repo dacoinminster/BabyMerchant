@@ -1634,7 +1634,7 @@ if(oldGameVersion == null || oldGameVersion != gameVersion) {
 }
 
 body {
-	font-size:2vh;
+	font-size: min(3vw, 3vh);
 }
 
 .gameContainer {
@@ -1652,10 +1652,10 @@ body {
 
 .gameArea {
 	width: 100%;
-	max-width: 80vh;
+	/* max-width: 80vh; */
   /* min-width: 400px; */
-	margin: 0.3vh;
-	padding: 0.7vh;
+	margin: min(0.3vw, 0.3vh);
+	padding: min(0.7vw, 0.7vh);
 	overflow: hidden;
 }
 
@@ -1668,7 +1668,7 @@ body {
 .collapseborder {
 	border-collapse: collapse;
 	width: 100%;
-	margin-bottom: 1vh;
+	margin-bottom: min(1vw, 1vh);
 }
 
 .singleborder {
@@ -1685,8 +1685,8 @@ body {
 }
 
 .invHeaderCell {
-  padding-left: 1vh;
-  padding-right: 1vh;
+  padding-left: min(1vw, 1vh);
+  padding-right: min(1vw, 1vh);
 }
 
 .buyButtonsCell {
@@ -1720,7 +1720,7 @@ body {
 .headerWrapper {
 	padding-top: 5px;
 	padding-bottom: 5px;
-	height: 3vh;
+	height: min(3vw, 3vh);
 	align-items: flex-end;
 	flex: 1 0 auto;
   flex-direction: row;
@@ -1832,10 +1832,10 @@ body {
 
 button {
 	background-color:transparent;
-	border:0.1vh solid #dddddd;
-	padding: 0.6vh;
-	font-size: 1.7vh;
-	margin-right: 1vh;
+	border: min(0.1vw, 0.1vh) solid #dddddd;
+	padding: min(0.6vw, 0.6vh);
+	font-size: min(2.4vw, 2.4vh);
+	margin-right: min(1vw, 1vh);
 }
 
 .babyButton{
@@ -1844,12 +1844,12 @@ button {
 
 
 .tradeButton{
-	padding-bottom: 0.2vh;
-	padding-top: 0.2vh;
-	padding-left: 0.4vh;
-	padding-right: 0.4vh;
-	margin-left: 0.4vh;
-	margin-right: 0.4vh;
+	padding-bottom: min(0.2vw, 0.2vh);
+	padding-top: min(0.2vw, 0.2vh);
+	padding-left: min(0.4vw, 0.4vh);
+	padding-right: min(0.4vw, 0.4vh);
+	margin-left: min(0.4vw, 0.4vh);
+	margin-right: min(0.4vw, 0.4vh);
 }
 
 .greyButton {
@@ -1864,7 +1864,7 @@ button {
 .titleCardMain {
 	display: flex;
 	width: 100%;
-	max-width: 80vh;
+	/* max-width: 80vh; */
   height: 100%;
 	position: relative;
 	align-items: center;
@@ -1874,7 +1874,7 @@ button {
 .titleCardFooter {
 	display: flex;
 	width: 100%;
-	max-width: 80vh;
+	/* max-width: 80vh; */
 	flex-direction: row;
   flex: 0 0 auto;
 	margin-top: 8px;
@@ -1884,21 +1884,21 @@ button {
 .titleCardBottomFloater {
 	display: flex;
 	width: 100%;
-	max-width: 80vh;
+	/* max-width: 80vh; */
 	flex: 0 0 0px;
 }
 
 .titleCardHeader {
 	display: flex;
 	width: 100%;
-	max-width: 80vh;
+	/* max-width: 80vh; */
   flex: 0 0 auto;
 	margin-bottom: 8px;
 }
 
 .titleCardMainText {
 	padding: 15px;
-	font-size: 3vh;
+	font-size: min(4vw, 4vh);
 	text-align: center;
 	width: 100%
 }
@@ -1906,19 +1906,19 @@ button {
 .titleCardFooterText {
 	padding: 15px;
 	flex: 1 1 auto;
-	font-size: 3vh;
+	font-size: min(4vw, 4vh);
 }
 
 .titleCardHeaderText {
 	width: 100%;
 	padding: 15px;
-	font-size: 3vh;
+	font-size: min(4vw, 4vh);
 	text-align: center;
 }
 
 .continueButton {
 	flex: 0 0 auto;
-	font-size: 3vh;
+	font-size: min(4vw, 4vh);
 	margin: 9px;
 }
 
