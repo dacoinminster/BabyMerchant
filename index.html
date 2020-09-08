@@ -1272,17 +1272,17 @@ function goBaby() {
 			if(hasAnything()) {
 				if(upgradesVisible) {
 					invHTML += "<table class='collapseborder'>"
-					invHTML += "<tr><td style=\"text-align:center\" class='singleborder'>Upgrade</td>" +
-													"<td style=\"text-align:center\" class='singleborder'>Description</td>" +
-													"<td style=\"text-align:center\" class='singleborder'>Price</td>" +
-													"<td style=\"text-align:center\"></td></tr>"
+					invHTML += "<tr><td class='singleborder invCell invHeaderCell'>Upgrade</td>" +
+													"<td class='singleborder invCell invHeaderCell'>Description</td>" +
+													"<td class='singleborder invCell invHeaderCell'>Price</td>" +
+													"<td class='invCell invHeaderCell'></td></tr>"
 					if(currLevel > 0 && visitedAllLocations() && !showingGossipColors) {
 						var gossipPrice = 1 * (currLevel)
-						invHTML += "<tr><td style=\"text-align:center\" class='singleborder'>Gossip</td>" +
-														"<td style=\"text-align:center\" class='singleborder'>Price rumors</td>" +
-														"<td style=\"text-align:center\" class='singleborder'>" +
+						invHTML += "<tr><td class='singleborder invCell'>Gossip</td>" +
+														"<td class='singleborder invCell'>Price rumors</td>" +
+														"<td class='singleborder invCell'>" +
 														getDisplayNumber(gossipPrice, "yes") + "</td>" +
-														"<td style=\"text-align:left\">"
+														"<td class='buyButtonsCell'>"
 						invHTML += '<button class="upgradeButton'
 						if(inv[3] < gossipPrice) invHTML += ' greyButton'
 						invHTML += '" onclick="buyUpgrade(\'gossip\',1,' + gossipPrice + ')">buy</button>'
@@ -1291,12 +1291,12 @@ function goBaby() {
 					}
 					var travelPrice = 2 * (currLevel + 1)
 					if(travelTime[currLevel] == 3 + (visitedAllLocations() ? 0 : 1)) {
-						invHTML += "<tr><td style=\"text-align:center\" class='singleborder'>" +
+						invHTML += "<tr><td class='singleborder invCell'>" +
 														levelData[currLevel].travelFasterUpgradeDesc[0] + "</td>" +
-														"<td style=\"text-align:center\" class='singleborder'>Travel faster</td>" +
-														"<td style=\"text-align:center\" class='singleborder'>" +
+														"<td class='singleborder invCell'>Travel faster</td>" +
+														"<td class='singleborder invCell'>" +
 														getDisplayNumber(travelPrice, "yes") + "</td>" +
-														"<td style=\"text-align:left\">"
+														"<td class='buyButtonsCell'>"
 						invHTML += '<button class="upgradeButton'
 						if(inv[3] < travelPrice) invHTML += ' greyButton'
 						invHTML += '" onclick="buyUpgrade(\'travel\',1,' + travelPrice + ')">buy</button>'
@@ -1304,11 +1304,11 @@ function goBaby() {
 						allUpgradesBought = false
 					} else if(travelTime[currLevel] == 2 + (visitedAllLocations() ? 0 : 1)) {
 						travelPrice = 5 * (currLevel + 1)
-						invHTML += "<tr><td style=\"text-align:center\" class='singleborder'>" + levelData[currLevel].travelFasterUpgradeDesc[1] + "</td>" +
-														"<td style=\"text-align:center\" class='singleborder'>Travel faster</td>" +
-														"<td style=\"text-align:center\" class='singleborder'>" +
+						invHTML += "<tr><td class='singleborder invCell'>" + levelData[currLevel].travelFasterUpgradeDesc[1] + "</td>" +
+														"<td class='singleborder invCell'>Travel faster</td>" +
+														"<td class='singleborder invCell'>" +
 														getDisplayNumber(travelPrice, "yes") + "</td>" +
-														"<td style=\"text-align:left\">"
+														"<td class='buyButtonsCell'>"
 						invHTML += '<button class="upgradeButton'
 						if(inv[3] < travelPrice) invHTML += ' greyButton'
 						invHTML += '" onclick="buyUpgrade(\'travel\',1,' + travelPrice + ')">buy</button>'
@@ -1317,12 +1317,12 @@ function goBaby() {
 					}
 					if(cargoRoom < 100 * (currLevel + 2)) {
 						var cargoPrice = 10 * (currLevel + 1)
-						invHTML += "<tr><td style=\"text-align:center\" class='singleborder'>" +
+						invHTML += "<tr><td class='singleborder invCell'>" +
 															levelData[currLevel].cargoUpgradeDesc + "</td>" +
-															"<td style=\"text-align:center\" class='singleborder'>Hold 100 more</td>" +
-															"<td style=\"text-align:center\" class='singleborder'>" +
+															"<td class='singleborder invCell'>Hold 100 more</td>" +
+															"<td class='singleborder invCell'>" +
 															getDisplayNumber(cargoPrice, "yes") + "</td>" +
-															"<td style=\"text-align:left\">"
+															"<td class='buyButtonsCell'>"
 						invHTML += '<button class="upgradeButton'
 						if(inv[3] < cargoPrice) invHTML += ' greyButton'
 						invHTML += '" onclick="buyUpgrade(\'cargo\',100,' + cargoPrice + ')">buy</button>'
@@ -1332,12 +1332,12 @@ function goBaby() {
 
 					if(cargoRoom >= 100 * (currLevel + 2) && maxLevel == currLevel) {
 						var levelPrice = 20 * (currLevel + 1)
-						invHTML += "<tr><td style=\"text-align:center\" class='singleborder'>" +
+						invHTML += "<tr><td class='singleborder invCell'>" +
 														levelData[currLevel].levelUpgradeDesc + "</td>" +
-														"<td style=\"text-align:center\" class='singleborder'>Travel further</td>" +
-														"<td style=\"text-align:center\" class='singleborder'>" +
+														"<td class='singleborder invCell'>Travel further</td>" +
+														"<td class='singleborder invCell'>" +
 														getDisplayNumber(levelPrice, "yes") + "</td>" +
-														"<td style=\"text-align:left\">"
+														"<td class='buyButtonsCell'>"
 						invHTML += '<button class="upgradeButton'
 						if(inv[3] < levelPrice) invHTML += ' greyButton'
 						invHTML += '" onclick="buyUpgrade(\'level\',1,' + levelPrice + ')">buy</button>'
@@ -1345,7 +1345,7 @@ function goBaby() {
 						allUpgradesBought = false
 					}
 					if(allUpgradesBought) {
-						invHTML += "<tr><td colspan=3 style=\"text-align:center\" class='singleborder'>" +
+						invHTML += "<tr><td colspan=3 class='singleborder invCell'>" +
 												"<br>All upgrades on this level have been purchased!<br>&nbsp;</td><td></td></tr>"
 					}
 					invHTML += "</table>"
@@ -1357,11 +1357,12 @@ function goBaby() {
 					}
 				}	else if(storeVisible) {
 					invHTML += "<table class='collapseborder'>"
-					invHTML += "<tr><td width=26% style=\"text-align:center\">Sell</td>" +
-													"<td style=\"text-align:center\" class='singleborder'>Item</td>" +
-													"<td style=\"text-align:center\" class='singleborder'>Price</td>" +
-													"<td style=\"text-align:center\" class='singleborder'>Held</td>" +
-													"<td width=26% style=\"text-align:center\">Buy</td></tr>"
+					invHTML += "<tr><td class='invCell invHeaderCell'>Sell</td>" +
+													"<td class='invCell invHeaderCell singleborder'>Item</td>" +
+													"<td class='invCell invHeaderCell singleborder'>Price</td>" +
+													"<td class='invCell invHeaderCell singleborder'>Held</td>" +
+													"<td class='invCell invHeaderCell'>Buy</td></tr>"
+
 					for(i = inv.length-1; i >= 1; i--) {
 						var alertRed = 0
 						var alertGreen = 0
@@ -1373,8 +1374,8 @@ function goBaby() {
 							alertGreen = Math.floor(255*(basePrice[i]/displayPrice-1))
 							if(alertGreen > 255) alertGreen = 255
 						}
-						var alertStyle = "style='text-align:center; color:rgb(" + alertRed + "," + alertGreen + ",0);'"
-						invHTML += "<tr><td style=\"text-align:right\">"
+						var alertStyle = "style='color:rgb(" + alertRed + "," + alertGreen + ",0);'"
+						invHTML += "<tr><td class='sellButtonsCell'>"
 						// Sell buttons
 						var sellButtons = '<button class="tradeButton'
 						if(inv[i] == 0) {
@@ -1394,10 +1395,10 @@ function goBaby() {
 							sellButtons = '<button class="tradeButton" onclick="sellInv(' + i + ',' + inv[i] + ')">all</button>' + sellButtons
 						}
 						invHTML += sellButtons
-						invHTML += "</td><td class='singleborder' " + alertStyle + ">" + levelData[currLevel].tradeableItems[i]
-						invHTML += "</td><td class='singleborder' " + alertStyle + ">" + displayPrice
-						invHTML += "</td><td class='singleborder' style=\"text-align:center\">" + getDisplayNumber(inv[i], "yes")
-						invHTML += "</td><td>"
+						invHTML += "</td><td class='singleborder invCell' " + alertStyle + ">" + levelData[currLevel].tradeableItems[i]
+						invHTML += "</td><td class='singleborder invCell' " + alertStyle + ">" + displayPrice
+						invHTML += "</td><td class='singleborder invCell'>" + getDisplayNumber(inv[i], "yes")
+						invHTML += "</td><td class='buyButtonsCell'>"
 						// Buy buttons
 						var canBuy = Math.floor(inv[0]/displayPrice)
 						var buyButtons = '<button class="tradeButton'
@@ -1420,6 +1421,16 @@ function goBaby() {
 						invHTML += buyButtons
 						invHTML += "</td></tr>"
 					}
+					// Put a dummy row to force horizontal spacing to be what I want
+					const buttonsForSpacing = '<button class="squashed tradeButton">1</button>' +
+															'<button class="squashed tradeButton">10</button>' +
+															'<button class="squashed tradeButton">100</button>' +
+															'<button class="squashed tradeButton">all</button>'
+					invHTML += "<tr class='spacingRow squashed'>" +
+											"<td class='sellButtonsCell squashed'>" + buttonsForSpacing + "</td>" +
+											"<td class='singleborder expandyCell squashed' colspan=3>&nbsp;</td>" +
+											"<td class='buyButtonsCell squashed'>" + buttonsForSpacing + "</td>" +
+																"</td>"
 					invHTML += "</table><table>"
 					invHTML += "<tr><td style=\"text-align:right\">" + getDisplayNumber(inv[0]) + "</td><td>"
 					if(inv[0] == 1) {
@@ -1657,7 +1668,7 @@ body {
 .collapseborder {
 	border-collapse: collapse;
 	width: 100%;
-	margin-bottom: 7px;
+	margin-bottom: 1vh;
 }
 
 .singleborder {
@@ -1666,6 +1677,44 @@ body {
 	border-color: #DDDDDD;
 	padding-left: 2px;
 	padding-right: 2px;
+}
+
+.invCell {
+	text-align: center;
+	white-space: nowrap;
+}
+
+.invHeaderCell {
+  padding-left: 1vh;
+  padding-right: 1vh;
+}
+
+.buyButtonsCell {
+	text-align: left;
+	white-space: nowrap;
+	width: 1%;	/* Make it shrink */
+}
+
+.sellButtonsCell {
+	text-align: right;
+  white-space: nowrap;
+	width: 1%;	/* Make it shrink */
+}
+
+.expandyCell {
+	width: 100%;
+}
+
+.spacingRow {
+	visibility: collapse;
+	font-size: 0px;
+}
+
+.squashed {
+	line-height: 0px;
+	height: 0px;
+	padding-top: 0px !important;
+	padding-bottom: 0px !important;
 }
 
 .headerWrapper {
