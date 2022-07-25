@@ -126,7 +126,9 @@ function deepFreeze(object) {
 const levelData = [
 	{
 		levelDownMessage: "err",
+		levelDownImg: "leveldown0.jpeg",
 		levelUpMessage: "You decide you are ready to roll to other groups of babies",
+		levelUpImg: "levelup0.jpeg",
 		levelUpAwesomeness: "You can choose your next destination and revisit places with favorable prices.",
 		levelDownLabel: "err",
 		levelUpLabel: "Roll to another group",
@@ -137,10 +139,11 @@ const levelData = [
 		BossDiscoveryMsg2: ", larger than the others, who babbles a name which might be \"",
 		BossDiscoveryMsg3: "\". Here you can buy upgrades in exchange for ",
 		BossDiscoveryMsg4: ". Perhaps you can trade with the other babies to get some.",
+		BossBabyImg: "bossBaby0.jpeg",
 		ArrivalMsg1: "You arrive at ",
 		ArrivalMsg2: "'s ",
-		ExploreMsg: "Random limb movements propel you.",
-		ExploreHdr: "Thrashing toward the unknown . . . ",
+		MoveMsg: "Random limb movements propel you.",
+		MoveHdr: "Thrashing toward the unknown . . . ",
 		RevisitMsg: "You thrash your limbs with purpose.",
 		RevisitHdr1: "Thrashing toward ",
 		RevisitHdr2: "'s ",
@@ -153,20 +156,28 @@ const levelData = [
 		locomotionType: 'thrash',
 		locationLabel: ['spot','spot','spot','spot','spot'],
 		travelFasterUpgradeMsg: [" reaches into a nearby diaper and liberally applies grease to your back.", " shows you how to thrash about more efficiently."],
+		travelFasterUpgradeImg: ["backgrease.jpeg", "teachingBaby0.jpeg"],
 		travelFasterUpgradeDesc: ['Back Grease', 'Super Thrash'],
 		cargoUpgradeMsg: ' teaches you how to grip 100 more boogers at once.',
+		cargoUpgradeImg: 'cargograsp.jpeg',
 		cargoUpgradeDesc: 'Tighter Grip',
 		levelUpgradeMsg: ' teaches you how to roll over to travel further to reach other groups of babies.',
 		levelUpgradeDesc: 'Roll Over',
 		levelUpgradeHeaderMsg: "You learned to roll over!",
+		levelUpgradeHeaderImg: "rollover.jpeg",
 		loseMsg: 'As you thrashed your limbs, you accidentally flung away ',
+		loseImg: 'BabyLossLevel0.jpeg',
 		foundMsg: 'As you thrashed your limbs, you managed to find ',
+		foundImg: 'BabyFoundLevel0.jpeg',
 		exploreMsg: 'You have visited every baby in this group and are starting to get better at thrashing about.',
+		exploreImg: 'BabyCircuit0.jpeg',
 		numLocations: 5,
 	},
 	{
 		levelDownMessage: "You lie on your back and prepare to move by thrashing about",
+		levelDownImg: "leveldown1.jpeg",
 		levelUpMessage: "You decide you are ready to crawl to other rooms of babies",
+		levelUpImg: "levelup1.jpeg",
 		levelUpAwesomeness: "Combat! (Coming soon)",
 		levelDownLabel: "Enter ",
 		levelUpLabel: "Crawl to another baby room",
@@ -177,10 +188,11 @@ const levelData = [
 		BossDiscoveryMsg2: ", larger than the others, who babbles a name which sounds like \"",
 		BossDiscoveryMsg3: "\". Here you can buy upgrades in exchange for ",
 		BossDiscoveryMsg4: ".",
+		BossBabyImg: "bossBaby1.jpeg",
 		ArrivalMsg1: "You arrive at ",
 		ArrivalMsg2: "'s ",
-		ExploreMsg: "You roll awkwardly toward a new group.",
-		ExploreHdr: "Rolling somewhere new . . . ",
+		MoveMsg: "You roll awkwardly toward a new group.",
+		MoveHdr: "Rolling somewhere new . . . ",
 		RevisitMsg: "You roll determinedly.",
 		RevisitHdr1: "Rolling toward ",
 		RevisitHdr2: "'s ",
@@ -193,20 +205,28 @@ const levelData = [
 		locomotionType: 'roll',
 		locationLabel: ['doorway','group','group','group','group'],
 		travelFasterUpgradeMsg: [" reaches into a nearby diaper and liberally applies grease to your tummy.", " shows you how to roll more efficiently."],
+		travelFasterUpgradeImg: ["tummygrease.jpeg", "teachingBaby1.jpeg"],
 		travelFasterUpgradeDesc: ['Tummy Grease', 'Mega Roll'],
 		cargoUpgradeMsg: ' violently stretches your cheeks. They will now hold 100 more items.',
+		cargoUpgradeImg: 'cargostretch.jpeg',
 		cargoUpgradeDesc: 'Stretchier Cheeks',
 		levelUpgradeMsg: ' teaches you how to crawl and thereby reach other rooms.',
 		levelUpgradeDesc: 'Crawl',
 		levelUpgradeHeaderMsg: "You learned to crawl!",
+		levelUpgradeHeaderImg: "crawl.jpeg",
 		loseMsg: 'While rolling, you choked and accidentally swallowed ',
+		loseImg: 'BabyLossLevel1.jpeg',
 		foundMsg: 'While rolling, you managed to find ',
+		foundImg: 'BabyFoundLevel1.jpeg',
 		exploreMsg: 'You have visited every group in this room and you notice your rolling skills have improved.',
+		exploreImg: 'BabyCircuit1.jpeg',
 		numLocations: 5,
 	},
 	{
 		levelDownMessage: "You lie down, and prepare to move by rolling over",
+		levelDownImg: "leveldown2.jpeg",
 		levelUpMessage: "You decide you are ready to ride the elevator to visit other floors full of babies",
+		levelUpImg: "levelup2.jpeg",
 		levelUpAwesomeness: "?????? (TBD, coming eventually)",
 		levelDownLabel: "Enter ",
 		levelUpLabel: "Use Elevator",
@@ -217,10 +237,11 @@ const levelData = [
 		BossDiscoveryMsg2: ", larger than the others, who babbles that their name is \"",
 		BossDiscoveryMsg3: "\". Here you can buy upgrades in exchange for ",
 		BossDiscoveryMsg4: ".",
+		BossBabyImg: "bossBaby2.jpeg",
 		ArrivalMsg1: "You arrive at ",
 		ArrivalMsg2: "'s ",
-		ExploreMsg: "You crawl aimlessly toward a new doorway.",
-		ExploreHdr: "Crawling somwhere new . . . ",
+		MoveMsg: "You crawl aimlessly toward a new doorway.",
+		MoveHdr: "Crawling somwhere new . . . ",
 		RevisitMsg: "You crawl steadily.",
 		RevisitHdr1: "Crawling toward ",
 		RevisitHdr2: "'s ",
@@ -233,28 +254,35 @@ const levelData = [
 		locomotionType: 'crawl',
 		locationLabel: ['elevator','doorway','doorway','doorway','doorway'],
 		travelFasterUpgradeMsg: [" reaches into a nearby diaper and liberally applies grease to your elbows.", " shows you how to crawl more efficiently."],
+		travelFasterUpgradeImg: ["elbowgrease.jpeg", "teachingBaby2.jpeg"],
 		travelFasterUpgradeDesc: ['Elbow Grease', 'Hyper Crawl'],
 		cargoUpgradeMsg: ' provides you with a roomier diaper.',
+		cargoUpgradeImg: 'cargodiaper.jpeg',
 		cargoUpgradeDesc: 'Bigger Diaper',
 		levelUpgradeMsg: ' teaches you how to push elevator buttons to access other floors.',
 		levelUpgradeDesc: 'Use Elevator',
 		levelUpgradeHeaderMsg: "You learned to use the elevator!",
+		levelUpgradeHeaderImg: "elevator.jpeg",
 		loseMsg: 'Your diaper loosened while crawling, and you lost ',
+		loseImg: 'BabyLossLevel2.jpeg',
 		foundMsg: 'You kept out a sharp eye while crawling and managed to find ',
+		foundImg: 'BabyFoundLevel2.jpeg',
 		exploreMsg: 'You have visited every room on this floor and you notice your crawling skills have improved.',
+		exploreImg: 'BabyCircuit2.jpeg',
 		numLocations: 5,
 	},
 ]
 deepFreeze(levelData)
 
 // These are the variables to save between sessions
-var gameVersion = "0.1.0"
+var gameVersion = "0.1.1"
 var gameSeed = Math.floor(Math.random()*Number.MAX_SAFE_INTEGER)
 var waitingTitleCards = 0
 var waitingTitleHeader = []
 var waitingTitleFooter = []
 var waitingTitleText = []
 var waitingTitleButton = []
+var waitingTitleImage = []
 var lastChar = ' '
 var alreadyTyped = ''
 var textBelow = ''
@@ -288,7 +316,7 @@ var gossipLocation = 0
 // End variables to save betweens sessions
 const varsToSave = ['gameVersion', 'gameSeed', 'waitingTitleCards',
 			'waitingTitleHeader', 'waitingTitleFooter', 'waitingTitleText',
-			'waitingTitleButton', 'lastChar', 'alreadyTyped', 'textBelow',
+			'waitingTitleButton', 'waitingTitleImage', 'lastChar', 'alreadyTyped', 'textBelow',
 			'textToType', 'textToTypeBolded', 'waitingMessagesToType',
 			'lastLineWasBold', 'currLevel', 'locIndex', 'nextLocIndex', 'transitMoves',
 			'pickingEnabled', 'tradingEnabled', 'storeVisible', 'upgradesVisible',
@@ -368,7 +396,7 @@ function isPunctuation(charToCheck) {
 	return(charToCheck == '.' || charToCheck == ',' || charToCheck == '?' || charToCheck == '!' || charToCheck == ':' || charToCheck == ';')
 }
 
-function setupTitleCard(text, header, footer, button)  {
+function setupTitleCard(text, header, footer, button, imageSRC)  {
 	document.getElementById("titleMainTextGoesHere").innerHTML = text.replace(/\n/g,'<br/>')
 	document.getElementById("titleHeaderTextGoesHere").innerHTML = header
 	if(button == "" && footer == "") {
@@ -378,18 +406,25 @@ function setupTitleCard(text, header, footer, button)  {
 		document.getElementById("continueButton").innerHTML = button
 		document.getElementById("titleCardFooter").style.display = "flex"
 	}
+	if(imageSRC == "") {
+		document.getElementById("titleCardImageGoesHere").style.display = "none"
+	} else {
+		document.getElementById("titleCardImageGoesHere").style.backgroundImage = "url(" + imageSRC + ")"
+		document.getElementById("titleCardImageGoesHere").style.display = "flex"
+	}
 	document.getElementById("normalGameGoesHere").style.display = "none"
 	document.getElementById("titleCard").style.display = "flex"
 }
 
 function hideTitleCard() {
 	if(waitingTitleCards > 0) {
-		setupTitleCard(waitingTitleText[0], waitingTitleHeader[0], waitingTitleFooter[0], waitingTitleButton[0])
+		setupTitleCard(waitingTitleText[0], waitingTitleHeader[0], waitingTitleFooter[0], waitingTitleButton[0], waitingTitleImage[0])
 		for(i = 0; i < waitingTitleCards - 1; i++) {
 			waitingTitleHeader[i] = waitingTitleHeader[i+1]
 			waitingTitleFooter[i] = waitingTitleFooter[i+1]
 			waitingTitleText[i] = waitingTitleText[i+1]
 			waitingTitleButton[i] = waitingTitleButton[i+1]
+			waitingTitleImage[i] = waitingTitleImage[i+1]
 		}
 		waitingTitleCards--
 	} else {
@@ -398,8 +433,8 @@ function hideTitleCard() {
 	}
 }
 
-function displayTitleCard(mainText, headerText, footerText, buttonText="OK") {
-	// Make sure header is capitalized
+function displayTitleCard(mainText, headerText, footerText, buttonText="OK", imageName="") {
+	var imageSRC = 'images/cardImages/' + imageName
 
 	if(document.getElementById("titleCard").style.display == "flex") {
 		// Already have a title card displayed, so queue this one up
@@ -407,9 +442,10 @@ function displayTitleCard(mainText, headerText, footerText, buttonText="OK") {
 		waitingTitleFooter[waitingTitleCards] = footerText
 		waitingTitleText[waitingTitleCards] = mainText
 		waitingTitleButton[waitingTitleCards] = buttonText
+		waitingTitleImage[waitingTitleCards] = imageSRC
 		waitingTitleCards++
 	} else {
-		setupTitleCard(mainText, headerText, footerText, buttonText)
+		setupTitleCard(mainText, headerText, footerText, buttonText, imageSRC)
 	}
 }
 
@@ -510,13 +546,13 @@ function typeNextText() {
 // If titleCardFooter and/or titleCardHeader is passed, then text will be
 // displayed as a title card with a header and footer and text will be bolded
 // when user returns from title card
-function typeText(whatToType, titleCardHeader = "", titleCardFooter = "", titleCardButton = "OK") {
+function typeText(whatToType, titleCardHeader = "", titleCardFooter = "", titleCardButton = "OK", titleCardImageName = "") {
 	//textBelow = '<br><br>' + alreadyTyped + textBelow
 	//alreadyTyped = ''
 	var showTitleCard = (titleCardFooter.length > 0 || titleCardHeader.length > 0)
 	if(showTitleCard) {
 		titleCardHeader = titleCardHeader.charAt(0).toUpperCase() + titleCardHeader.slice(1)
-		displayTitleCard(whatToType, titleCardHeader, titleCardFooter, titleCardButton)
+		displayTitleCard(whatToType, titleCardHeader, titleCardFooter, titleCardButton, titleCardImageName)
 		whatToType = titleCardHeader + " " + whatToType
 	}
 	textToType[waitingMessagesToType] = '\n\n' + whatToType
@@ -667,12 +703,12 @@ function handleLostAndFound() {
 				typeText(levelData[currLevel].loseMsg + " " +
 								amount + " " + levelData[currLevel].tradeableItemsSingular[whichInv] + "!" + suggestion,
 								levelData[currLevel].tradeableItemsSingular[whichInv] + " lost.",
-								negativeExclamation())
+								negativeExclamation(), "OK", levelData[currLevel].loseImg)
 			} else {
 				typeText(levelData[currLevel].loseMsg + " " +
 								amount + " " + levelData[currLevel].tradeableItems[whichInv] + "!" + suggestion,
 								levelData[currLevel].tradeableItems[whichInv] + " lost.",
-								negativeExclamation())
+								negativeExclamation(), "OK", levelData[currLevel].loseImg)
 			}
 		}
 	} else if(whaHappen > 0.975 && hasAnything()) {
@@ -688,12 +724,12 @@ function handleLostAndFound() {
 				typeText(levelData[currLevel].foundMsg + " " +
 								amount + " " + levelData[currLevel].tradeableItemsSingular[whichInv] + "!",
 								levelData[currLevel].tradeableItemsSingular[whichInv] + " found.",
-								positiveExclamation())
+								positiveExclamation(), "OK", levelData[currLevel].foundImg)
 			} else {
 				typeText(levelData[currLevel].foundMsg + " " +
 								amount + " " + levelData[currLevel].tradeableItems[whichInv] + "!",
 								levelData[currLevel].tradeableItems[whichInv] + " found.",
-								positiveExclamation())
+								positiveExclamation(), "OK", levelData[currLevel].foundImg)
 			}
 		}
 	}
@@ -895,7 +931,7 @@ function buyUpgrade(upgradeType, upgradeAmount, cost) {
 					showingGossipColors = true
 					inv[3] -= cost
 					randomizeStore()
-					typeText('"' + getGossipText() + '"', "Price Rumors: ", "Go Baby!")
+					typeText('"' + getGossipText() + '"', "Price Rumors: ", "Go Baby!", "OK", "gossip.jpeg")
 					setupLocationRadioButtons()
 					inventoryChanged = true
 					gtag('event', 'gossip', {'event_category': 'upgradeBought', 'value': currLevel})
@@ -909,12 +945,12 @@ function buyUpgrade(upgradeType, upgradeAmount, cost) {
 					if(travelTime[currLevel] > 1 + (visitedAllLocations() ? 0 : 1)) {
 						typeText(locationName[currLevel][locIndex] + levelData[currLevel].travelFasterUpgradeMsg[0],
 												"Travel Speed Upgraded.",
-												"Go Baby!")
+												"Go Baby!", "OK", levelData[currLevel].travelFasterUpgradeImg[0])
 						gtag('event', 'travelSpeed', {'event_category': 'upgradeBought', 'event_label': 'intermediate', 'value': currLevel})
 					} else {
 						typeText(locationName[currLevel][locIndex] + levelData[currLevel].travelFasterUpgradeMsg[1],
 												"Travel Speed Upgraded.",
-												"Go Baby!")
+												"Go Baby!", "OK", levelData[currLevel].travelFasterUpgradeImg[1])
 						gtag('event', 'travelSpeed', {'event_category': 'upgradeBought', 'event_label': 'final', 'value': currLevel})
 					}
 				}
@@ -925,7 +961,7 @@ function buyUpgrade(upgradeType, upgradeAmount, cost) {
 				inventoryChanged = true
 				typeText(locationName[currLevel][locIndex] + levelData[currLevel].cargoUpgradeMsg,
 											"Cargo space upgraded.",
-											"More Room!")
+											"More Room!", "OK", levelData[currLevel].cargoUpgradeImg)
 				gtag('event', 'cargo', {'event_category': 'upgradeBought', 'value': currLevel})
 				break
 			case 'level':
@@ -937,11 +973,11 @@ function buyUpgrade(upgradeType, upgradeAmount, cost) {
 					typeText(locationName[currLevel][locIndex] + levelData[currLevel].levelUpgradeMsg +
 											" You can now advance to level " + (currLevel + 1) + " (\"" + levelData[currLevel].levelUpLabel + "\").",
 											levelData[currLevel].levelUpgradeHeaderMsg,
-											"Level " + maxLevel + " Available!")
+											"Level " + maxLevel + " Available!", "OK", levelData[currLevel].levelUpgradeHeaderImg)
 					gtag('event', 'level', {'event_category': 'upgradeBought', 'value': maxLevel})
 				} else {
 					typeText("You have completed Baby Merchant! Hopefully more will be written soon.",
-										"You win!", "Thanks for playing")
+										"You win!", "Thanks for playing", "OK", "won.jpeg")
 					gtag('event', 'win', {'event_category': 'gameState', 'value': currLevel})
 				}
 				break
@@ -1011,14 +1047,14 @@ function goBaby() {
 					typeText("You should really have at least 10 " + levelData[currLevel].tradeableItems[3] +
 										" before proceeding to level " + (currLevel + 1),
 										"Get more " + levelData[currLevel].tradeableItems[3],
-										"Too poor!")
+										"Too poor!", "OK", "sadbaby.jpeg")
 				} else if(currLevel < maxLevel) {
 					typeText(levelData[currLevel].levelUpMessage +
 										", taking only your " + levelData[currLevel].tradeableItems[3] + " with you." +
 										"\n\nNEW THIS LEVEL: " +
 										levelData[currLevel].levelUpAwesomeness,
 										"Advancing to level " + (currLevel+1) + ":",
-										"Go Baby!")
+										"Go Baby!", "OK", levelData[currLevel].levelUpImg)
 					document.getElementById("destinationsAndLabel").style.display = "flex"
 
 					// Preserve inventory that can't go up to the next level
@@ -1066,7 +1102,7 @@ function goBaby() {
 					typeText(levelData[currLevel].levelDownMessage +
 										", taking only your " + levelData[currLevel].tradeableItems[0] + " with you.",
 										"Retreating to level " + (currLevel-1) + ":",
-										"Humble thyself")
+										"Humble thyself", "OK", levelData[currLevel].levelDownImg)
 					// Preserve inventory that can't go down to the previous level
 					oldInv[currLevel] = [0,0,0,0]
 					for(var i = 1; i < inv.length; i++) {
@@ -1124,7 +1160,7 @@ function goBaby() {
 						inv[2]++
 						typeText("To your incredible delight, you have drawn forth that rarest of boogers, the " + levelData[currLevel].tradeableItemsSingular[2] + "!",
 											"You found a " + levelData[currLevel].tradeableItemsSingular[2] + "!!",
-											positiveExclamation())
+											positiveExclamation(), "OK", "bloodybooger.jpeg")
 					}
 				}
 				setTimeout("document.getElementById('buttonIDpick').disabled = false", 40*PAUSE_MULT)
@@ -1172,6 +1208,7 @@ function goBaby() {
 						}
 						var coolLocationFooter = ""
 						var coolLocationHeader = ""
+						var coolLocationImage = ""
 						var locationMessage = ''
 						if(currLevel > 0) {
 							document.getElementById("destinationsAndLabel").style.display = "flex"
@@ -1194,7 +1231,7 @@ function goBaby() {
 									exploreMsg += " Looking around, you see that continued thrashing will bring you full circle to revisit " +
 												nextCtype + " " + locationName[currLevel][nextLocIndex] + "."
 								}
-								typeText(exploreMsg, "Exploration complete!", "Go Baby!")
+								typeText(exploreMsg, "Exploration complete!", "Go Baby!", "OK", levelData[currLevel].exploreImg)
 								gtag('event', 'exploration', {'event_category': 'milestone', 'value': currLevel})
 							}
 							if(locIndex > 0) {
@@ -1208,6 +1245,7 @@ function goBaby() {
 									locationMessage += " You notice " + locationName[currLevel][locIndex]  +
 														" has a finger in each nostril. Hmmmm."
 									coolLocationHeader = "Meeting " + ctype + " " + locationName[currLevel][locIndex] + ":"
+									coolLocationImage = "nosepicker.jpeg"
 									coolLocationFooter = "Nose picking is cool"
 									gtag('event', 'picking', {'event_category': 'milestone', 'value': currLevel})
 								}
@@ -1217,6 +1255,7 @@ function goBaby() {
 											levelData[currLevel].BossDiscoveryMsg3 + levelData[currLevel].tradeableItems[3] +
 											levelData[currLevel].BossDiscoveryMsg4
 								coolLocationHeader = "Meeting " + ctype + " " + locationName[currLevel][locIndex] + ":"
+								coolLocationImage = levelData[currLevel].BossBabyImg
 								coolLocationFooter = "Upgrades for sale"
 							}
 						} else {
@@ -1234,11 +1273,12 @@ function goBaby() {
 											" seems to want to trade with you, but these wares look so expensive!" +
 											" A voice resonates in your deepest being . . .  \"Buy low. Sell high.\""
 								coolLocationHeader = "Meeting " + ctype + " " + locationName[currLevel][locIndex] + ":"
+								coolLocationImage = "buysellbaby.jpeg"
 								coolLocationFooter = "Time to Trade!"
 								gtag('event', 'trading', {'event_category': 'milestone', 'value': currLevel})
 							}
 						}
-						typeText(locationMessage, coolLocationHeader, coolLocationFooter)
+						typeText(locationMessage, coolLocationHeader, coolLocationFooter, "OK", coolLocationImage)
 						setHeaderText(levelData[currLevel].VisitHdr1 + ctype +
 									levelData[currLevel].VisitHdr2 + locationName[currLevel][locIndex] +
 									levelData[currLevel].VisitHdr3 + levelData[currLevel].locationLabel[locIndex])
@@ -1256,8 +1296,8 @@ function goBaby() {
 							setHeaderText(levelData[currLevel].RevisitHdr1 + locationName[currLevel][nextLocIndex] +
 								 		levelData[currLevel].RevisitHdr2 + levelData[currLevel].locationLabel[nextLocIndex])
 						} else {
-							typeText(levelData[currLevel].ExploreMsg)
-							setHeaderText(levelData[currLevel].ExploreHdr)
+							typeText(levelData[currLevel].MoveMsg)
+							setHeaderText(levelData[currLevel].MoveHdr)
 						}
 					}
 				}
@@ -1539,6 +1579,7 @@ function clearGameVariables() {
 	waitingTitleFooter = []
 	waitingTitleText = []
 	waitingTitleButton = []
+	waitingTitleImage = []
 	lastChar = ' '
 	alreadyTyped = ''
 	textBelow = ''
@@ -1608,11 +1649,11 @@ function startNewGame() {
 function askToContinue() {
 	displayTitleCard("<button onclick='startNewGame(); hideTitleCard();' class='continueButton'>Start New Game</button><br><br>" +
 									 "<button onclick='loadGameState(); hideTitleCard();'  class='continueButton'>Continue Previous Game</button>",
-									 "👶 Baby Merchant 👶", "", "")
+									 "👶 Baby Merchant 👶", "", "", "BabyMerchant.jpeg")
 }
 
 var oldGameVersion = JSON.parse(localStorage.getItem('gameVersion'))
-if(oldGameVersion == null || oldGameVersion != gameVersion) {
+if( oldGameVersion == null || oldGameVersion != gameVersion) {
 	startNewGame()
 } else {
 	setTimeout('askToContinue()',1)
@@ -1880,6 +1921,7 @@ button {
 	position: relative;
 	align-items: center;
   flex: 1 1 auto;
+	flex-direction: column;
 }
 
 .titleCardFooter {
@@ -1912,6 +1954,19 @@ button {
 	font-size: min(4vw, 4vh);
 	text-align: center;
 	width: 100%
+  flex: 1 1 auto;
+}
+
+.titleCardImage {
+	padding: 15px;
+	margin: 15px 15px 0px;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: 50% 50%;
+	width: auto;
+	max-width: 100%;
+	width: -webkit-fill-available;
+	height: -webkit-fill-available;
 }
 
 .titleCardFooterText {
@@ -1969,6 +2024,7 @@ button {
 			<span id="titleHeaderTextGoesHere" class="titleCardHeaderText"></span>
 		</div>
 		<div class="titleCardMain bordered">
+			<div id="titleCardImageGoesHere" class="titleCardImage"></div>
 			<span id="titleMainTextGoesHere" class="titleCardMainText"></span>
 		</div>
 		<div id="titleCardFooter" class="titleCardFooter bordered">
