@@ -47,6 +47,7 @@
 
 		TODOs resulting from play testing:
 		* Bug: repeatedly entering and exiting level 0 to change prices made baby names undefined
+		* Bug: going to lower levels sometimes gets me stuck where I am too encumbered to go to the boss to go back up (shouldn't be possible)
 		* Early inventory management is hard to learn. Should make it easier by making slimy boogers
 					and bloody boogers move prices in opposite directions, so that when one is cheap,
 					other is expensive
@@ -1646,18 +1647,23 @@ function startNewGame() {
 		gtag('event', 'newGame', {'event_category': 'gameState'})
 }
 
-function askToContinue() {
+function askToContinue(saveAvailable) {
+	var picVariant = Math.random()*5;
+	var picName = "BabyMerchant"
+	if(picVariant < 1) picName += "B"
+	else if(picVariant < 2) picName += "C"
+	else if(picVariant < 3) picName += "D"
+	else if(picVariant < 4) picName += "E"
+	picName += ".jpeg"
+
 	displayTitleCard("<button onclick='startNewGame(); hideTitleCard();' class='continueButton'>Start New Game</button><br><br>" +
-									 "<button onclick='loadGameState(); hideTitleCard();'  class='continueButton'>Continue Previous Game</button>",
-									 "👶 Baby Merchant 👶", "", "", "BabyMerchant.jpeg")
+									(saveAvailable ? "<button onclick='loadGameState(); hideTitleCard();'  class='continueButton'>Continue Previous Game</button>" : ""),
+									 "👶 Baby Merchant 👶", "", "", picName)
 }
 
 var oldGameVersion = JSON.parse(localStorage.getItem('gameVersion'))
-if( oldGameVersion == null || oldGameVersion != gameVersion) {
-	startNewGame()
-} else {
-	setTimeout('askToContinue()',1)
-}
+var saveAvailable = (oldGameVersion != null && oldGameVersion == gameVersion)
+setTimeout('askToContinue(' + saveAvailable + ')',1)
 
 	</script>
 
