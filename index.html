@@ -51,9 +51,6 @@
 		* Early inventory management is hard to learn. Should make it easier by making slimy boogers
 					and bloody boogers move prices in opposite directions, so that when one is cheap,
 					other is expensive
-		* The text is just way too small, especially on the trading screen. Need to figure out a away
-					to make it more vertical and larger fonts. Probably buy and sell buttons need to go
-					under item names
 		* Eat boogers? This would help with early inventory management frustration, and it could
 		      build HP or have some other benefit
 		* Babies really ought to be playing with shards of glass for one of the items. Maybe replace
@@ -132,7 +129,7 @@ const levelData = [
 		levelUpImg: "levelup0.jpeg",
 		levelUpAwesomeness: "You can choose your next destination and revisit places with favorable prices.",
 		levelDownLabel: "err",
-		levelUpLabel: "Roll to another group",
+		levelUpLabel: "Roll&nbsp;to another&nbsp;group",
 		discoveryMsg1: "You bump into another ",
 		discoveryMsg2: " whom you decide should be named ",
 		discoveryMsg3: ".",
@@ -150,9 +147,9 @@ const levelData = [
 		RevisitHdr2: "'s ",
 		VisitHdr1: "Trading at ",
 		VisitHdr2: " ",
-		VisitHdr3: "'s ",
-		tradeableItems: ['crusty boogers (ƀ)', 'slimy boogers', 'bloody boogers', 'pieces of fuzz'],
-		tradeableItemsSingular: ['crusty booger (ƀ)', 'slimy booger', 'bloody booger', 'piece of fuzz'],
+		VisitHdr3: "'s&nbsp;",
+		tradeableItems: ['crusty boogers&nbsp;(ƀ)', 'slimy boogers', 'bloody boogers', 'pieces of&nbsp;fuzz'],
+		tradeableItemsSingular: ['crusty booger&nbsp;(ƀ)', 'slimy booger', 'bloody booger', 'piece of&nbsp;fuzz'],
 		characterType: 'helpless baby',
 		locomotionType: 'thrash',
 		locationLabel: ['spot','spot','spot','spot','spot'],
@@ -180,8 +177,8 @@ const levelData = [
 		levelUpMessage: "You decide you are ready to crawl to other rooms of babies",
 		levelUpImg: "levelup1.jpeg",
 		levelUpAwesomeness: "Combat! (Coming soon)",
-		levelDownLabel: "Enter ",
-		levelUpLabel: "Crawl to another baby room",
+		levelDownLabel: "Enter&nbsp;",
+		levelUpLabel: "Crawl&nbsp;to another&nbsp;baby&nbsp;room",
 		discoveryMsg1: "You roll to another ",
 		discoveryMsg2: " who babbles a name which might be \"",
 		discoveryMsg3: "\".",
@@ -199,9 +196,9 @@ const levelData = [
 		RevisitHdr2: "'s ",
 		VisitHdr1: "Trading at ",
 		VisitHdr2: " ",
-		VisitHdr3: "'s ",
-		tradeableItems: ['pieces of fuzz', 'paperclips', 'shiny beads', 'pacifiers'],
-		tradeableItemsSingular: ['piece of fuzz', 'paperclip', 'shiny bead', 'pacifier'],
+		VisitHdr3: "'s&nbsp;",
+		tradeableItems: ['pieces of&nbsp;fuzz', 'paperclips', 'shiny beads', 'pacifiers'],
+		tradeableItemsSingular: ['piece of&nbsp;fuzz', 'paperclip', 'shiny bead', 'pacifier'],
 		characterType: 'wee baby',
 		locomotionType: 'roll',
 		locationLabel: ['doorway','group','group','group','group'],
@@ -229,7 +226,7 @@ const levelData = [
 		levelUpMessage: "You decide you are ready to ride the elevator to visit other floors full of babies",
 		levelUpImg: "levelup2.jpeg",
 		levelUpAwesomeness: "?????? (TBD, coming eventually)",
-		levelDownLabel: "Enter ",
+		levelDownLabel: "Enter&nbsp;",
 		levelUpLabel: "Use Elevator",
 		discoveryMsg1: "You crawl to another ",
 		discoveryMsg2: " who babbles a name which sounds like \"",
@@ -248,7 +245,7 @@ const levelData = [
 		RevisitHdr2: "'s ",
 		VisitHdr1: "Trading at ",
 		VisitHdr2: " ",
-		VisitHdr3: "'s ",
+		VisitHdr3: "'s&nbsp;",
 		tradeableItems: ['pacifiers', 'building blocks', 'toy cars', 'candies'],
 		tradeableItemsSingular: ['pacifier', 'building block', 'toy car', 'candy'],
 		characterType: 'lil baby',
@@ -1015,7 +1012,7 @@ function updateLocomoteButton() {
 			nextLocIndex = i
 		}
 	}
-	var newLocomoteText = levelData[currLevel].locomotionType + " to "
+	var newLocomoteText = levelData[currLevel].locomotionType + "&nbsp;to "
 	if(visitedLocation[currLevel][nextLocIndex]) {
 		newLocomoteText += locationName[currLevel][nextLocIndex] +
 															levelData[currLevel].VisitHdr3 + levelData[currLevel].locationLabel[nextLocIndex]
@@ -1023,7 +1020,11 @@ function updateLocomoteButton() {
 		newLocomoteText += levelData[currLevel].locationLabel[nextLocIndex]
 		if(nextLocIndex > 0) newLocomoteText += " #" + nextLocIndex
 	}
-	document.getElementById('buttonIDlocomote').innerHTML = newLocomoteText
+	document.getElementById('buttonIDlocomote').innerHTML = addLineBreaks(newLocomoteText)
+}
+
+function addLineBreaks(thingThatNeedsLineBreaks) {
+	return thingThatNeedsLineBreaks.replace(" ", "<br>")
 }
 
 function goBaby() {
@@ -1084,9 +1085,9 @@ function goBaby() {
 					storeVisible = true
 					randomizeStore(locIndex, true)
 					levelDownButton.style.visibility = 'visible'
-					levelDownButton.innerHTML = levelData[currLevel].levelDownLabel + locationName[currLevel][locIndex]  +
-																				levelData[currLevel].VisitHdr3 + levelData[currLevel].locationLabel[locIndex]
-					levelUpButton.innerHTML = levelData[currLevel].levelUpLabel
+					levelDownButton.innerHTML = addLineBreaks(levelData[currLevel].levelDownLabel + locationName[currLevel][locIndex]  +
+																				levelData[currLevel].RevisitHdr2 + levelData[currLevel].locationLabel[locIndex])
+					levelUpButton.innerHTML = addLineBreaks(levelData[currLevel].levelUpLabel)
 					levelUpButton.style.visibility = 'hidden'
 					pickButton.style.display = 'none'
 					setupLocationRadioButtons()
@@ -1125,9 +1126,9 @@ function goBaby() {
 					storeVisible = false
 					randomizeStore(locIndex, true)
 					upgradesVisible = true
-					levelDownButton.innerHTML = levelData[currLevel].levelDownLabel + locationName[currLevel][locIndex]  +
-																				levelData[currLevel].VisitHdr3 + levelData[currLevel].locationLabel[locIndex]
-					levelUpButton.innerHTML = levelData[currLevel].levelUpLabel
+					levelDownButton.innerHTML = addLineBreaks(levelData[currLevel].levelDownLabel + locationName[currLevel][locIndex]  +
+																				levelData[currLevel].RevisitHdr2 + levelData[currLevel].locationLabel[locIndex])
+					levelUpButton.innerHTML = addLineBreaks(levelData[currLevel].levelUpLabel)
 					levelUpButton.style.visibility = 'visible'
 					if(currLevel == 0) {
 						levelDownButton.style.visibility = 'hidden'
@@ -1214,8 +1215,8 @@ function goBaby() {
 						if(currLevel > 0) {
 							document.getElementById("destinationsAndLabel").style.display = "flex"
 							if(locIndex > 0){
-								levelDownButton.innerHTML = levelData[currLevel].levelDownLabel + locationName[currLevel][locIndex]  +
-																							levelData[currLevel].VisitHdr3 + levelData[currLevel].locationLabel[locIndex]
+								levelDownButton.innerHTML = addLineBreaks(levelData[currLevel].levelDownLabel + locationName[currLevel][locIndex]  +
+																							levelData[currLevel].RevisitHdr2 + levelData[currLevel].locationLabel[locIndex])
 								levelDownButton.style.visibility = 'visible'
 							}
 						}
@@ -1447,7 +1448,7 @@ function goBaby() {
 							sellButtons = '<button class="tradeButton" onclick="sellInv(' + i + ',' + inv[i] + ')">all</button>' + sellButtons
 						}
 						invHTML += sellButtons
-						invHTML += "</td><td class='singleborder invCell' " + alertStyle + ">" + levelData[currLevel].tradeableItems[i]
+						invHTML += "</td><td class='singleborder invCell' " + alertStyle + ">" + addLineBreaks(levelData[currLevel].tradeableItems[i])
 						invHTML += "</td><td class='singleborder invCell' " + alertStyle + ">" + displayPrice
 						invHTML += "</td><td class='singleborder invCell'>" + getDisplayNumber(inv[i], "yes")
 						invHTML += "</td><td class='buyButtonsCell'>"
@@ -1562,10 +1563,10 @@ function goBaby() {
 
 function setupInitialActions() {
 	setActionsHTML(
-			getButtonHTML('locomote', 'thrash about')
-			+ getButtonHTML('pick', 'pick nose')
-			+ getButtonHTML('levelDown', levelData[currLevel].levelDownLabel)
-			+ getButtonHTML('levelUp', levelData[currLevel].levelUpLabel)
+			getButtonHTML('locomote', addLineBreaks('thrash about'))
+			+ getButtonHTML('pick', addLineBreaks('pick nose'))
+			+ getButtonHTML('levelDown', addLineBreaks(levelData[currLevel].levelDownLabel))
+			+ getButtonHTML('levelUp', addLineBreaks(levelData[currLevel].levelUpLabel))
 		)
 	document.getElementById('buttonIDlocomote').style.visibility = 'visible'
 	setupLocationRadioButtons()
@@ -1739,7 +1740,6 @@ body {
 
 .invCell {
 	text-align: center;
-	white-space: nowrap;
 }
 
 .invHeaderCell {
@@ -1890,10 +1890,13 @@ body {
 
 button {
 	background-color:transparent;
-	border: min(0.1vw, 0.1vh) solid #dddddd;
-	padding: min(0.6vw, 0.6vh);
-	font-size: min(2.4vw, 2.4vh);
+	border: min(0.2vw, 0.2vh) solid #888888;
+	padding: min(1.0vw, 1.0vh);
+	font-size: min(3vw, 3vh);
+	margin-left: min(0.2vw, 0.2vh);
 	margin-right: min(1vw, 1vh);
+	min-height: min(8vw, 8vh);
+	min-width: min(5vw, 5vh);
 }
 
 .babyButton{
@@ -1902,16 +1905,18 @@ button {
 
 
 .tradeButton{
-	padding-bottom: min(0.2vw, 0.2vh);
+/*	padding-bottom: min(0.2vw, 0.2vh);
 	padding-top: min(0.2vw, 0.2vh);
-	padding-left: min(0.4vw, 0.4vh);
-	padding-right: min(0.4vw, 0.4vh);
-	margin-left: min(0.4vw, 0.4vh);
-	margin-right: min(0.4vw, 0.4vh);
+	padding-left: min(0.8vw, 0.8vh);
+	padding-right: min(0.4vw, 0.4vh);*/
+	margin-left: min(0.2vw, 0.2vh);
+	margin-right: min(0.2vw, 0.2vh);
+	padding: min(1.0vw, 1.0vh) min(0.6vw, 0.6vh);
 }
 
 .greyButton {
-	color: grey;
+	color: lightgrey;
+	border: min(0.2vw, 0.2vh) solid #dddddd;
 }
 
 .titleCard {
