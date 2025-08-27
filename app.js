@@ -1190,7 +1190,12 @@ function goBaby() {
           } else {
             invHTML += levelData[currLevel].tradeableItems[3];
           }
-          invHTML += '<div style="margin-top:8px;"><button class="tradeButton" onclick="doButtonAction(\'doneTrading\')">Done trading</button></div>';
+          invHTML += '<div style="margin-top:8px; display:flex; gap:8px; align-items:center;">' +
+            '<button class="tradeButton" onclick="doButtonAction(\'doneTrading\')">Done trading</button>';
+          if (currLevel == 0 && pickingEnabled) {
+            invHTML += '<button class="tradeButton" onclick="doButtonAction(\'pick\')">Pick nose</button>';
+          }
+          invHTML += '</div>';
         } else if (storeVisible) {
           invHTML += "<table class='collapseborder'>";
           invHTML +=
@@ -1329,7 +1334,12 @@ function goBaby() {
             invHTML += 'more items ';
           }
           invHTML += '(' + spaceUsed2 + '/' + cargoRoom + ')</td></tr></table>';
-          invHTML += '<div style="margin-top:8px;"><button class="tradeButton" onclick="doButtonAction(\'doneTrading\')">Done trading</button></div>';
+          invHTML += '<div style="margin-top:8px; display:flex; gap:8px; align-items:center;">' +
+            '<button class="tradeButton" onclick="doButtonAction(\'doneTrading\')">Done trading</button>';
+          if (currLevel == 0 && pickingEnabled) {
+            invHTML += '<button class="tradeButton" onclick="doButtonAction(\'pick\')">Pick nose</button>';
+          }
+          invHTML += '</div>';
         } else {
           invHTML += '<table>';
           for (i = inv.length - 1; i >= 0; i--) {
