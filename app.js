@@ -39,6 +39,7 @@ var maxLevel = 0;
 var inventoryChanged = false;
 var showingGossipColors = false;
 var gossipLocation = 0;
+var uiMode = 'movement';
 // End variables to save between sessions
 const varsToSave = [
   'gameVersion',
@@ -668,6 +669,37 @@ function updateLocomoteButton() {
   document.getElementById('buttonIDlocomote').innerHTML = addLineBreaks(newLocomoteText);
 }
 
+function showMovementUI() {
+  document.getElementById('controlsGoHere').style.display = 'flex';
+  document.getElementById('actionsGoHere').style.display = 'flex';
+  if (currLevel > 0) document.getElementById('destinationsAndLabel').style.display = 'flex';
+  if (currLevel < maxLevel) document.getElementById('buttonIDlevelUp').style.visibility = 'visible';
+  if (currLevel > 0) document.getElementById('buttonIDlevelDown').style.visibility = 'visible';
+}
+
+function hideMovementUI() {
+  document.getElementById('controlsGoHere').style.display = 'none';
+  document.getElementById('actionsGoHere').style.display = 'none';
+  document.getElementById('destinationsAndLabel').style.display = 'none';
+  document.getElementById('buttonIDlevelUp').style.visibility = 'hidden';
+  document.getElementById('buttonIDlevelDown').style.visibility = 'hidden';
+}
+
+function enterTradingMode() {
+  uiMode = 'trading';
+  hideMovementUI();
+}
+
+function exitTradingMode() {
+  uiMode = 'movement';
+  showMovementUI();
+  setInventoryHTML('');
+  setupLocationRadioButtons();
+  if (currLevel > 0 || visitedAllLocations()) {
+    updateLocomoteButton();
+  }
+}
+
 function goBaby() {
   if (!typingText) {
     var thisAction = buttonAction;
@@ -1014,6 +1046,7 @@ function goBaby() {
                 } else {
                   storeVisible = true;
                 }
+                enterTradingMode();
               }
             } else {
               if (visitedLocation[currLevel][nextLocIndex]) {
@@ -1035,6 +1068,11 @@ function goBaby() {
             updateLocomoteButton();
           }
 
+          break;
+        case 'doneTrading':
+          storeVisible = false;
+          upgradesVisible = false;
+          exitTradingMode();
           break;
         default:
           break;
@@ -1152,6 +1190,7 @@ function goBaby() {
           } else {
             invHTML += levelData[currLevel].tradeableItems[3];
           }
+          invHTML += '<div style="margin-top:8px;"><button class="tradeButton" onclick="doButtonAction(\'doneTrading\')">Done trading</button></div>';
         } else if (storeVisible) {
           invHTML += "<table class='collapseborder'>";
           invHTML +=
@@ -1290,6 +1329,7 @@ function goBaby() {
             invHTML += 'more items ';
           }
           invHTML += '(' + spaceUsed2 + '/' + cargoRoom + ')</td></tr></table>';
+          invHTML += '<div style="margin-top:8px;"><button class="tradeButton" onclick="doButtonAction(\'doneTrading\')">Done trading</button></div>';
         } else {
           invHTML += '<table>';
           for (i = inv.length - 1; i >= 0; i--) {
