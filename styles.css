@@ -1,0 +1,328 @@
+/*
+  CSS Code from here:
+  http://stackoverflow.com/questions/18651345/gradient-opacity-on-the-bottom-of-div
+  */
+.gradientback{
+
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+  	z-index: 10;
+    background: -moz-linear-gradient(top,  rgba(255,255,255,0) 0%, rgba(255,255,255,0.90) 100%); /* FF3.6+ */
+    background: -webkit-gradient(linear, left top, left bottom, color-stop(0%,rgba(255,255,255,0)), color-stop(100%,rgba(255,255,255,0.90))); /* Chrome,Safari4+ */
+    background: -webkit-linear-gradient(top, rgba(255,255,255,0) 0%,rgba(255,255,255,0.90) 100%); /* Chrome10+,Safari5.1+ */
+    background: -o-linear-gradient(top,  rgba(255,255,255,0) 0%,rgba(255,255,255,0.90) 100%); /* Opera 11.10+ */
+    background: -ms-linear-gradient(top,  rgba(255,255,255,0) 0%,rgba(255,255,255,0.90) 100%); /* IE10+ */
+    background: linear-gradient(to bottom,  rgba(255,255,255,0) 0%,rgba(255,255,255,0.90) 100%); /* W3C */
+    filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#fffffff00, endColorstr='#ffffffd8,GradientType=0 ); /* IE6-9 */
+
+}
+
+body {
+	font-size: min(3vw, 3vh);
+}
+
+.gameContainer {
+	display: flex;
+  align-items: center;
+  flex-direction: column;
+	position: absolute;
+  padding: 10px;
+	height: calc(100vh - 35px);
+	width: calc(100vw - 35px);
+	height: -webkit-fill-available;
+	/* width: 100%;
+  max-width: 100vw; */
+}
+
+.gameArea {
+	width: 100%;
+	/* max-width: 80vh; */
+  /* min-width: 400px; */
+	margin: min(0.3vw, 0.3vh);
+	padding: min(0.7vw, 0.7vh);
+	overflow: hidden;
+}
+
+.bordered {
+	border-width: 1px;
+	border-style: solid;
+	border-color: #DDDDDD;
+}
+
+.collapseborder {
+	border-collapse: collapse;
+	width: 100%;
+	margin-bottom: min(1vw, 1vh);
+}
+
+.singleborder {
+	border-width: 1px;
+	border-style: solid;
+	border-color: #DDDDDD;
+	padding-left: 2px;
+	padding-right: 2px;
+}
+
+.invCell {
+	text-align: center;
+}
+
+.invHeaderCell {
+  padding-left: min(1vw, 1vh);
+  padding-right: min(1vw, 1vh);
+}
+
+.buyButtonsCell {
+	text-align: left;
+	white-space: nowrap;
+	width: 1%;	/* Make it shrink */
+}
+
+.sellButtonsCell {
+	text-align: right;
+  white-space: nowrap;
+	width: 1%;	/* Make it shrink */
+}
+
+.expandyCell {
+	width: 100%;
+}
+
+.spacingRow {
+	visibility: collapse;
+	font-size: 0px;
+}
+
+.squashed {
+	line-height: 0px;
+	height: 0px;
+	padding-top: 0px !important;
+	padding-bottom: 0px !important;
+}
+
+.headerWrapper {
+	padding-top: 5px;
+	padding-bottom: 5px;
+	height: min(3vw, 3vh);
+	align-items: flex-end;
+	flex: 1 0 auto;
+  flex-direction: row;
+	display: none;
+}
+
+.headerText {
+	flex: 1 0 auto;
+}
+
+.statusText {
+	flex: 0 0 auto;
+}
+
+.inventoryWrapper {
+  align-items: center;
+  flex-direction: column;
+	flex: 1 0 auto;
+	display: none;
+}
+
+.controlsWrapper {
+	flex-direction: column;
+	flex: 1 0 auto;
+	display: none;
+}
+
+.actionsWrapper {
+	width: 100%;
+	display: none;
+	flex: 1 0 auto;
+}
+
+.destinationsContainer{
+	width: 100%;
+	display: none;
+	flex: 1 0 auto;
+	flex-direction: column;
+}
+
+.destinationsWrapper{
+	width: 100%;
+	display: flex;
+	flex-direction: row;
+	flex-wrap: wrap;
+	flex: 1 0 auto;
+}
+
+.locChoice {
+	padding-top: 4px;
+	padding-left: 2px;
+	padding-right: 2px;
+}
+
+.locChoiceLabel {
+	padding-top: 6px;
+}
+
+.locRadioButton {
+    vertical-align: middle;
+}
+
+.locRadioLabel {
+    vertical-align: middle;
+}
+
+.locRadioLabelDisabled {
+    vertical-align: middle;
+		color: grey;
+}
+
+.outputAndGradientWrapper{
+  position: relative;
+  flex: 1 1 auto;
+  height: 100%;
+	visibility: hidden;
+}
+
+/* Footer isn't displayed - it's just here for flexbox */
+.footerWrapper {
+	display: flex;
+  flex: 0 0 0px;
+	padding: 0px;
+}
+
+.outputWrapper {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+	flex-direction: column;
+	padding-top: 10px;
+
+	/* Make text unselectable (blatantly stolen from ADR) */
+	-webkit-touch-callout: none;
+	-webkit-user-select: none;
+	-khtml-user-select: none;
+	-moz-user-select: none;
+	-ms-user-select: none;
+	user-select: none;
+}
+
+.outputSpan {
+	display: flex;
+	padding-left: 10px;
+	padding-right: 10px;
+}
+
+button {
+	background-color:transparent;
+	border: min(0.2vw, 0.2vh) solid #888888;
+	padding: min(1.0vw, 1.0vh);
+	font-size: min(3vw, 3vh);
+	margin-left: min(0.2vw, 0.2vh);
+	margin-right: min(1vw, 1vh);
+	min-height: min(8vw, 8vh);
+	min-width: min(5vw, 5vh);
+}
+
+.babyButton{
+	visibility: hidden;
+}
+
+
+.tradeButton{
+/*	padding-bottom: min(0.2vw, 0.2vh);
+	padding-top: min(0.2vw, 0.2vh);
+	padding-left: min(0.8vw, 0.8vh);
+	padding-right: min(0.4vw, 0.4vh);*/
+	margin-left: min(0.2vw, 0.2vh);
+	margin-right: min(0.2vw, 0.2vh);
+	padding: min(1.0vw, 1.0vh) min(0.6vw, 0.6vh);
+}
+
+.greyButton {
+	color: lightgrey;
+	border: min(0.2vw, 0.2vh) solid #dddddd;
+}
+
+.titleCard {
+	display: none;
+	flex-direction: column;
+}
+
+.titleCardMain {
+	display: flex;
+	width: 100%;
+	/* max-width: 80vh; */
+  height: 100%;
+	position: relative;
+	align-items: center;
+  flex: 1 1 auto;
+	flex-direction: column;
+}
+
+.titleCardFooter {
+	display: flex;
+	width: 100%;
+	/* max-width: 80vh; */
+	flex-direction: row;
+  flex: 0 0 auto;
+	margin-top: 8px;
+  margin-bottom: 16px;
+}
+
+.titleCardBottomFloater {
+	display: flex;
+	width: 100%;
+	/* max-width: 80vh; */
+	flex: 0 0 0px;
+}
+
+.titleCardHeader {
+	display: flex;
+	width: 100%;
+	/* max-width: 80vh; */
+  flex: 0 0 auto;
+	margin-bottom: 8px;
+}
+
+.titleCardMainText {
+	padding: 15px;
+	font-size: min(4vw, 4vh);
+	text-align: center;
+	width: 100%;
+  flex: 1 1 auto;
+}
+
+.titleCardImage {
+	padding: 15px;
+	margin: 15px 15px 0px;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: 50% 50%;
+	width: auto;
+	max-width: 100%;
+	width: -webkit-fill-available;
+	height: -webkit-fill-available;
+}
+
+.titleCardFooterText {
+	padding: 15px;
+	flex: 1 1 auto;
+	font-size: min(4vw, 4vh);
+}
+
+.titleCardHeaderText {
+	width: 100%;
+	padding: 15px;
+	font-size: min(4vw, 4vh);
+	text-align: center;
+}
+
+.continueButton {
+	flex: 0 0 auto;
+	font-size: min(4vw, 4vh);
+	margin: 9px;
+}

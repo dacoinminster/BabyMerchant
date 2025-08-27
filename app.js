@@ -1,0 +1,1452 @@
+'use strict';
+
+// Start RNG as truly random until we set a seed
+Math.seedrandom();
+
+var buttonAction = '';
+
+// These are the variables to save between sessions
+var gameVersion = '0.1.1';
+var gameSeed = Math.floor(Math.random() * Number.MAX_SAFE_INTEGER);
+var waitingTitleCards = 0;
+var waitingTitleHeader = [];
+var waitingTitleFooter = [];
+var waitingTitleText = [];
+var waitingTitleButton = [];
+var waitingTitleImage = [];
+// Typing state is defined in typing.js: lastChar, alreadyTyped, textBelow, textToType, textToTypeBolded,
+// waitingMessagesToType, lastLineWasBold, typingText
+var currLevel = 0;
+var locIndex = 0;
+var nextLocIndex = 1;
+var transitMoves = 4;
+var pickingEnabled = false;
+var tradingEnabled = false;
+var storeVisible = false;
+var upgradesVisible = false;
+var lastGameHTML = '';
+var inv = [0, 0, 0, 0];
+var oldInv = [];
+var oldLocIndex = [];
+var travelTime = [];
+var visitedLocation = [];
+var cargoRoom = 100;
+var price = [];
+var locationName = [];
+var levelSeed = [];
+var levelChildSeed = [];
+var maxLevel = 0;
+var inventoryChanged = false;
+var showingGossipColors = false;
+var gossipLocation = 0;
+// End variables to save between sessions
+const varsToSave = [
+  'gameVersion',
+  'gameSeed',
+  'waitingTitleCards',
+  'waitingTitleHeader',
+  'waitingTitleFooter',
+  'waitingTitleText',
+  'waitingTitleButton',
+  'waitingTitleImage',
+  'lastChar',
+  'alreadyTyped',
+  'textBelow',
+  'textToType',
+  'textToTypeBolded',
+  'waitingMessagesToType',
+  'lastLineWasBold',
+  'currLevel',
+  'locIndex',
+  'nextLocIndex',
+  'transitMoves',
+  'pickingEnabled',
+  'tradingEnabled',
+  'storeVisible',
+  'upgradesVisible',
+  'lastGameHTML',
+  'inv',
+  'oldInv',
+  'oldLocIndex',
+  'travelTime',
+  'visitedLocation',
+  'cargoRoom',
+  'price',
+  'locationName',
+  'levelSeed',
+  'levelChildSeed',
+  'maxLevel',
+  'inventoryChanged',
+  'showingGossipColors',
+  'gossipLocation',
+];
+deepFreeze(varsToSave);
+
+var PAUSE_MULT = 100; // Pause multiplier
+var devMode = false;
+if (devMode) {
+  gameSeed = 1;
+  PAUSE_MULT = 1;
+}
+
+var needToSave = false;
+
+function saveGameState() {
+  lastGameHTML = document.getElementById('normalGameGoesHere').innerHTML;
+
+  for (const key of varsToSave) {
+    localStorage.setItem(key, JSON.stringify(window[key]));
+  }
+  needToSave = false;
+}
+
+function loadGameState() {
+  for (const key of varsToSave) {
+    if (key != 'gameVersion') {
+      var value = localStorage.getItem(key);
+      if (value != null && value != 'undefined') {
+        window[key] = JSON.parse(value);
+      }
+    }
+  }
+
+  document.getElementById('normalGameGoesHere').innerHTML = lastGameHTML;
+
+  document.getElementById('buttonIDlocomote').style.display = 'block';
+  document.getElementById('buttonIDlocomote').style.visiblity = 'visible';
+  document.getElementById('buttonIDlocomote').disabled = false;
+  if (currLevel > 0) {
+    document.getElementById('destinationsAndLabel').style.display = 'flex';
+    document.getElementById('buttonIDpick').style.display = 'none';
+  } else {
+    document.getElementById('buttonIDpick').style.display = 'block';
+    if (pickingEnabled) {
+      document.getElementById('buttonIDpick').style.visibility = 'visible';
+      document.getElementById('buttonIDpick').disabled = false;
+    }
+  }
+
+  if (currLevel < maxLevel) {
+    document.getElementById('buttonIDlevelUp').style.display = 'block';
+    document.getElementById('buttonIDlevelUp').style.visiblity = 'visible';
+  }
+
+  if (currLevel > 0) {
+    document.getElementById('buttonIDlevelDown').style.display = 'block';
+    document.getElementById('buttonIDlevelDown').style.visiblity = 'visible';
+  }
+
+  setTimeout('goBaby()', 100);
+  if (typeof gtag === 'function') {
+    gtag('event', 'loadGame', { event_category: 'gameState' });
+  }
+}
+
+// Seed RNG deterministically for the rest of the session
+Math.seedrandom(gameSeed); // replaces Math.random with predictable pseudorandom generator
+
+function setupLevel(index, seed, mainLocationName) {
+  levelSeed[index] = seed;
+  Math.seedrandom(seed);
+  levelChildSeed[index] = [];
+  for (var i = 1; i < levelData[index].numLocations; i++) {
+    levelChildSeed[index][i] = Math.floor(Math.random() * Number.MAX_SAFE_INTEGER);
+  }
+  locationName[index] = [];
+  locationName[index][0] = mainLocationName;
+  for (var j = 1; j < levelData[index].numLocations; j++) {
+    locationName[index][j] = getRandomName();
+  }
+}
+
+function setupLocationRadioButtons() {
+  var rbHTML = '';
+  for (var i = 0; i < levelData[currLevel].numLocations; i++) {
+    rbHTML += '<div class="locChoice">';
+    rbHTML +=
+      '<input class="locRadioButton" type="radio" id="nextLoc' +
+      i +
+      '" name="nextLoc" value="' +
+      i +
+      '"';
+    rbHTML += ' onclick="updateLocomoteButton()"';
+    if (i == nextLocIndex) rbHTML += ' checked';
+    rbHTML += '>';
+    rbHTML += '<label for="nextLoc' + i + '" ';
+    if (showingGossipColors) {
+      if (i == gossipLocation) {
+        rbHTML += "style='color:rgb(0,200,0);' ";
+      }
+    }
+    if (i == locIndex) {
+      rbHTML += 'class="locRadioLabelDisabled">';
+    } else {
+      rbHTML += 'class="locRadioLabel">';
+    }
+
+    if (visitedLocation[currLevel][i]) {
+      rbHTML += locationName[currLevel][i];
+    } else {
+      rbHTML += levelData[currLevel].locationLabel[i];
+      if (i > 0) {
+        rbHTML += '&nbsp;#' + i;
+      }
+    }
+    rbHTML += '</label></div>';
+  }
+  setDestinationsHTML(rbHTML);
+}
+
+function positiveExclamation() {
+  var exclamationChoice = [
+    'Good Joss!',
+    'Yay!',
+    'Hooray!',
+    'Incredible!',
+    'Yes!',
+    'Fantastic!',
+    'Lucky you!',
+    'Fabulous!',
+    'Excellent!',
+    'Splendid!',
+  ];
+  return exclamationChoice[Math.floor(Math.random() * exclamationChoice.length)];
+}
+
+function negativeExclamation() {
+  var exclamationChoice = [
+    'Bad Joss!',
+    'Oh no!',
+    'Boo!',
+    'Terrible news!',
+    'No!',
+    'Bummer!',
+    'Bad luck!',
+    'Turnip farts!',
+    'Dagnabbit!',
+    'Poodoo!',
+  ];
+  return exclamationChoice[Math.floor(Math.random() * exclamationChoice.length)];
+}
+
+function doButtonAction(actionName) {
+  buttonAction = actionName;
+}
+
+function hasAnything() {
+  for (var i = 0; i < inv.length; i++) {
+    if (inv[i] > 0) return true;
+  }
+  return false;
+}
+
+function visitedAllLocations() {
+  for (var i = 0; i < levelData[currLevel].numLocations; i++) {
+    if (!visitedLocation[currLevel][i]) return false;
+  }
+  return true;
+}
+
+function getDisplayNumber(num, compact = '') {
+  var modIndex = Math.floor(Math.log10(num) / 3) - 1;
+  if (compact != '') {
+    var mod = ['k', 'm', 'b', 't', 'qd', 'qn', 'sx', 'sp', 'oc', 'nn', 'dc'];
+    if (num < 1000 || (compact != 'super' && num < 2000)) {
+      return num.toLocaleString();
+    } else if (modIndex < mod.length) {
+      num /= Math.pow(1000, modIndex + 1);
+      if (compact == 'super') {
+        return Math.round(num) + mod[modIndex];
+      } else {
+        return num.toPrecision(3) + mod[modIndex];
+      }
+    } else {
+      if (compact == 'super') {
+        return num.toExponential(0);
+      } else {
+        return num.toExponential(2);
+      }
+    }
+  } else {
+    modIndex--;
+    if (num < 2000000) {
+      return num.toLocaleString();
+    } else if (modIndex < 998) {
+      num /= Math.pow(1000, modIndex + 2);
+      return num.toPrecision(4) + ' ' + numberScaleNameShortScale(modIndex + 2);
+    } else {
+      return num.toExponential(5);
+    }
+  }
+}
+
+function calculateFreeSpace() {
+  var freeSpace = cargoRoom;
+  for (var i = 0; i < inv.length; i++) {
+    freeSpace -= inv[i];
+  }
+  return freeSpace;
+}
+
+function handleLostAndFound() {
+  var whaHappen = Math.random();
+  if (whaHappen < 0.07) {
+    // Lost something, mebbe
+    var whichInv = inv.length - 1;
+    while (whichInv > 0 && Math.random() < 0.5) {
+      whichInv--;
+    }
+    var amount = Math.floor(Math.random() * inv[whichInv] * 0.5);
+    if (amount > 0) {
+      inv[whichInv] -= amount;
+      var suggestion = ' Perhaps if you learn to travel faster there will be fewer opportunities to lose your cargo.';
+      if (travelTime[currLevel] == 1) {
+        suggestion = '';
+      }
+      if (amount == 1) {
+        typeText(
+          levelData[currLevel].loseMsg + ' ' + amount + ' ' + levelData[currLevel].tradeableItemsSingular[whichInv] + '!' + suggestion,
+          levelData[currLevel].tradeableItemsSingular[whichInv] + ' lost.',
+          negativeExclamation(),
+          'OK',
+          levelData[currLevel].loseImg
+        );
+      } else {
+        typeText(
+          levelData[currLevel].loseMsg + ' ' + amount + ' ' + levelData[currLevel].tradeableItems[whichInv] + '!' + suggestion,
+          levelData[currLevel].tradeableItems[whichInv] + ' lost.',
+          negativeExclamation(),
+          'OK',
+          levelData[currLevel].loseImg
+        );
+      }
+    }
+  } else if (whaHappen > 0.975 && hasAnything()) {
+    var whichInv2 = 0;
+    while (whichInv2 < inv.length && Math.random() < 0.1) {
+      whichInv2++;
+    }
+    var maxAmountFound = calculateFreeSpace() / 2;
+    var amount2 = Math.floor(Math.random() * maxAmountFound * 0.5);
+    if (amount2 > 0) {
+      inv[whichInv2] += amount2;
+      if (amount2 == 1) {
+        typeText(
+          levelData[currLevel].foundMsg + ' ' + amount2 + ' ' + levelData[currLevel].tradeableItemsSingular[whichInv2] + '!',
+          levelData[currLevel].tradeableItemsSingular[whichInv2] + ' found.',
+          positiveExclamation(),
+          'OK',
+          levelData[currLevel].foundImg
+        );
+      } else {
+        typeText(
+          levelData[currLevel].foundMsg + ' ' + amount2 + ' ' + levelData[currLevel].tradeableItems[whichInv2] + '!',
+          levelData[currLevel].tradeableItems[whichInv2] + ' found.',
+          positiveExclamation(),
+          'OK',
+          levelData[currLevel].foundImg
+        );
+      }
+    }
+  }
+}
+
+function getNetWorth() {
+  var netWorth = 0;
+  var lvlMultiplier = 1;
+  for (i = 0; i < currLevel; i++) {
+    netWorth += lvlMultiplier * oldInv[i][0];
+    for (j = 1; j < 4; j++) {
+      lvlMultiplier *= 10;
+      netWorth += lvlMultiplier * oldInv[i][j];
+    }
+  }
+  netWorth += lvlMultiplier * inv[0];
+  for (j = 1; j < 4; j++) {
+    lvlMultiplier *= 10;
+    netWorth += lvlMultiplier * inv[j];
+  }
+  for (i = currLevel + 1; i < levelData.length; i++) {
+    netWorth += lvlMultiplier * oldInv[i][0];
+    for (j = 1; j < 4; j++) {
+      lvlMultiplier *= 10;
+      netWorth += lvlMultiplier * oldInv[i][j];
+    }
+  }
+  return netWorth;
+}
+
+function sellInv(index, quantity) {
+  if (inv[index] >= quantity) {
+    var thisPrice = price[currLevel][locIndex][index];
+    inv[index] -= quantity;
+    inv[0] += quantity * thisPrice;
+    var sellMsg = 'You sell ' + getDisplayNumber(quantity) + ' ';
+    if (quantity == 1) {
+      sellMsg += levelData[currLevel].tradeableItemsSingular[index];
+    } else {
+      sellMsg += levelData[currLevel].tradeableItems[index];
+    }
+    sellMsg += ' to get ' + getDisplayNumber(quantity * thisPrice) + ' ';
+    if (quantity * thisPrice == 1) {
+      sellMsg += levelData[currLevel].tradeableItemsSingular[0];
+    } else {
+      sellMsg += levelData[currLevel].tradeableItems[0];
+    }
+    typeText(sellMsg);
+    inventoryChanged = true;
+  } else {
+    typeText('You do not have ' + levelData[currLevel].tradeableItems[index] + ' to sell');
+  }
+}
+
+function buyInv(index, quantity) {
+  var thisPrice = price[currLevel][locIndex][index];
+  if (inv[0] >= quantity * thisPrice) {
+    inv[index] += quantity;
+    inv[0] -= quantity * thisPrice;
+    var buyMsg = 'You buy ' + getDisplayNumber(quantity) + ' ';
+    if (quantity == 1) {
+      buyMsg += levelData[currLevel].tradeableItemsSingular[index];
+    } else {
+      buyMsg += levelData[currLevel].tradeableItems[index];
+    }
+    buyMsg += ' for ' + getDisplayNumber(quantity * thisPrice) + ' ';
+    if (quantity * thisPrice == 1) {
+      buyMsg += levelData[currLevel].tradeableItemsSingular[0];
+    } else {
+      buyMsg += levelData[currLevel].tradeableItems[0];
+    }
+    typeText(buyMsg);
+    inventoryChanged = true;
+  } else {
+    var shortBy = quantity * thisPrice - inv[0];
+    var errMsg = 'You need ' + shortBy + ' more ';
+    if (shortBy == 1) {
+      errMsg += levelData[currLevel].tradeableItemsSingular[0];
+    } else {
+      errMsg += levelData[currLevel].tradeableItems[0];
+    }
+    typeText(errMsg);
+  }
+}
+
+function getGossipText() {
+  var gossipText = 'Prices look unfavorable everywhere!';
+  var thisBuyRatio = 1;
+  var bestBuyRatio = 1;
+  var thisProfit = 0;
+  var bestProfit = 0;
+  var bestBuyIndex = 0;
+  var bestSellIndex = 0;
+  var bestBuyLoc = 0;
+  var expensiveCount = 0;
+  for (var i = 3; i >= 0; i--) {
+    if (inv[i] > 0) {
+      if (i > 0) {
+        for (var j = 1; j < levelData[currLevel].numLocations; j++) {
+          for (var k = 0; k < i; k++) {
+            thisBuyRatio = price[currLevel][j][i] / (price[currLevel][j][k] * 10 ** (i - k));
+            if (thisBuyRatio > 1) {
+              thisProfit = inv[i] * (thisBuyRatio - 1) * 10 ** i;
+              var actualSpace = cargoRoom - expensiveCount;
+              for (var m = k; m < i; m++) {
+                actualSpace -= inv[m];
+              }
+              var neededSpace = inv[i] * thisBuyRatio * 10 ** (i - k) + 1;
+              neededSpace -= actualSpace;
+              while (neededSpace > 0) {
+                neededSpace = neededSpace - thisBuyRatio * 10 ** (i - k) + 1;
+                thisProfit -= (thisBuyRatio - 1) * 10 ** i;
+              }
+              if (thisProfit > bestProfit) {
+                bestProfit = thisProfit;
+                bestBuyIndex = k;
+                bestSellIndex = i;
+                bestBuyLoc = j;
+                bestBuyRatio = thisBuyRatio;
+              }
+            }
+          }
+        }
+      }
+      expensiveCount += inv[i];
+      if (i < 3) {
+        for (var j2 = 1; j2 < levelData[currLevel].numLocations; j2++) {
+          for (var k2 = i + 1; k2 <= 3; k2++) {
+            thisBuyRatio = (price[currLevel][j2][i] * 10 ** (k2 - i)) / price[currLevel][j2][k2];
+            if (thisBuyRatio > 1) {
+              var buyCount = Math.floor((inv[i] * thisBuyRatio) / 10 ** (k2 - i));
+              thisProfit = buyCount * (thisBuyRatio - 1) * 10 ** k2;
+              if (thisProfit > bestProfit) {
+                bestProfit = thisProfit;
+                bestBuyIndex = k2;
+                bestSellIndex = i;
+                bestBuyLoc = j2;
+                bestBuyRatio = thisBuyRatio;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  if (bestProfit > 0) {
+    var gossipSize = '';
+    if (bestBuyRatio < 1.1) {
+      gossipSize = 'tolerable';
+    } else if (bestBuyRatio < 1.2) {
+      gossipSize = 'ok';
+    } else if (bestBuyRatio < 1.3) {
+      gossipSize = 'good';
+    } else if (bestBuyRatio < 1.4) {
+      gossipSize = 'very good';
+    } else if (bestBuyRatio < 1.6) {
+      gossipSize = 'great';
+    } else {
+      gossipSize = 'fabulous';
+    }
+    gossipText = locationName[currLevel][bestBuyLoc] + ' has ' + gossipSize + ' prices for those looking';
+    if (bestSellIndex > 0) {
+      gossipText += ' to sell ' + levelData[currLevel].tradeableItems[bestSellIndex];
+    }
+    if (bestBuyIndex > 0) {
+      gossipText += ' to buy ' + levelData[currLevel].tradeableItems[bestBuyIndex];
+    }
+    gossipLocation = bestBuyLoc;
+  }
+  return gossipText;
+}
+
+function buyUpgrade(upgradeType, upgradeAmount, cost) {
+  if (cost <= inv[3]) {
+    switch (upgradeType) {
+      case 'gossip':
+        if (visitedAllLocations() && !showingGossipColors) {
+          showingGossipColors = true;
+          inv[3] -= cost;
+          randomizeStore();
+          typeText('"' + getGossipText() + '"', 'Price Rumors: ', 'Go Baby!', 'OK', 'gossip.jpeg');
+          setupLocationRadioButtons();
+          inventoryChanged = true;
+          if (typeof gtag === 'function') {
+            gtag('event', 'gossip', { event_category: 'upgradeBought', value: currLevel });
+          }
+        }
+        break;
+      case 'travel':
+        if (travelTime[currLevel] > 1) {
+          travelTime[currLevel]--;
+          inv[3] -= cost;
+          inventoryChanged = true;
+          if (travelTime[currLevel] > 1 + (visitedAllLocations() ? 0 : 1)) {
+            typeText(
+              locationName[currLevel][locIndex] + levelData[currLevel].travelFasterUpgradeMsg[0],
+              'Travel Speed Upgraded.',
+              'Go Baby!',
+              'OK',
+              levelData[currLevel].travelFasterUpgradeImg[0]
+            );
+            if (typeof gtag === 'function') {
+              gtag('event', 'travelSpeed', {
+                event_category: 'upgradeBought',
+                event_label: 'intermediate',
+                value: currLevel,
+              });
+            }
+          } else {
+            typeText(
+              locationName[currLevel][locIndex] + levelData[currLevel].travelFasterUpgradeMsg[1],
+              'Travel Speed Upgraded.',
+              'Go Baby!',
+              'OK',
+              levelData[currLevel].travelFasterUpgradeImg[1]
+            );
+            if (typeof gtag === 'function') {
+              gtag('event', 'travelSpeed', {
+                event_category: 'upgradeBought',
+                event_label: 'final',
+                value: currLevel,
+              });
+            }
+          }
+        }
+        break;
+      case 'cargo':
+        cargoRoom += upgradeAmount;
+        inv[3] -= cost;
+        inventoryChanged = true;
+        typeText(
+          locationName[currLevel][locIndex] + levelData[currLevel].cargoUpgradeMsg,
+          'Cargo space upgraded.',
+          'More Room!',
+          'OK',
+          levelData[currLevel].cargoUpgradeImg
+        );
+        if (typeof gtag === 'function') {
+          gtag('event', 'cargo', { event_category: 'upgradeBought', value: currLevel });
+        }
+        break;
+      case 'level':
+        if (maxLevel < levelData.length - 1) {
+          maxLevel++;
+          inv[3] -= cost;
+          inventoryChanged = true;
+          document.getElementById('buttonIDlevelUp').style.visibility = 'visible';
+          typeText(
+            locationName[currLevel][locIndex] +
+              levelData[currLevel].levelUpgradeMsg +
+              ' You can now advance to level ' +
+              (currLevel + 1) +
+              ' ("' +
+              levelData[currLevel].levelUpLabel +
+              '").',
+            levelData[currLevel].levelUpgradeHeaderMsg,
+            'Level ' + maxLevel + ' Available!',
+            'OK',
+            levelData[currLevel].levelUpgradeHeaderImg
+          );
+          if (typeof gtag === 'function') {
+            gtag('event', 'level', { event_category: 'upgradeBought', value: maxLevel });
+          }
+        } else {
+          typeText(
+            'You have completed Baby Merchant! Hopefully more will be written soon.',
+            'You win!',
+            'Thanks for playing',
+            'OK',
+            'won.jpeg'
+          );
+          if (typeof gtag === 'function') {
+            gtag('event', 'win', { event_category: 'gameState', value: currLevel });
+          }
+        }
+        break;
+    }
+  } else {
+    typeText('You need more ' + levelData[currLevel].tradeableItems[3] + ' to purchase this');
+  }
+}
+
+function randomizeStore(initAll = false) {
+  for (i = 1; i < inv.length; i++) {
+    for (j = 0; j < levelData[currLevel].numLocations; j++) {
+      if (initAll) {
+        price[currLevel][j][i] = basePrice[i];
+      }
+      var formerPrice = price[currLevel][j][i];
+      var newPrice = (formerPrice * 2 + basePrice[i]) / 3; // Trend back toward the basePrice
+      var variancepct = 0.3;
+      if (Math.random() < 0.1) variancepct = 0.5 + Math.random() * 0.45; // Sometimes have wild price swings
+      newPrice = Math.round(newPrice + Math.random() * newPrice * variancepct * 2 - newPrice * variancepct);
+      if (newPrice > formerPrice * 1.2 && formerPrice <= basePrice) {
+        // Prices can sometimes get very high
+        while (Math.random() < 0.7 && newPrice < basePrice[i] * 10) newPrice = Math.round(newPrice * 1.2);
+      }
+      price[currLevel][j][i] = newPrice;
+    }
+  }
+}
+
+function updateLocomoteButton() {
+  for (var i = 0; i < levelData[currLevel].numLocations; i++) {
+    if (document.getElementById('nextLoc' + i).checked) {
+      nextLocIndex = i;
+    }
+  }
+  var newLocomoteText = levelData[currLevel].locomotionType + '&nbsp;to ';
+  if (visitedLocation[currLevel][nextLocIndex]) {
+    newLocomoteText +=
+      locationName[currLevel][nextLocIndex] +
+      levelData[currLevel].VisitHdr3 +
+      levelData[currLevel].locationLabel[nextLocIndex];
+  } else {
+    newLocomoteText += levelData[currLevel].locationLabel[nextLocIndex];
+    if (nextLocIndex > 0) newLocomoteText += ' #' + nextLocIndex;
+  }
+  document.getElementById('buttonIDlocomote').innerHTML = addLineBreaks(newLocomoteText);
+}
+
+function goBaby() {
+  if (!typingText) {
+    var thisAction = buttonAction;
+    if (buttonAction != '') {
+      var locomoteButton = document.getElementById('buttonIDlocomote');
+      var pickButton = document.getElementById('buttonIDpick');
+      var levelUpButton = document.getElementById('buttonIDlevelUp');
+      var levelDownButton = document.getElementById('buttonIDlevelDown');
+
+      var freeSpace = calculateFreeSpace();
+      var spaceUsed = cargoRoom - freeSpace;
+
+      switch (thisAction) {
+        case 'levelUp':
+          if (
+            inv[3] < 10 &&
+            getNetWorth() < 1000 ** (currLevel + 2) &&
+            oldInv[currLevel + 1][1] == 0 &&
+            oldInv[currLevel + 1][2] == 0 &&
+            oldInv[currLevel + 1][3] == 0
+          ) {
+            typeText(
+              'You should really have at least 10 ' +
+                levelData[currLevel].tradeableItems[3] +
+                ' before proceeding to level ' +
+                (currLevel + 1),
+              'Get more ' + levelData[currLevel].tradeableItems[3],
+              'Too poor!',
+              'OK',
+              'sadbaby.jpeg'
+            );
+          } else if (currLevel < maxLevel) {
+            typeText(
+              levelData[currLevel].levelUpMessage +
+                ', taking only your ' +
+                levelData[currLevel].tradeableItems[3] +
+                ' with you.' +
+                '\n\nNEW THIS LEVEL: ' +
+                levelData[currLevel].levelUpAwesomeness,
+              'Advancing to level ' + (currLevel + 1) + ':',
+              'Go Baby!',
+              'OK',
+              levelData[currLevel].levelUpImg
+            );
+            document.getElementById('destinationsAndLabel').style.display = 'flex';
+
+            // Preserve inventory that can't go up to the next level
+            oldInv[currLevel] = [0, 0, 0, 0];
+            for (var i = 0; i < inv.length - 1; i++) {
+              oldInv[currLevel][i] = inv[i];
+            }
+            oldLocIndex[currLevel] = locIndex;
+
+            // This level's most expensive item is next level's currency
+            inv[0] = inv[inv.length - 1];
+            currLevel++;
+
+            // Restore inventory from the last time we were on the higher level
+            for (i = 1; i < inv.length; i++) {
+              inv[i] = oldInv[currLevel][i];
+            }
+            oldInv[currLevel] = [0, 0, 0, 0];
+            locIndex = oldLocIndex[currLevel];
+            nextLocIndex = locIndex + 1;
+            if (nextLocIndex > levelData[currLevel].numLocations) {
+              nextLocIndex = 0;
+            }
+            visitedLocation[currLevel][locIndex] = true;
+            upgradesVisible = false;
+            storeVisible = true;
+            randomizeStore(locIndex, true);
+            levelDownButton.style.visibility = 'visible';
+            levelDownButton.innerHTML = addLineBreaks(
+              levelData[currLevel].levelDownLabel +
+                locationName[currLevel][locIndex] +
+                levelData[currLevel].RevisitHdr2 +
+                levelData[currLevel].locationLabel[locIndex]
+            );
+            levelUpButton.innerHTML = addLineBreaks(levelData[currLevel].levelUpLabel);
+            levelUpButton.style.visibility = 'hidden';
+            pickButton.style.display = 'none';
+            setupLocationRadioButtons();
+            setHeaderText(
+              levelData[currLevel].VisitHdr1 +
+                levelData[currLevel].characterType +
+                levelData[currLevel].VisitHdr2 +
+                locationName[currLevel][locIndex] +
+                levelData[currLevel].VisitHdr3 +
+                levelData[currLevel].locationLabel[locIndex]
+            );
+            updateLocomoteButton();
+
+            if (typeof gtag === 'function') {
+              gtag('event', 'levelUp', { event_category: 'levelChange', value: currLevel });
+            }
+          }
+          break;
+        case 'levelDown':
+          if (currLevel > 0) {
+            typeText(
+              levelData[currLevel].levelDownMessage +
+                ', taking only your ' +
+                levelData[currLevel].tradeableItems[0] +
+                ' with you.',
+              'Retreating to level ' + (currLevel - 1) + ':',
+              'Humble thyself',
+              'OK',
+              levelData[currLevel].levelDownImg
+            );
+            // Preserve inventory that can't go down to the previous level
+            oldInv[currLevel] = [0, 0, 0, 0];
+            for (var i = 1; i < inv.length; i++) {
+              oldInv[currLevel][i] = inv[i];
+            }
+            setupLevel(currLevel - 1, levelChildSeed[currLevel][locIndex], locationName[currLevel][locIndex]);
+            oldLocIndex[currLevel] = locIndex;
+
+            // This level's currency is next level's most expensive item
+            inv[inv.length - 1] = inv[0];
+            currLevel--;
+
+            // Restore inventory from the last time we were on the lower level
+            for (i = 0; i < inv.length - 1; i++) {
+              inv[i] = oldInv[currLevel][i];
+            }
+            oldInv[currLevel] = [0, 0, 0, 0];
+            locIndex = oldLocIndex[currLevel];
+            storeVisible = false;
+            randomizeStore(locIndex, true);
+            upgradesVisible = true;
+            levelDownButton.innerHTML = addLineBreaks(
+              levelData[currLevel].levelDownLabel +
+                locationName[currLevel][locIndex] +
+                levelData[currLevel].RevisitHdr2 +
+                levelData[currLevel].locationLabel[locIndex]
+            );
+            levelUpButton.innerHTML = addLineBreaks(levelData[currLevel].levelUpLabel);
+            levelUpButton.style.visibility = 'visible';
+            if (currLevel == 0) {
+              levelDownButton.style.visibility = 'hidden';
+              document.getElementById('destinationsAndLabel').style.display = 'none';
+              pickButton.style.display = 'block';
+            }
+
+            setupLocationRadioButtons();
+            setHeaderText(
+              levelData[currLevel].VisitHdr1 +
+                levelData[currLevel + 1].characterType +
+                levelData[currLevel].VisitHdr2 +
+                locationName[currLevel][locIndex] +
+                levelData[currLevel].VisitHdr3 +
+                levelData[currLevel].locationLabel[locIndex]
+            );
+            updateLocomoteButton();
+            if (typeof gtag === 'function') {
+              gtag('event', 'levelDown', { event_category: 'levelChange', value: currLevel });
+            }
+          }
+          break;
+        case 'pick':
+          if (locIndex == 0 && transitMoves == 0) {
+            typeText(locationName[currLevel][locIndex] + ' glares at you, and you decide to wait.');
+          } else if (freeSpace == 0 && transitMoves > 0) {
+            typeText('You would be overencumbered!');
+          } else {
+            pickButton.disabled = true;
+            var pickResult = Math.random();
+            if (pickResult < 0.9) {
+              inv[0]++;
+              typeText('You withdraw a ' + levelData[currLevel].tradeableItemsSingular[0]);
+            } else if (pickResult < 0.99) {
+              inv[1]++;
+              typeText('You draw forth a ' + levelData[currLevel].tradeableItemsSingular[1] + '!');
+            } else {
+              inv[2]++;
+              typeText(
+                'To your incredible delight, you have drawn forth that rarest of boogers, the ' +
+                  levelData[currLevel].tradeableItemsSingular[2] +
+                  '!',
+                'You found a ' + levelData[currLevel].tradeableItemsSingular[2] + '!!',
+                positiveExclamation(),
+                'OK',
+                'bloodybooger.jpeg'
+              );
+            }
+          }
+          setTimeout("document.getElementById('buttonIDpick').disabled = false", 40 * PAUSE_MULT);
+          break;
+        case 'locomote':
+          if (freeSpace < 0) {
+            typeText('You are overencumbered!');
+          } else if (nextLocIndex == locIndex) {
+            typeText('You are already there!');
+          } else {
+            locomoteButton.disabled = true;
+            setTimeout("document.getElementById('buttonIDlocomote').disabled = false", 8 * PAUSE_MULT);
+
+            if (transitMoves == 0) {
+              // Handle things related to departing a location
+              document.getElementById('destinationsAndLabel').style.display = 'none';
+              transitMoves = travelTime[currLevel];
+              storeVisible = false;
+              levelUpButton.style.visibility = 'hidden';
+              levelDownButton.style.visibility = 'hidden';
+              upgradesVisible = false;
+              if (!showingGossipColors) {
+                randomizeStore();
+              }
+            }
+            transitMoves--;
+            var ctype = levelData[currLevel].characterType;
+            if (nextLocIndex == 0) {
+              if (currLevel + 1 < levelData.length) {
+                ctype = levelData[currLevel + 1].characterType;
+              } else {
+                ctype = 'evil baby';
+              }
+            }
+
+            handleLostAndFound();
+
+            if (transitMoves == 0) {
+              // Handle things related to arriving at a location
+              showingGossipColors = false;
+              locIndex = nextLocIndex;
+              nextLocIndex++;
+              if (nextLocIndex >= levelData[currLevel].numLocations) {
+                nextLocIndex = 0;
+              }
+              var coolLocationFooter = '';
+              var coolLocationHeader = '';
+              var coolLocationImage = '';
+              var locationMessage = '';
+              if (currLevel > 0) {
+                document.getElementById('destinationsAndLabel').style.display = 'flex';
+                if (locIndex > 0) {
+                  levelDownButton.innerHTML = addLineBreaks(
+                    levelData[currLevel].levelDownLabel +
+                      locationName[currLevel][locIndex] +
+                      levelData[currLevel].RevisitHdr2 +
+                      levelData[currLevel].locationLabel[locIndex]
+                  );
+                  levelDownButton.style.visibility = 'visible';
+                }
+              }
+              if (!visitedLocation[currLevel][locIndex]) {
+                visitedLocation[currLevel][locIndex] = true;
+                if (visitedAllLocations()) {
+                  travelTime[currLevel]--;
+                  var exploreMsg = levelData[currLevel].exploreMsg;
+                  if (currLevel == 0) {
+                    var nextCtype = levelData[currLevel].characterType;
+                    if (nextLocIndex == 0) {
+                      nextCtype = levelData[currLevel + 1].characterType;
+                    }
+                    exploreMsg +=
+                      ' Looking around, you see that continued thrashing will bring you full circle to revisit ' +
+                      nextCtype +
+                      ' ' +
+                      locationName[currLevel][nextLocIndex] +
+                      '.';
+                  }
+                  typeText(exploreMsg, 'Exploration complete!', 'Go Baby!', 'OK', levelData[currLevel].exploreImg);
+                  if (typeof gtag === 'function') {
+                    gtag('event', 'exploration', { event_category: 'milestone', value: currLevel });
+                  }
+                }
+                if (locIndex > 0) {
+                  locationMessage +=
+                    levelData[currLevel].discoveryMsg1 +
+                    ctype +
+                    levelData[currLevel].discoveryMsg2 +
+                    locationName[currLevel][locIndex] +
+                    levelData[currLevel].discoveryMsg3;
+
+                  if (!pickingEnabled) {
+                    pickButton.style.visibility = 'visible';
+                    pickingEnabled = true;
+                    locationMessage +=
+                      ' You notice ' +
+                      locationName[currLevel][locIndex] +
+                      ' has a finger in each nostril. Hmmmm.';
+                    coolLocationHeader = 'Meeting ' + ctype + ' ' + locationName[currLevel][locIndex] + ':';
+                    coolLocationImage = 'nosepicker.jpeg';
+                    coolLocationFooter = 'Nose picking is cool';
+                    if (typeof gtag === 'function') {
+                      gtag('event', 'picking', { event_category: 'milestone', value: currLevel });
+                    }
+                  }
+                } else {
+                  locationMessage +=
+                    levelData[currLevel].BossDiscoveryMsg1 +
+                    ctype +
+                    levelData[currLevel].BossDiscoveryMsg2 +
+                    locationName[currLevel][locIndex] +
+                    levelData[currLevel].BossDiscoveryMsg3 +
+                    levelData[currLevel].tradeableItems[3] +
+                    levelData[currLevel].BossDiscoveryMsg4;
+                  coolLocationHeader = 'Meeting ' + ctype + ' ' + locationName[currLevel][locIndex] + ':';
+                  coolLocationImage = levelData[currLevel].BossBabyImg;
+                  coolLocationFooter = 'Upgrades for sale';
+                }
+              } else {
+                locationMessage +=
+                  levelData[currLevel].ArrivalMsg1 +
+                  locationName[currLevel][locIndex] +
+                  levelData[currLevel].ArrivalMsg2 +
+                  levelData[currLevel].locationLabel[locIndex] +
+                  '.';
+              }
+              if (locIndex == 0) {
+                if (currLevel < maxLevel) {
+                  levelUpButton.style.visibility = 'visible';
+                }
+              } else {
+                if (!tradingEnabled && hasAnything()) {
+                  tradingEnabled = true;
+                  locationMessage +=
+                    ' ' +
+                    locationName[currLevel][locIndex] +
+                    ' seems to want to trade with you, but these wares look so expensive!' +
+                    ' A voice resonates in your deepest being . . .  "Buy low. Sell high."';
+                  coolLocationHeader = 'Meeting ' + ctype + ' ' + locationName[currLevel][locIndex] + ':';
+                  coolLocationImage = 'buysellbaby.jpeg';
+                  coolLocationFooter = 'Time to Trade!';
+                  if (typeof gtag === 'function') {
+                    gtag('event', 'trading', { event_category: 'milestone', value: currLevel });
+                  }
+                }
+              }
+              typeText(locationMessage, coolLocationHeader, coolLocationFooter, 'OK', coolLocationImage);
+              setHeaderText(
+                levelData[currLevel].VisitHdr1 +
+                  ctype +
+                  levelData[currLevel].VisitHdr2 +
+                  locationName[currLevel][locIndex] +
+                  levelData[currLevel].VisitHdr3 +
+                  levelData[currLevel].locationLabel[locIndex]
+              );
+
+              if (tradingEnabled) {
+                if (locIndex == 0) {
+                  upgradesVisible = true;
+                } else {
+                  storeVisible = true;
+                }
+              }
+            } else {
+              if (visitedLocation[currLevel][nextLocIndex]) {
+                typeText(levelData[currLevel].RevisitMsg);
+                setHeaderText(
+                  levelData[currLevel].RevisitHdr1 +
+                    locationName[currLevel][nextLocIndex] +
+                    levelData[currLevel].RevisitHdr2 +
+                    levelData[currLevel].locationLabel[nextLocIndex]
+                );
+              } else {
+                typeText(levelData[currLevel].MoveMsg);
+                setHeaderText(levelData[currLevel].MoveHdr);
+              }
+            }
+          }
+          setupLocationRadioButtons();
+          if (currLevel > 0 || visitedAllLocations()) {
+            updateLocomoteButton();
+          }
+
+          break;
+        default:
+          break;
+      }
+    }
+
+    if (buttonAction != '' || inventoryChanged) {
+      // Get updated freeSpace and spaceUsed numbers
+      var freeSpace2 = calculateFreeSpace();
+      var spaceUsed2 = cargoRoom - freeSpace2;
+
+      // Update inventory area
+      var invHTML = '';
+      var allUpgradesBought = true;
+      if (hasAnything()) {
+        if (upgradesVisible) {
+          invHTML += "<table class='collapseborder'>";
+          invHTML +=
+            "<tr><td class='singleborder invCell invHeaderCell'>Upgrade</td>" +
+            "<td class='singleborder invCell invHeaderCell'>Description</td>" +
+            "<td class='singleborder invCell invHeaderCell'>Price</td>" +
+            "<td class='invCell invHeaderCell'></td></tr>";
+          if (currLevel > 0 && visitedAllLocations() && !showingGossipColors) {
+            var gossipPrice = 1 * currLevel;
+            invHTML +=
+              "<tr><td class='singleborder invCell'>Gossip</td>" +
+              "<td class='singleborder invCell'>Price rumors</td>" +
+              "<td class='singleborder invCell'>" +
+              getDisplayNumber(gossipPrice, 'yes') +
+              '</td>' +
+              "<td class='buyButtonsCell'>";
+            invHTML += '<button class="upgradeButton';
+            if (inv[3] < gossipPrice) invHTML += ' greyButton';
+            invHTML += '" onclick="buyUpgrade(\'gossip\',1,' + gossipPrice + ')">buy</button>';
+            invHTML += '</td></tr>';
+            allUpgradesBought = false;
+          }
+          var travelPrice = 2 * (currLevel + 1);
+          if (travelTime[currLevel] == 3 + (visitedAllLocations() ? 0 : 1)) {
+            invHTML +=
+              "<tr><td class='singleborder invCell'>" +
+              levelData[currLevel].travelFasterUpgradeDesc[0] +
+              '</td>' +
+              "<td class='singleborder invCell'>Travel faster</td>" +
+              "<td class='singleborder invCell'>" +
+              getDisplayNumber(travelPrice, 'yes') +
+              '</td>' +
+              "<td class='buyButtonsCell'>";
+            invHTML += '<button class="upgradeButton';
+            if (inv[3] < travelPrice) invHTML += ' greyButton';
+            invHTML += '" onclick="buyUpgrade(\'travel\',1,' + travelPrice + ')">buy</button>';
+            invHTML += '</td></tr>';
+            allUpgradesBought = false;
+          } else if (travelTime[currLevel] == 2 + (visitedAllLocations() ? 0 : 1)) {
+            travelPrice = 5 * (currLevel + 1);
+            invHTML +=
+              "<tr><td class='singleborder invCell'>" +
+              levelData[currLevel].travelFasterUpgradeDesc[1] +
+              '</td>' +
+              "<td class='singleborder invCell'>Travel faster</td>" +
+              "<td class='singleborder invCell'>" +
+              getDisplayNumber(travelPrice, 'yes') +
+              '</td>' +
+              "<td class='buyButtonsCell'>";
+            invHTML += '<button class="upgradeButton';
+            if (inv[3] < travelPrice) invHTML += ' greyButton';
+            invHTML += '" onclick="buyUpgrade(\'travel\',1,' + travelPrice + ')">buy</button>';
+            invHTML += '</td></tr>';
+            allUpgradesBought = false;
+          }
+          if (cargoRoom < 100 * (currLevel + 2)) {
+            var cargoPrice = 10 * (currLevel + 1);
+            invHTML +=
+              "<tr><td class='singleborder invCell'>" +
+              levelData[currLevel].cargoUpgradeDesc +
+              '</td>' +
+              "<td class='singleborder invCell'>Hold 100 more</td>" +
+              "<td class='singleborder invCell'>" +
+              getDisplayNumber(cargoPrice, 'yes') +
+              '</td>' +
+              "<td class='buyButtonsCell'>";
+            invHTML += '<button class="upgradeButton';
+            if (inv[3] < cargoPrice) invHTML += ' greyButton';
+            invHTML += '" onclick="buyUpgrade(\'cargo\',100,' + cargoPrice + ')">buy</button>';
+            invHTML += '</td></tr>';
+            allUpgradesBought = false;
+          }
+
+          if (cargoRoom >= 100 * (currLevel + 2) && maxLevel == currLevel) {
+            var levelPrice = 20 * (currLevel + 1);
+            invHTML +=
+              "<tr><td class='singleborder invCell'>" +
+              levelData[currLevel].levelUpgradeDesc +
+              '</td>' +
+              "<td class='singleborder invCell'>Travel further</td>" +
+              "<td class='singleborder invCell'>" +
+              getDisplayNumber(levelPrice, 'yes') +
+              '</td>' +
+              "<td class='buyButtonsCell'>";
+            invHTML += '<button class="upgradeButton';
+            if (inv[3] < levelPrice) invHTML += ' greyButton';
+            invHTML += '" onclick="buyUpgrade(\'level\',1,' + levelPrice + ')">buy</button>';
+            invHTML += '</td></tr>';
+            allUpgradesBought = false;
+          }
+          if (allUpgradesBought) {
+            invHTML +=
+              "<tr><td colspan=3 class='singleborder invCell'>" +
+              '<br>All upgrades on this level have been purchased!<br>&nbsp;</td><td></td></tr>';
+          }
+          invHTML += '</table>';
+          invHTML += 'Currency: ' + getDisplayNumber(inv[3]) + ' ';
+          if (inv[3] == 1) {
+            invHTML += levelData[currLevel].tradeableItemsSingular[3];
+          } else {
+            invHTML += levelData[currLevel].tradeableItems[3];
+          }
+        } else if (storeVisible) {
+          invHTML += "<table class='collapseborder'>";
+          invHTML +=
+            "<tr><td class='invCell invHeaderCell'>Sell</td>" +
+            "<td class='invCell invHeaderCell singleborder'>Item</td>" +
+            "<td class='invCell invHeaderCell singleborder'>Price</td>" +
+            "<td class='invCell invHeaderCell singleborder'>Held</td>" +
+            "<td class='invCell invHeaderCell'>Buy</td></tr>";
+
+          for (i = inv.length - 1; i >= 1; i--) {
+            var alertRed = 0;
+            var alertGreen = 0;
+            var displayPrice = price[currLevel][locIndex][i];
+            if (displayPrice > basePrice[i]) {
+              alertRed = Math.floor(255 * 2 * (displayPrice / basePrice[i] - 1));
+              if (alertRed > 255) alertRed = 255;
+            } else if (displayPrice < basePrice[i]) {
+              alertGreen = Math.floor(255 * (basePrice[i] / displayPrice - 1));
+              if (alertGreen > 255) alertGreen = 255;
+            }
+            var alertStyle = "style='color:rgb(" + alertRed + ',' + alertGreen + ",0);'";
+            invHTML += "<tr><td class='sellButtonsCell'>";
+            // Sell buttons
+            var sellButtons = '<button class="tradeButton';
+            if (inv[i] == 0) {
+              sellButtons += ' greyButton';
+            }
+            sellButtons += '" onclick="sellInv(' + i + ',1)">';
+            if (inv[i] <= 10) {
+              sellButtons += 'sell ';
+            }
+            sellButtons += '1</button>';
+            var btnAmount = 10;
+            while (btnAmount < inv[i] && btnAmount <= 100) {
+              sellButtons =
+                '<button class="tradeButton" onclick="sellInv(' +
+                i +
+                ',' +
+                btnAmount +
+                ')">' +
+                getDisplayNumber(btnAmount, 'super') +
+                '</button>' +
+                sellButtons;
+              btnAmount *= 10;
+            }
+            if (inv[i] > 1) {
+              sellButtons =
+                '<button class="tradeButton" onclick="sellInv(' + i + ',' + inv[i] + ')">all</button>' + sellButtons;
+            }
+            invHTML += sellButtons;
+            invHTML +=
+              "</td><td class='singleborder invCell' " +
+              alertStyle +
+              '>' +
+              addLineBreaks(levelData[currLevel].tradeableItems[i]);
+            invHTML += '</td><td class=\'singleborder invCell\' ' + alertStyle + '>' + displayPrice;
+            invHTML += "</td><td class='singleborder invCell'>" + getDisplayNumber(inv[i], 'yes');
+            invHTML += "</td><td class='buyButtonsCell'>";
+            // Buy buttons
+            var canBuy = Math.floor(inv[0] / displayPrice);
+            var buyButtons = '<button class="tradeButton';
+            if (canBuy == 0) {
+              buyButtons += ' greyButton';
+            }
+            buyButtons += '" onclick="buyInv(' + i + ',1)">';
+            if (canBuy <= 10) {
+              buyButtons += 'buy ';
+            }
+            buyButtons += '1</button>';
+            btnAmount = 10;
+            while (btnAmount < canBuy && btnAmount <= 100) {
+              buyButtons =
+                buyButtons +
+                '<button class=tradeButton onclick="buyInv(' +
+                i +
+                ',' +
+                btnAmount +
+                ')">' +
+                getDisplayNumber(btnAmount, 'super') +
+                '</button>';
+              btnAmount *= 10;
+            }
+            if (canBuy > 1) {
+              buyButtons = buyButtons + '<button class=tradeButton onclick="buyInv(' + i + ',' + canBuy + ')">all</button>';
+            }
+            invHTML += buyButtons;
+            invHTML += '</td></tr>';
+          }
+          // Put a dummy row to force horizontal spacing to be what I want
+          const buttonsForSpacing =
+            '<button class="squashed tradeButton">1</button>' +
+            '<button class="squashed tradeButton">10</button>' +
+            '<button class="squashed tradeButton">100</button>' +
+            '<button class="squashed tradeButton">all</button>';
+          invHTML +=
+            "<tr class='spacingRow squashed'>" +
+            "<td class='sellButtonsCell squashed'>" +
+            buttonsForSpacing +
+            '</td>' +
+            "<td class='singleborder expandyCell squashed' colspan=3>&nbsp;</td>" +
+            "<td class='buyButtonsCell squashed'>" +
+            buttonsForSpacing +
+            '</td>' +
+            '</td>';
+          invHTML += '</table><table>';
+          invHTML += '<tr><td style="text-align:right">' + getDisplayNumber(inv[0]) + '</td><td>';
+          if (inv[0] == 1) {
+            invHTML += levelData[currLevel].tradeableItemsSingular[0];
+          } else {
+            invHTML += levelData[currLevel].tradeableItems[0];
+          }
+          invHTML += ' to spend</td></tr><tr>';
+          if (freeSpace2 < 0) {
+            if (inv[0] > 0) {
+              var discardNum = -freeSpace2;
+              if (discardNum > inv[0]) discardNum = inv[0];
+              invHTML +=
+                "<td colspan=2><button class=discardButton onclick='inv[0] -= " +
+                discardNum +
+                "; inventoryChanged=true;'>Discard " +
+                discardNum +
+                ' ';
+              if (inv[0] == 1) {
+                invHTML += levelData[currLevel].tradeableItemsSingular[0];
+              } else {
+                invHTML += levelData[currLevel].tradeableItems[0];
+              }
+              invHTML += '</button></td></tr><tr>';
+            }
+            invHTML += '<td style="text-align:right; color:red;">';
+            invHTML += 'You have ' + freeSpace2 + '</td><td style="color:red;">';
+            invHTML += 'too many items';
+          } else {
+            invHTML += '<td style="text-align:right">';
+            invHTML += 'Room for ' + freeSpace2 + '</td><td>';
+            invHTML += 'more items ';
+          }
+          invHTML += '(' + spaceUsed2 + '/' + cargoRoom + ')</td></tr></table>';
+        } else {
+          invHTML += '<table>';
+          for (i = inv.length - 1; i >= 0; i--) {
+            if (inv[i] > 0) {
+              invHTML += '<tr><td style="text-align:right">' + getDisplayNumber(inv[i]) + '</td><td>';
+              if (inv[i] == 1) {
+                invHTML += levelData[currLevel].tradeableItemsSingular[i];
+              } else {
+                invHTML += levelData[currLevel].tradeableItems[i];
+              }
+              invHTML += '</td></tr>';
+            }
+          }
+          invHTML += '<tr>';
+          if (freeSpace2 < 0) {
+            invHTML += '<td style="text-align:right; color:red;">';
+            invHTML += 'You have ' + freeSpace2 + '</td><td style="color:red;">';
+            invHTML += 'too many items';
+          } else {
+            invHTML += '<td style="text-align:right">';
+            invHTML += 'Room for ' + freeSpace2 + '</td><td>';
+            invHTML += 'more items ';
+          }
+          invHTML += '(' + spaceUsed2 + '/' + cargoRoom + ')</td></tr></table>';
+        }
+      }
+      setInventoryHTML(invHTML);
+
+      var netWorth = getNetWorth();
+      var statusText = '&nbsp;&nbsp;&nbsp;';
+      if (netWorth > 0) {
+        statusText += getDisplayNumber(netWorth) + ' ƀ - lv ';
+      } else {
+        statusText += 'level ';
+      }
+      statusText += currLevel;
+      setStatusText(statusText);
+      needToSave = true;
+    }
+
+    buttonAction = '';
+    inventoryChanged = false;
+  }
+  setTimeout('goBaby()', 100);
+}
+
+function setupInitialActions() {
+  setActionsHTML(
+    getButtonHTML('locomote', addLineBreaks('thrash about')) +
+      getButtonHTML('pick', addLineBreaks('pick nose')) +
+      getButtonHTML('levelDown', addLineBreaks(levelData[currLevel].levelDownLabel)) +
+      getButtonHTML('levelUp', addLineBreaks(levelData[currLevel].levelUpLabel))
+  );
+  document.getElementById('buttonIDlocomote').style.visibility = 'visible';
+  setupLocationRadioButtons();
+}
+
+function clearGameVariables() {
+  // Make sure all game variables are set to initial values
+  // (not including values which persist between games)
+
+  waitingTitleCards = 0;
+  waitingTitleHeader = [];
+  waitingTitleFooter = [];
+  waitingTitleText = [];
+  waitingTitleButton = [];
+  waitingTitleImage = [];
+  lastChar = ' ';
+  alreadyTyped = '';
+  textBelow = '';
+  textToType = [];
+  textToTypeBolded = [];
+  waitingMessagesToType = 0;
+  lastLineWasBold = false;
+  currLevel = 0;
+  locIndex = 0;
+  nextLocIndex = 1;
+  transitMoves = 4;
+  pickingEnabled = false;
+  tradingEnabled = false;
+  storeVisible = false;
+  upgradesVisible = false;
+  lastGameHTML = '';
+  inv = [0, 0, 0, 0];
+  oldInv = [];
+  oldLocIndex = [];
+  travelTime = [];
+  visitedLocation = [];
+  cargoRoom = 100;
+  price = [];
+  locationName = [];
+  levelSeed = [];
+  levelChildSeed = [];
+  for (i = 0; i < levelData.length; i++) {
+    oldInv[i] = [0, 0, 0, 0];
+    oldLocIndex[i] = 1;
+    travelTime[i] = 4;
+    visitedLocation[i] = [];
+    price[i] = [];
+    locationName[i] = [];
+    levelSeed[i] = 0;
+    levelChildSeed[i] = [];
+    for (j = 0; j < levelData[i].numLocations; j++) {
+      visitedLocation[i][j] = false;
+      price[i][j] = [1, 10, 100, 1000];
+      locationName[i][j] = '';
+    }
+  }
+  maxLevel = 0;
+  inventoryChanged = false;
+  showingGossipColors = false;
+  gossipLocation = 0;
+}
+
+function startNewGame() {
+  clearGameVariables();
+
+  i = levelData.length - 1;
+  setupLevel(i, Math.floor(Math.random() * Number.MAX_SAFE_INTEGER), 'final boss');
+  i--;
+  while (i >= 0) {
+    setupLevel(i, levelChildSeed[i + 1][1], locationName[i + 1][1]);
+    i--;
+  }
+
+  randomizeStore(true);
+  setTimeout('setHeaderText("You are a " + levelData[0].characterType) ', 10 * PAUSE_MULT);
+  setTimeout('setupInitialActions()', 50 * PAUSE_MULT);
+  setTimeout('goBaby()', 51 * PAUSE_MULT);
+
+  if (typeof gtag === 'function') {
+    gtag('event', 'newGame', { event_category: 'gameState' });
+  }
+}
+
+function askToContinue(saveAvailable) {
+  var picVariant = Math.random() * 5;
+  var picName = 'BabyMerchant';
+  if (picVariant < 1) picName += 'B';
+  else if (picVariant < 2) picName += 'C';
+  else if (picVariant < 3) picName += 'D';
+  else if (picVariant < 4) picName += 'E';
+  picName += '.jpeg';
+
+  displayTitleCard(
+    "<button onclick='startNewGame(); hideTitleCard();' class='continueButton'>Start New Game</button><br><br>" +
+      (saveAvailable
+        ? "<button onclick='loadGameState(); hideTitleCard();'  class='continueButton'>Continue Previous Game</button>"
+        : ''),
+    '👶 Baby Merchant 👶',
+    '',
+    '',
+    picName
+  );
+}
+
+// Kick off title card
+var oldGameVersion = JSON.parse(localStorage.getItem('gameVersion'));
+var saveAvailable = oldGameVersion != null && oldGameVersion == gameVersion;
+setTimeout('askToContinue(' + saveAvailable + ')', 1);
