@@ -735,7 +735,7 @@ function showMovementUI() {
   (function(el){ if (el) el.style.display = 'flex'; })(document.getElementById('actionsGoHere'));
   if (currLevel > 0) { var dn = document.getElementById('destinationsAndLabel'); if (dn) dn.style.display = 'flex'; }
   if (currLevel < maxLevel) { var lu = document.getElementById('buttonIDlevelUp'); if (lu) lu.style.visibility = 'visible'; }
-  if (currLevel > 0) { var ld = document.getElementById('buttonIDlevelDown'); if (ld) ld.style.visibility = 'visible'; }
+  if (currLevel > 0) { var ld = document.getElementById('buttonIDlevelDown'); if (ld) ld.style.visibility = (locIndex > 0 ? 'visible' : 'hidden'); }
   // Show map alongside movement UI
   if (typeof setMapVisible === 'function') setMapVisible(true);
 
@@ -866,7 +866,9 @@ function goBaby() {
             upgradesVisible = false;
             storeVisible = true;
             randomizeStore(locIndex, true);
-            if (levelDownButton) levelDownButton.style.visibility = 'visible';
+            // Open trading view immediately on level-up and hide the map
+            enterTradingMode();
+            if (levelDownButton) levelDownButton.style.visibility = (locIndex > 0 ? 'visible' : 'hidden');
             if (levelDownButton) levelDownButton.innerHTML = addLineBreaks(
               levelData[currLevel].levelDownLabel +
                 locationName[currLevel][locIndex] +
@@ -925,6 +927,8 @@ function goBaby() {
             storeVisible = false;
             randomizeStore(locIndex, true);
             upgradesVisible = true;
+            // Open trading view immediately on level-down and hide the map
+            enterTradingMode();
             levelDownButton.innerHTML = addLineBreaks(
               levelData[currLevel].levelDownLabel +
                 locationName[currLevel][locIndex] +
@@ -1171,15 +1175,21 @@ function goBaby() {
 
           break;
         case 'doneTrading':
-          // Prevent leaving trading while overencumbered
-          if (calculateFreeSpace() < 0) {
-            typeText('You are too encumbered to leave!');
-            inventoryChanged = true; // ensure UI reflects the need to discard
-            break;
-          }
+          // Allow exiting trading even when overencumbered; movement will block travel if needed
           storeVisible = false;
           upgradesVisible = false;
           exitTradingMode();
+          break;
+        case 'enterTrading':
+          // Re-enter trading at the current location
+          if (locIndex === 0) {
+            upgradesVisible = true;
+            storeVisible = false;
+          } else {
+            storeVisible = true;
+            upgradesVisible = false;
+          }
+          enterTradingMode();
           break;
         default:
           break;
@@ -1530,9 +1540,13 @@ function setupInitialActions() {
       levelData[currLevel].locationLabel[locIndex];
   }
 
+  // Build an Enter Trading/Upgrades label
+  var initialTradeText = (locIndex === 0) ? 'enter upgrades' : 'enter trade';
+
   setActionsHTML(
     getButtonHTML('locomote', addLineBreaks(initialLocomoteText)) +
       getButtonHTML('pick', addLineBreaks('pick nose')) +
+      getButtonHTML('enterTrading', addLineBreaks(initialTradeText)) +
       getButtonHTML('levelDown', addLineBreaks(initialLevelDownText)) +
       getButtonHTML('levelUp', addLineBreaks(levelData[currLevel].levelUpLabel))
   );
@@ -1545,7 +1559,15 @@ function setupInitialActions() {
   if (luBtn) luBtn.style.visibility = (currLevel < maxLevel ? 'visible' : 'hidden');
 
   var ldBtn = document.getElementById('buttonIDlevelDown');
-  if (ldBtn) ldBtn.style.visibility = (currLevel > 0 ? 'visible' : 'hidden');
+  if (ldBtn) ldBtn.style.visibility = (currLevel > 0 && locIndex > 0 ? 'visible' : 'hidden');
+
+  // Enter Trading/Upgrades button visibility while in movement mode
+  var trBtn = document.getElementById('buttonIDenterTrading');
+  if (trBtn) {
+    var canEnterTrading = (uiMode === 'movement') && ((locIndex === 0) || (tradingEnabled && locIndex > 0));
+    trBtn.style.visibility = canEnterTrading ? 'visible' : 'hidden';
+    trBtn.disabled = !canEnterTrading;
+  }
 
   updatePickButtonVisibility();
 
