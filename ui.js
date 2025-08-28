@@ -95,6 +95,13 @@ function setOutputHTML(newHTML) {
   document.getElementById('outputAndGradient').style.visibility = 'visible';
 }
 
+// Map visibility helper (managed like other sections)
+function setMapVisible(show) {
+  var el = document.getElementById('mapGoesHere');
+  if (!el) return;
+  el.style.display = show ? 'flex' : 'none';
+}
+
 // UI formatting helpers
 function getButtonHTML(actionName, buttonText) {
   return '<button class=babyButton id="buttonID' + actionName + '" onclick="doButtonAction(\'' + actionName +'\')">' + buttonText + '</button>';

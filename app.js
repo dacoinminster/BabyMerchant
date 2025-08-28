@@ -113,29 +113,54 @@ function loadGameState() {
 
   document.getElementById('normalGameGoesHere').innerHTML = lastGameHTML;
 
-  document.getElementById('buttonIDlocomote').style.display = 'block';
-  document.getElementById('buttonIDlocomote').style.visiblity = 'visible';
-  document.getElementById('buttonIDlocomote').disabled = false;
-  if (currLevel > 0) {
-    document.getElementById('destinationsAndLabel').style.display = 'flex';
-    document.getElementById('buttonIDpick').style.display = 'none';
+  // Rebuild UI safely after restoring lastGameHTML
+  // Ensure action buttons exist, then show appropriate mode
+  if (storeVisible || upgradesVisible) {
+    // Trading context persisted; enter trading mode (also hides map)
+    setupInitialActions(); // ensure base buttons exist to avoid null refs inside enterTradingMode
+    enterTradingMode();
   } else {
-    document.getElementById('buttonIDpick').style.display = 'block';
-    if (pickingEnabled) {
-      document.getElementById('buttonIDpick').style.visibility = 'visible';
-      document.getElementById('buttonIDpick').disabled = false;
+    // Movement mode
+    setupInitialActions();
+    showMovementUI();
+    // Adjust pick button visibility/enabled for level 0
+    var pkBtn = document.getElementById('buttonIDpick');
+    if (pkBtn) {
+      if (currLevel > 0) {
+        pkBtn.style.display = 'none';
+      } else {
+        pkBtn.style.display = 'block';
+        pkBtn.style.visibility = pickingEnabled ? 'visible' : 'hidden';
+        pkBtn.disabled = !pickingEnabled;
+      }
     }
   }
 
-  if (currLevel < maxLevel) {
-    document.getElementById('buttonIDlevelUp').style.display = 'block';
-    document.getElementById('buttonIDlevelUp').style.visiblity = 'visible';
-  }
-
-  if (currLevel > 0) {
-    document.getElementById('buttonIDlevelDown').style.display = 'block';
-    document.getElementById('buttonIDlevelDown').style.visiblity = 'visible';
-  }
+  // Re-mount the map into #mapGoesHere after restoring DOM from lastGameHTML
+  // If a saved game predates the map container, insert it in the right spot.
+  (function ensureMapContainer() {
+    var mapEl = document.getElementById('mapGoesHere');
+    if (!mapEl) {
+      var newDiv = document.createElement('div');
+      newDiv.id = 'mapGoesHere';
+      newDiv.className = 'gameArea bordered mapWrapper';
+      var parent = document.getElementById('normalGameGoesHere');
+      var controls = document.getElementById('controlsGoHere');
+      if (parent) {
+        if (controls && controls.parentElement === parent) {
+          if (controls.nextSibling) {
+            parent.insertBefore(newDiv, controls.nextSibling);
+          } else {
+            parent.appendChild(newDiv);
+          }
+        } else {
+          parent.appendChild(newDiv);
+        }
+      }
+    }
+  })();
+  // Initialize map renderer after ensuring container; visibility already handled by mode above
+  if (window.mapRenderer && typeof window.mapRenderer.init === 'function') window.mapRenderer.init();
 
   setTimeout('goBaby()', 100);
   if (typeof gtag === 'function') {
@@ -594,7 +619,26 @@ function buyUpgrade(upgradeType, upgradeAmount, cost) {
           maxLevel++;
           inv[3] -= cost;
           inventoryChanged = true;
-          document.getElementById('buttonIDlevelUp').style.visibility = 'visible';
+          var lup = document.getElementById('buttonIDlevelUp');
+          if (lup) lup.style.visibility = 'visible';
+          // Also surface the level-up control in trading view at the boss so players can advance immediately
+          if (uiMode === 'trading' && locIndex === 0) {
+            var __top = getButtonHTML('doneTrading', addLineBreaks('done trading'));
+            if (currLevel === 0 && pickingEnabled) {
+              __top += getButtonHTML('pick', addLineBreaks('pick nose'));
+            }
+            __top += getButtonHTML('levelUp', addLineBreaks(levelData[currLevel].levelUpLabel));
+            setActionsHTML(__top);
+            // Ensure all top controls are visible/enabled (babyButton defaults to visibility:hidden)
+            var dt2 = document.getElementById('buttonIDdoneTrading');
+            if (dt2) { dt2.style.visibility = 'visible'; dt2.disabled = false; }
+            if (currLevel === 0 && pickingEnabled) {
+              var pk2 = document.getElementById('buttonIDpick');
+              if (pk2) { pk2.style.visibility = 'visible'; pk2.disabled = false; }
+            }
+            var lu2 = document.getElementById('buttonIDlevelUp');
+            if (lu2) { lu2.style.visibility = 'visible'; lu2.disabled = false; }
+          }
           typeText(
             locationName[currLevel][locIndex] +
               levelData[currLevel].levelUpgradeMsg +
@@ -652,7 +696,8 @@ function randomizeStore(initAll = false) {
 
 function updateLocomoteButton() {
   for (var i = 0; i < levelData[currLevel].numLocations; i++) {
-    if (document.getElementById('nextLoc' + i).checked) {
+    var rb = document.getElementById('nextLoc' + i);
+    if (rb && rb.checked) {
       nextLocIndex = i;
     }
   }
@@ -666,28 +711,76 @@ function updateLocomoteButton() {
     newLocomoteText += levelData[currLevel].locationLabel[nextLocIndex];
     if (nextLocIndex > 0) newLocomoteText += ' #' + nextLocIndex;
   }
-  document.getElementById('buttonIDlocomote').innerHTML = addLineBreaks(newLocomoteText);
+  var btn = document.getElementById('buttonIDlocomote');
+  if (btn) {
+    btn.innerHTML = addLineBreaks(newLocomoteText);
+  }
+}
+
+function updatePickButtonVisibility() {
+  var pkBtn = document.getElementById('buttonIDpick');
+  if (!pkBtn) return;
+  if (uiMode !== 'movement') return; // trading handles its own button visibility
+  if (currLevel === 0) {
+    pkBtn.style.display = 'block';
+    pkBtn.style.visibility = pickingEnabled ? 'visible' : 'hidden';
+    pkBtn.disabled = !pickingEnabled;
+  } else {
+    pkBtn.style.display = 'none';
+  }
 }
 
 function showMovementUI() {
-  document.getElementById('controlsGoHere').style.display = 'flex';
-  document.getElementById('actionsGoHere').style.display = 'flex';
-  if (currLevel > 0) document.getElementById('destinationsAndLabel').style.display = 'flex';
-  if (currLevel < maxLevel) document.getElementById('buttonIDlevelUp').style.visibility = 'visible';
-  if (currLevel > 0) document.getElementById('buttonIDlevelDown').style.visibility = 'visible';
+  (function(el){ if (el) el.style.display = 'flex'; })(document.getElementById('controlsGoHere'));
+  (function(el){ if (el) el.style.display = 'flex'; })(document.getElementById('actionsGoHere'));
+  if (currLevel > 0) { var dn = document.getElementById('destinationsAndLabel'); if (dn) dn.style.display = 'flex'; }
+  if (currLevel < maxLevel) { var lu = document.getElementById('buttonIDlevelUp'); if (lu) lu.style.visibility = 'visible'; }
+  if (currLevel > 0) { var ld = document.getElementById('buttonIDlevelDown'); if (ld) ld.style.visibility = 'visible'; }
+  // Show map alongside movement UI
+  if (typeof setMapVisible === 'function') setMapVisible(true);
+
+  updatePickButtonVisibility();
 }
 
 function hideMovementUI() {
-  document.getElementById('controlsGoHere').style.display = 'none';
-  document.getElementById('actionsGoHere').style.display = 'none';
-  document.getElementById('destinationsAndLabel').style.display = 'none';
-  document.getElementById('buttonIDlevelUp').style.visibility = 'hidden';
-  document.getElementById('buttonIDlevelDown').style.visibility = 'hidden';
+  (function(el){ if (el) el.style.display = 'none'; })(document.getElementById('controlsGoHere'));
+  (function(el){ if (el) el.style.display = 'none'; })(document.getElementById('actionsGoHere'));
+  (function(el){ if (el) el.style.display = 'none'; })(document.getElementById('destinationsAndLabel'));
+  (function(el){ if (el) el.style.display = 'none'; })(document.getElementById('destinationsAndLabel'));
+  (function(el){ if (el) el.style.visibility = 'hidden'; })(document.getElementById('buttonIDlevelUp'));
+  (function(el){ if (el) el.style.visibility = 'hidden'; })(document.getElementById('buttonIDlevelDown'));
+  (function(el){ if (el) el.style.visibility = 'hidden'; })(document.getElementById('buttonIDlevelUp'));
+  (function(el){ if (el) el.style.visibility = 'hidden'; })(document.getElementById('buttonIDlevelDown'));
+  // Hide map when movement UI is hidden
+  if (typeof setMapVisible === 'function') setMapVisible(false);
 }
 
 function enterTradingMode() {
   uiMode = 'trading';
-  hideMovementUI();
+  // Hide movement-only sections but keep the top controls area visible
+  (function(el){ if (el) el.style.display = 'none'; })(document.getElementById('destinationsAndLabel'));
+  (function(el){ if (el) el.style.visibility = 'hidden'; })(document.getElementById('buttonIDlevelUp'));
+  (function(el){ if (el) el.style.visibility = 'hidden'; })(document.getElementById('buttonIDlevelDown'));
+  // Hide the map while trading
+  if (typeof setMapVisible === 'function') setMapVisible(false);
+
+  // Put primary trading controls at the top in controlsGoHere
+  var topHTML = getButtonHTML('doneTrading', addLineBreaks('done trading'));
+  if (currLevel == 0 && pickingEnabled) {
+    topHTML += getButtonHTML('pick', addLineBreaks('pick nose'));
+  }
+  setActionsHTML(topHTML);
+
+  // Make these top controls visible (babyButton is hidden by default)
+  var dt = document.getElementById('buttonIDdoneTrading');
+  if (dt) { dt.style.visibility = 'visible'; dt.disabled = false; }
+  if (currLevel == 0 && pickingEnabled) {
+    var pk = document.getElementById('buttonIDpick');
+    if (pk) { pk.style.visibility = 'visible'; pk.disabled = false; }
+  }
+
+  // Force inventory panel to refresh immediately for trading view
+  inventoryChanged = true;
 }
 
 function exitTradingMode() {
@@ -698,6 +791,8 @@ function exitTradingMode() {
   if (currLevel > 0 || visitedAllLocations()) {
     updateLocomoteButton();
   }
+  // Restore the standard movement controls at the top
+  setupInitialActions();
 }
 
 function goBaby() {
@@ -744,7 +839,7 @@ function goBaby() {
               'OK',
               levelData[currLevel].levelUpImg
             );
-            document.getElementById('destinationsAndLabel').style.display = 'flex';
+            (function(el){ if (el) el.style.display = 'flex'; })(document.getElementById('destinationsAndLabel'));
 
             // Preserve inventory that can't go up to the next level
             oldInv[currLevel] = [0, 0, 0, 0];
@@ -771,16 +866,16 @@ function goBaby() {
             upgradesVisible = false;
             storeVisible = true;
             randomizeStore(locIndex, true);
-            levelDownButton.style.visibility = 'visible';
-            levelDownButton.innerHTML = addLineBreaks(
+            if (levelDownButton) levelDownButton.style.visibility = 'visible';
+            if (levelDownButton) levelDownButton.innerHTML = addLineBreaks(
               levelData[currLevel].levelDownLabel +
                 locationName[currLevel][locIndex] +
                 levelData[currLevel].RevisitHdr2 +
                 levelData[currLevel].locationLabel[locIndex]
             );
-            levelUpButton.innerHTML = addLineBreaks(levelData[currLevel].levelUpLabel);
-            levelUpButton.style.visibility = 'hidden';
-            pickButton.style.display = 'none';
+            if (levelUpButton) levelUpButton.innerHTML = addLineBreaks(levelData[currLevel].levelUpLabel);
+            if (levelUpButton) levelUpButton.style.visibility = 'hidden';
+            if (pickButton) pickButton.style.display = 'none';
             setupLocationRadioButtons();
             setHeaderText(
               levelData[currLevel].VisitHdr1 +
@@ -837,11 +932,11 @@ function goBaby() {
                 levelData[currLevel].locationLabel[locIndex]
             );
             levelUpButton.innerHTML = addLineBreaks(levelData[currLevel].levelUpLabel);
-            levelUpButton.style.visibility = 'visible';
+            if (levelUpButton) levelUpButton.style.visibility = 'visible';
             if (currLevel == 0) {
-              levelDownButton.style.visibility = 'hidden';
-              document.getElementById('destinationsAndLabel').style.display = 'none';
-              pickButton.style.display = 'block';
+              if (levelDownButton) levelDownButton.style.visibility = 'hidden';
+              (function(el){ if (el) el.style.display = 'none'; })(document.getElementById('destinationsAndLabel'));
+              if (pickButton) pickButton.style.display = 'block';
             }
 
             setupLocationRadioButtons();
@@ -886,7 +981,10 @@ function goBaby() {
               );
             }
           }
-          setTimeout("document.getElementById('buttonIDpick').disabled = false", 40 * PAUSE_MULT);
+          setTimeout(function () {
+            var el = document.getElementById('buttonIDpick');
+            if (el) el.disabled = false;
+          }, 40 * PAUSE_MULT);
           break;
         case 'locomote':
           if (freeSpace < 0) {
@@ -895,15 +993,18 @@ function goBaby() {
             typeText('You are already there!');
           } else {
             locomoteButton.disabled = true;
-            setTimeout("document.getElementById('buttonIDlocomote').disabled = false", 8 * PAUSE_MULT);
+            setTimeout(function () {
+              var el = document.getElementById('buttonIDlocomote');
+              if (el) el.disabled = false;
+            }, 8 * PAUSE_MULT);
 
             if (transitMoves == 0) {
               // Handle things related to departing a location
-              document.getElementById('destinationsAndLabel').style.display = 'none';
+              (function(el){ if (el) el.style.display = 'none'; })(document.getElementById('destinationsAndLabel'));
               transitMoves = travelTime[currLevel];
               storeVisible = false;
-              levelUpButton.style.visibility = 'hidden';
-              levelDownButton.style.visibility = 'hidden';
+              if (levelUpButton) levelUpButton.style.visibility = 'hidden';
+              if (levelDownButton) levelDownButton.style.visibility = 'hidden';
               upgradesVisible = false;
               if (!showingGossipColors) {
                 randomizeStore();
@@ -934,15 +1035,15 @@ function goBaby() {
               var coolLocationImage = '';
               var locationMessage = '';
               if (currLevel > 0) {
-                document.getElementById('destinationsAndLabel').style.display = 'flex';
+                var dn2 = document.getElementById('destinationsAndLabel'); if (dn2) dn2.style.display = 'flex';
                 if (locIndex > 0) {
-                  levelDownButton.innerHTML = addLineBreaks(
+                  if (levelDownButton) levelDownButton.innerHTML = addLineBreaks(
                     levelData[currLevel].levelDownLabel +
                       locationName[currLevel][locIndex] +
                       levelData[currLevel].RevisitHdr2 +
                       levelData[currLevel].locationLabel[locIndex]
                   );
-                  levelDownButton.style.visibility = 'visible';
+                  if (levelDownButton) levelDownButton.style.visibility = 'visible';
                 }
               }
               if (!visitedLocation[currLevel][locIndex]) {
@@ -1012,7 +1113,7 @@ function goBaby() {
               }
               if (locIndex == 0) {
                 if (currLevel < maxLevel) {
-                  levelUpButton.style.visibility = 'visible';
+                  if (levelUpButton) levelUpButton.style.visibility = 'visible';
                 }
               } else {
                 if (!tradingEnabled && hasAnything()) {
@@ -1070,6 +1171,12 @@ function goBaby() {
 
           break;
         case 'doneTrading':
+          // Prevent leaving trading while overencumbered
+          if (calculateFreeSpace() < 0) {
+            typeText('You are too encumbered to leave!');
+            inventoryChanged = true; // ensure UI reflects the need to discard
+            break;
+          }
           storeVisible = false;
           upgradesVisible = false;
           exitTradingMode();
@@ -1190,12 +1297,6 @@ function goBaby() {
           } else {
             invHTML += levelData[currLevel].tradeableItems[3];
           }
-          invHTML += '<div style="margin-top:8px; display:flex; gap:8px; align-items:center;">' +
-            '<button class="tradeButton" onclick="doButtonAction(\'doneTrading\')">Done trading</button>';
-          if (currLevel == 0 && pickingEnabled) {
-            invHTML += '<button class="tradeButton" onclick="doButtonAction(\'pick\')">Pick nose</button>';
-          }
-          invHTML += '</div>';
         } else if (storeVisible) {
           invHTML += "<table class='collapseborder'>";
           invHTML +=
@@ -1334,12 +1435,6 @@ function goBaby() {
             invHTML += 'more items ';
           }
           invHTML += '(' + spaceUsed2 + '/' + cargoRoom + ')</td></tr></table>';
-          invHTML += '<div style="margin-top:8px; display:flex; gap:8px; align-items:center;">' +
-            '<button class="tradeButton" onclick="doButtonAction(\'doneTrading\')">Done trading</button>';
-          if (currLevel == 0 && pickingEnabled) {
-            invHTML += '<button class="tradeButton" onclick="doButtonAction(\'pick\')">Pick nose</button>';
-          }
-          invHTML += '</div>';
         } else {
           invHTML += '<table>';
           for (i = inv.length - 1; i >= 0; i--) {
@@ -1355,6 +1450,23 @@ function goBaby() {
           }
           invHTML += '<tr>';
           if (freeSpace2 < 0) {
+            // Offer discard while moving to prevent soft-lock (mirrors store UI behavior)
+            if (inv[0] > 0) {
+              var discardNum = -freeSpace2;
+              if (discardNum > inv[0]) discardNum = inv[0];
+              invHTML +=
+                "</td></tr><tr><td colspan=2><button class=discardButton onclick='inv[0] -= " +
+                discardNum +
+                "; inventoryChanged=true;'>Discard " +
+                discardNum +
+                ' ';
+              if (inv[0] == 1) {
+                invHTML += levelData[currLevel].tradeableItemsSingular[0];
+              } else {
+                invHTML += levelData[currLevel].tradeableItems[0];
+              }
+              invHTML += '</button></td></tr><tr>';
+            }
             invHTML += '<td style="text-align:right; color:red;">';
             invHTML += 'You have ' + freeSpace2 + '</td><td style="color:red;">';
             invHTML += 'too many items';
@@ -1378,6 +1490,9 @@ function goBaby() {
       statusText += currLevel;
       setStatusText(statusText);
       needToSave = true;
+
+      // Keep pick button state in sync during movement
+      updatePickButtonVisibility();
     }
 
     buttonAction = '';
@@ -1387,14 +1502,60 @@ function goBaby() {
 }
 
 function setupInitialActions() {
+  // Build an initial locomote label appropriate for the current level and selection,
+  // so we don't briefly show "thrash about" after leaving trading on higher levels.
+  var initialLocomoteText = '';
+  if (currLevel === 0 && !visitedAllLocations()) {
+    initialLocomoteText = 'thrash about';
+  } else {
+    initialLocomoteText = levelData[currLevel].locomotionType + '&nbsp;to ';
+    if (visitedLocation[currLevel][nextLocIndex]) {
+      initialLocomoteText +=
+        locationName[currLevel][nextLocIndex] +
+        levelData[currLevel].VisitHdr3 +
+        levelData[currLevel].locationLabel[nextLocIndex];
+    } else {
+      initialLocomoteText += levelData[currLevel].locationLabel[nextLocIndex];
+      if (nextLocIndex > 0) initialLocomoteText += ' #' + nextLocIndex;
+    }
+  }
+
+  // Build a contextual Level Down label (e.g., "Enter Alice's group")
+  var initialLevelDownText = levelData[currLevel].levelDownLabel;
+  if (currLevel > 0) {
+    initialLevelDownText =
+      levelData[currLevel].levelDownLabel +
+      locationName[currLevel][locIndex] +
+      levelData[currLevel].RevisitHdr2 +
+      levelData[currLevel].locationLabel[locIndex];
+  }
+
   setActionsHTML(
-    getButtonHTML('locomote', addLineBreaks('thrash about')) +
+    getButtonHTML('locomote', addLineBreaks(initialLocomoteText)) +
       getButtonHTML('pick', addLineBreaks('pick nose')) +
-      getButtonHTML('levelDown', addLineBreaks(levelData[currLevel].levelDownLabel)) +
+      getButtonHTML('levelDown', addLineBreaks(initialLevelDownText)) +
       getButtonHTML('levelUp', addLineBreaks(levelData[currLevel].levelUpLabel))
   );
-  document.getElementById('buttonIDlocomote').style.visibility = 'visible';
+
+  // Make primary action buttons visible/hidden appropriately
+  var lmBtn = document.getElementById('buttonIDlocomote');
+  if (lmBtn) lmBtn.style.visibility = 'visible';
+
+  var luBtn = document.getElementById('buttonIDlevelUp');
+  if (luBtn) luBtn.style.visibility = (currLevel < maxLevel ? 'visible' : 'hidden');
+
+  var ldBtn = document.getElementById('buttonIDlevelDown');
+  if (ldBtn) ldBtn.style.visibility = (currLevel > 0 ? 'visible' : 'hidden');
+
+  updatePickButtonVisibility();
+
   setupLocationRadioButtons();
+  // Ensure locomote button text matches current level/destination immediately after rebuilding controls
+  if (currLevel > 0 || visitedAllLocations()) {
+    updateLocomoteButton();
+  }
+  // Ensure map becomes visible when gameplay UI appears
+  if (typeof setMapVisible === 'function') setMapVisible(true);
 }
 
 function clearGameVariables() {

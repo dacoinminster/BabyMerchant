@@ -326,3 +326,12 @@ button {
 	font-size: min(4vw, 4vh);
 	margin: 9px;
 }
+
+/* Map area (managed like other sections) */
+.mapWrapper {
+  display: none;                 /* shown/hidden via UI like other sections */
+  flex: 1 0 auto;
+  height: min(30vh, 30vw);       /* initial visible footprint; tweak as desired */
+  position: relative;            /* allows inner canvas to size to 100% without absolute page positioning */
+  align-items: stretch;          /* match other wrappers that use flex */
+}
