@@ -791,6 +791,9 @@ function enterTradingMode() {
 
 function exitTradingMode() {
   uiMode = 'movement';
+  // Ensure trading flags are cleared so UI doesn't re-render store below the map
+  storeVisible = false;
+  upgradesVisible = false;
   showMovementUI();
   setInventoryHTML('');
   setupLocationRadioButtons();
