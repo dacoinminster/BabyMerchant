@@ -389,8 +389,8 @@
           const yBottom = this._h - pad - 8;
           const centerX = cx;
 
-          // Elevator node (index 0) near top center (moved down for room above)
-          const elevatorY = yTop + 50;
+          // Elevator node (index 0) near top center (moved back up for proper spacing)
+          const elevatorY = yTop + 20;
           pts[0] = [centerX, elevatorY];
 
           // Four door nodes along hallway, alternating sides
@@ -442,11 +442,19 @@
               // Keep the "final boss" (elevator) label below to avoid overlapping elevator drawing
               forceLabelBelow = true;
             } else {
-              // Inside hallway: justify away from the wall to avoid crossing the wall line
+              // Left side posts: left-justify text with left side of circle
+              // Right side posts: right-justify text with right side of circle
               const meta = this._layoutMeta.level2;
-              const isLeft = pts[i][0] < meta.centerX;
-              labelAlign = isLeft ? 'right' : 'left';
-              labelDx = isLeft ? -6 : 6;
+              const x = pts[i][0];
+              const r = RADII[getNodeKind(2, i)] || 8;
+              const isLeft = x < meta.centerX;
+              if (isLeft) {
+                labelAlign = 'left';
+                labelDx = -r; // align with left side of circle
+              } else {
+                labelAlign = 'right';
+                labelDx = r; // align with right side of circle
+              }
             }
           }
 
@@ -490,9 +498,19 @@
               n.labelAlign = 'center';
               n.labelDx = 0;
             } else {
-              const isLeft = n.x < this._layoutMeta.level2.centerX;
-              n.labelAlign = isLeft ? 'right' : 'left';
-              n.labelDx = isLeft ? -6 : 6;
+              // Left side posts: left-justify text with left side of circle
+              // Right side posts: right-justify text with right side of circle
+              const meta = this._layoutMeta.level2;
+              const x = n.x;
+              const r = RADII[getNodeKind(2, n.i)] || 8;
+              const isLeft = x < meta.centerX;
+              if (isLeft) {
+                n.labelAlign = 'left';
+                n.labelDx = -r; // align with left side of circle
+              } else {
+                n.labelAlign = 'right';
+                n.labelDx = r; // align with right side of circle
+              }
               n.forceLabelBelow = false;
             }
           }
@@ -629,11 +647,6 @@
         ctx.beginPath();
         ctx.rect(elevX, elevY, elevW, elevH);
         ctx.stroke();
-        // Center split line
-        ctx.beginPath();
-        ctx.moveTo(centerX, elevY);
-        ctx.lineTo(centerX, elevY + elevH);
-        ctx.stroke();
 
         // Bottom cap to close the hallway
         ctx.beginPath();
@@ -676,47 +689,82 @@
 
         ctx.restore();
       } else if (levelNowForBG === 1) {
-        // Draw a larger doorway above the boss (index 0), with an open door leaf
-        const boss = this._nodes.find(n => n.i === 0);
-        if (boss) {
-          const rBoss = RADII[boss.kind] || 8;
-          const w = 46, h = 26;
-          const vGap = 16; // vertical gap between boss and doorway
-          let topY = boss.y - rBoss - vGap - h;
-          const leftX = boss.x - w * 0.5;
-          const rightX = boss.x + w * 0.5;
-          const bottomY = topY + h;
+        // Draw room walls around baby groups with top doorway and inward diagonal doors
+        const pad = 8;
 
-          // Clamp doorway so it doesn't render off-canvas if boss sits too high
-          const minTop = 6;
-          if (topY < minTop) {
-            topY = minTop;
-          }
-
-          ctx.save();
-          ctx.strokeStyle = STROKE;
-          ctx.lineWidth = 2;
-          ctx.setLineDash([]);
-
-          // Doorway frame (sides + header only; open at bottom)
-          ctx.beginPath();
-          ctx.moveTo(leftX, topY);
-          ctx.lineTo(leftX, bottomY);
-          ctx.moveTo(rightX, topY);
-          ctx.lineTo(rightX, bottomY);
-          ctx.moveTo(leftX, topY);
-          ctx.lineTo(rightX, topY);
-          ctx.stroke();
-
-          // Open door leaf: a diagonal panel from the left jamb
-          ctx.lineWidth = 3;
-          ctx.beginPath();
-          ctx.moveTo(leftX, bottomY - 2);
-          ctx.lineTo(leftX - 10, bottomY - 10);
-          ctx.stroke();
-
-          ctx.restore();
+        // Calculate bounds of all nodes including boss/upgrade post
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        for (const n of this._nodes) {
+          const r = RADII[n.kind] || 8;
+          // Include extra space for labels above nodes
+          const labelHeight = n.forceLabelBelow ? 0 : 16; // space for label above
+          minX = Math.min(minX, n.x - r);
+          maxX = Math.max(maxX, n.x + r);
+          minY = Math.min(minY, n.y - r - labelHeight);
+          maxY = Math.max(maxY, n.y + r);
         }
+
+        // Add generous padding around all bounds for walls and text clearance
+        const wallPad = 25;
+        const roomLeft = Math.max(pad, minX - wallPad);
+        const roomRight = Math.min(this._w - pad, maxX + wallPad);
+        const roomBottom = Math.min(this._h - pad, maxY + wallPad);
+        const roomTop = Math.max(pad, minY - wallPad);
+
+        // Doorway gap in the top wall
+        const doorGapWidth = 50;
+        const doorGapCenter = this._w * 0.5;
+        const doorGapLeft = doorGapCenter - doorGapWidth * 0.5;
+        const doorGapRight = doorGapCenter + doorGapWidth * 0.5;
+
+        ctx.save();
+        ctx.strokeStyle = STROKE;
+        ctx.lineWidth = 2;
+        ctx.setLineDash([]);
+
+        // Draw room walls with doorway gap in top
+        // Top wall with gap for doorway
+        ctx.beginPath();
+        ctx.moveTo(roomLeft, roomTop);
+        ctx.lineTo(doorGapLeft, roomTop);
+        ctx.moveTo(doorGapRight, roomTop);
+        ctx.lineTo(roomRight, roomTop);
+        ctx.stroke();
+
+        // Left wall
+        ctx.beginPath();
+        ctx.moveTo(roomLeft, roomTop);
+        ctx.lineTo(roomLeft, roomBottom);
+        ctx.stroke();
+
+        // Right wall
+        ctx.beginPath();
+        ctx.moveTo(roomRight, roomTop);
+        ctx.lineTo(roomRight, roomBottom);
+        ctx.stroke();
+
+        // Bottom wall
+        ctx.beginPath();
+        ctx.moveTo(roomLeft, roomBottom);
+        ctx.lineTo(roomRight, roomBottom);
+        ctx.stroke();
+
+        // Double doors: single diagonal lines descending down and outward from door jambs
+        ctx.lineWidth = 3;
+
+        // Left door: diagonal from top-left of gap down and left
+        ctx.beginPath();
+        ctx.moveTo(doorGapLeft, roomTop);
+        ctx.lineTo(doorGapLeft - 12, roomTop + 12);
+        ctx.stroke();
+
+        // Right door: diagonal from top-right of gap down and right
+        ctx.beginPath();
+        ctx.moveTo(doorGapRight, roomTop);
+        ctx.lineTo(doorGapRight + 12, roomTop + 12);
+        ctx.stroke();
+
+        ctx.restore();
       }
 
       // Level transition rendering: draw previous snapshot shrinking/fading, and scale current scene
