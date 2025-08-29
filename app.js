@@ -1028,13 +1028,7 @@ function goBaby() {
 
             if (transitMoves == 0) {
               // Handle things related to arriving at a location
-              // Delay arrival logic to allow animation to play
-              isAnimatingMovement = true;
-              window.animationStartTime = performance.now(); // Record animation start time
-              window.animationFromLoc = locIndex; // Capture starting location for animation
-              window.animationToLoc = nextLocIndex; // Capture destination for animation
-              setMapAnimationClass(true); // Add animation class
-              setTimeout(handleArrivalLogic, 800); // 800ms for animation
+              handleArrivalLogic(); // Call directly, animation happens during transit
             } else {
               if (visitedLocation[currLevel][nextLocIndex]) {
                 typeText(levelData[currLevel].RevisitMsg);
@@ -1705,21 +1699,4 @@ function handleArrivalLogic() {
     }
     enterTradingMode();
   }
-  isAnimatingMovement = false;
-  window.animationFromLoc = undefined; // Clear animation location
-  window.animationToLoc = undefined; // Clear animation location
-  setMapAnimationClass(false); // Remove animation class
-}
-
-var isAnimatingMovement = false;
-
-function setMapAnimationClass(active) {
-  const mapCanvas = document.getElementById('mapCanvas');
-  if (!mapCanvas) return;
-
-  // Remove all animation classes
-  mapCanvas.classList.remove('thrash-animation');
-
-  // Level 0 (thrash) and Level 1 (roll) animations will be handled in mapRenderer.js
-  // No CSS classes needed for these.
 }

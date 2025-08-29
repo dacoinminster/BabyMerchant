@@ -213,22 +213,29 @@
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
-    // Apply level-specific transformations
-    if (window.isAnimatingMovement && window.currLevel === 1) {
-      // Level 1: Rolling over (360 rotation)
-      const animationProgress = (performance.now() % 800) / 800; // Assuming 800ms animation
-      const rotation = animationProgress * Math.PI * 2; // 360 degrees in radians
-      ctx.translate(x, y);
-      ctx.rotate(rotation);
-      ctx.translate(-x, -y);
-    }
-    if (window.isAnimatingMovement && window.currLevel === 0) {
-      // Level 0: Thrashing about
-      const animationProgress = (performance.now() % 100) / 100; // 100ms cycle
-      const shakeX = Math.sin(animationProgress * Math.PI * 2) * 2; // 2px shake
-      const shakeY = Math.cos(animationProgress * Math.PI * 2) * 2; // 2px shake
-      ctx.translate(x + shakeX, y + shakeY);
-      ctx.translate(-x, -y);
+    // Apply level-specific transformations when travel is active and animation is within its duration
+    if (mapRenderer._travelActive && mapRenderer._stepAnimationStartTime > 0) {
+      const animationDurationPerStep = 800; // Duration for one step's animation
+      const elapsedTime = performance.now() - mapRenderer._stepAnimationStartTime;
+      const animationProgress = clamp01(elapsedTime / animationDurationPerStep);
+
+      if (animationProgress < 1) { // Only animate if within the step's animation duration
+        if (window.currLevel === 1) {
+          // Level 1: Rolling over (360 rotation)
+          const rotation = animationProgress * Math.PI * 2; // 360 degrees in radians
+          ctx.translate(x, y);
+          ctx.rotate(rotation);
+          ctx.translate(-x, -y);
+        } else if (window.currLevel === 0) {
+          // Level 0: Thrashing about
+          const shakeCycleDuration = 100; // 100ms cycle for thrashing
+          const shakeProgress = (elapsedTime % shakeCycleDuration) / shakeCycleDuration;
+          const shakeX = Math.sin(shakeProgress * Math.PI * 2) * 2; // 2px shake
+          const shakeY = Math.cos(shakeProgress * Math.PI * 2) * 2; // 2px shake
+          ctx.translate(x + shakeX, y + shakeY);
+          ctx.translate(-x, -y);
+        }
+      }
     }
     // Level 2: Crawling (three quick scootches) is handled by modifying the 't' value in _draw.
 
@@ -297,6 +304,7 @@
     _travelTotalSteps: 0,
     _travelProgressSteps: 0,
     _travelColor: STROKE,
+    _stepAnimationStartTime: 0, // New variable to track animation start time for each step
 
     init() {
       const host = document.getElementById('mapGoesHere');
@@ -560,34 +568,30 @@
         this._positionsValid = false;
       }
 
-      if (transit > 0) {
-        this._travelActive = true;
-        this._travelFrom = loc;
-        this._travelTo = nextIdx;
-        const total = (window.travelTime && typeof window.travelTime[level] === 'number') ? window.travelTime[level] : (this._travelTotalSteps || transit);
-        this._travelTotalSteps = total;
-        this._travelProgressSteps = (total - transit);
-      } else {
-        // If an animation is active, keep travel active and advance progress
-        if (window.isAnimatingMovement) {
-          this._travelActive = true;
-          this._travelFrom = window.animationFromLoc; // Use captured from location
-          this._travelTo = window.animationToLoc; // Use captured to location
-          // Calculate progress based on animation time
-          const animationDuration = 800; // Matches setTimeout in app.js
-          const elapsedTime = (typeof performance !== 'undefined' && performance.now) ? (performance.now() - window.animationStartTime) : (Date.now() - window.animationStartTime);
-          let animationProgress = clamp01(elapsedTime / animationDuration);
+      // Determine if travel is active based on transitMoves
+      const isCurrentlyTraveling = (transit > 0);
 
-          // Interpolate _travelProgressSteps from its last value (0) to _travelTotalSteps (total travel time)
-          // This ensures the baby moves along the path during the animation
-          this._travelProgressSteps = lerp(0, this._travelTotalSteps, animationProgress);
+      // If a new step has started (transitMoves changed from last frame), reset animation start time
+      // Or if we just started traveling
+      if (isCurrentlyTraveling && (this._lastTransitMoves === 0 || this._lastTransitMoves !== transit)) {
+        this._stepAnimationStartTime = performance.now();
+      }
 
-        } else if (this._travelActive) {
-          // Just arrived, and no animation is active
-          this._travelProgressSteps = this._travelTotalSteps;
-          this._positionsValid = false; // discovery/labels may change
-          this._travelActive = false;
-        }
+      this._travelActive = isCurrentlyTraveling; // Set travel active based on transitMoves
+      this._travelFrom = loc;
+      this._travelTo = nextIdx;
+      const total = (window.travelTime && typeof window.travelTime[level] === 'number') ? window.travelTime[level] : (this._travelTotalSteps || transit);
+      this._travelTotalSteps = total;
+      this._travelProgressSteps = (total - transit);
+
+      // If we just arrived (transitMoves was 1 and now is 0), ensure positions are re-evaluated
+      if (this._lastTransitMoves === 1 && transit === 0) {
+        this._positionsValid = false;
+      }
+
+      // Reset step animation time if not traveling
+      if (!isCurrentlyTraveling) {
+        this._stepAnimationStartTime = 0;
       }
 
       this._lastTransitMoves = transit;
@@ -854,22 +858,26 @@
             // Progress along routed path
             let t = this._travelTotalSteps ? clamp01(this._travelProgressSteps / this._travelTotalSteps) : 0;
 
-            // Apply scootch animation for Level 2
-            if (window.isAnimatingMovement && window.currLevel === 2) {
-              const animationDuration = 800; // Matches the setTimeout in app.js
-              const scootchCycles = 3; // Three scootches
-              const cycleDuration = animationDuration / scootchCycles;
-              const timeIntoCycle = performance.now() % cycleDuration;
-              const cycleProgress = timeIntoCycle / cycleDuration; // 0 to 1 within each scootch cycle
+            // Apply scootch animation for Level 2 when travel is active and animation is within its duration
+            if (this._travelActive && window.currLevel === 2 && this._stepAnimationStartTime > 0) {
+              const animationDurationPerStep = 800; // Duration for one step's animation
+              const elapsedTime = performance.now() - this._stepAnimationStartTime;
+              const animationProgress = clamp01(elapsedTime / animationDurationPerStep);
 
-              // Use a sine wave to create a forward-backward motion within each scootch
-              // The amplitude of the scootch (how far it moves forward/backward)
-              const scootchAmplitude = 0.05; // Increased for visibility
+              if (animationProgress < 1) { // Only animate if within the step's animation duration
+                const scootchCycles = 3; // Three scootches per step
+                const cycleDuration = animationDurationPerStep / scootchCycles;
+                const timeIntoCycle = elapsedTime % cycleDuration;
+                const cycleProgress = timeIntoCycle / cycleDuration; // 0 to 1 within each scootch cycle
 
-              // Modify 't' to include the scootch effect
-              // This makes the baby move slightly forward and then back within each "scootch"
-              t += Math.sin(cycleProgress * Math.PI * 2) * scootchAmplitude;
-              t = clamp01(t); // Ensure t stays within [0, 1]
+                // Use a sine wave to create a forward-backward motion within each scootch
+                const scootchAmplitude = 0.05; // Increased for visibility
+
+                // Modify 't' to include the scootch effect
+                // This makes the baby move slightly forward and then back within each "scootch"
+                t += Math.sin(cycleProgress * Math.PI * 2) * scootchAmplitude;
+                t = clamp01(t); // Ensure t stays within [0, 1]
+              }
             }
 
             const p = pointAlongPolyline(route, t);
