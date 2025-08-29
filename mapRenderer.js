@@ -205,13 +205,33 @@
     return [[fromNode.x, fromNode.y], [toNode.x, toNode.y]];
   }
 
-  function drawProgressBaby(ctx, x, y, px = 22) {
+  function drawProgressBaby(ctx, x, y, px = 22, level = 0) {
     // Grayscale emoji rendering. Use filter when available, else pixel fallback.
     const supportsFilter = ('filter' in ctx);
     ctx.save();
     ctx.font = `${px}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",emoji,sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
+
+    // Apply level-specific transformations
+    if (window.isAnimatingMovement && window.currLevel === 1) {
+      // Level 1: Rolling over (360 rotation)
+      const animationProgress = (performance.now() % 800) / 800; // Assuming 800ms animation
+      const rotation = animationProgress * Math.PI * 2; // 360 degrees in radians
+      ctx.translate(x, y);
+      ctx.rotate(rotation);
+      ctx.translate(-x, -y);
+    }
+    if (window.isAnimatingMovement && window.currLevel === 0) {
+      // Level 0: Thrashing about
+      const animationProgress = (performance.now() % 100) / 100; // 100ms cycle
+      const shakeX = Math.sin(animationProgress * Math.PI * 2) * 2; // 2px shake
+      const shakeY = Math.cos(animationProgress * Math.PI * 2) * 2; // 2px shake
+      ctx.translate(x + shakeX, y + shakeY);
+      ctx.translate(-x, -y);
+    }
+    // Level 2: Crawling (three quick scootches) is handled by modifying the 't' value in _draw.
+
     if (supportsFilter) {
       ctx.filter = 'grayscale(1) contrast(1.1)';
       ctx.fillText('👶', x, y);
@@ -548,12 +568,26 @@
         this._travelTotalSteps = total;
         this._travelProgressSteps = (total - transit);
       } else {
-        if (this._travelActive) {
-          // Just arrived
+        // If an animation is active, keep travel active and advance progress
+        if (window.isAnimatingMovement) {
+          this._travelActive = true;
+          this._travelFrom = window.animationFromLoc; // Use captured from location
+          this._travelTo = window.animationToLoc; // Use captured to location
+          // Calculate progress based on animation time
+          const animationDuration = 800; // Matches setTimeout in app.js
+          const elapsedTime = (typeof performance !== 'undefined' && performance.now) ? (performance.now() - window.animationStartTime) : (Date.now() - window.animationStartTime);
+          let animationProgress = clamp01(elapsedTime / animationDuration);
+
+          // Interpolate _travelProgressSteps from its last value (0) to _travelTotalSteps (total travel time)
+          // This ensures the baby moves along the path during the animation
+          this._travelProgressSteps = lerp(0, this._travelTotalSteps, animationProgress);
+
+        } else if (this._travelActive) {
+          // Just arrived, and no animation is active
           this._travelProgressSteps = this._travelTotalSteps;
           this._positionsValid = false; // discovery/labels may change
+          this._travelActive = false;
         }
-        this._travelActive = false;
       }
 
       this._lastTransitMoves = transit;
@@ -818,7 +852,26 @@
             const route = getRouteBetweenNodes(levelNow, this._layoutMeta, fromNode, toNode);
             drawDashedPolyline(ctx, route, pathColor, 0.5);
             // Progress along routed path
-            const t = this._travelTotalSteps ? clamp01(this._travelProgressSteps / this._travelTotalSteps) : 0;
+            let t = this._travelTotalSteps ? clamp01(this._travelProgressSteps / this._travelTotalSteps) : 0;
+
+            // Apply scootch animation for Level 2
+            if (window.isAnimatingMovement && window.currLevel === 2) {
+              const animationDuration = 800; // Matches the setTimeout in app.js
+              const scootchCycles = 3; // Three scootches
+              const cycleDuration = animationDuration / scootchCycles;
+              const timeIntoCycle = performance.now() % cycleDuration;
+              const cycleProgress = timeIntoCycle / cycleDuration; // 0 to 1 within each scootch cycle
+
+              // Use a sine wave to create a forward-backward motion within each scootch
+              // The amplitude of the scootch (how far it moves forward/backward)
+              const scootchAmplitude = 0.05; // Increased for visibility
+
+              // Modify 't' to include the scootch effect
+              // This makes the baby move slightly forward and then back within each "scootch"
+              t += Math.sin(cycleProgress * Math.PI * 2) * scootchAmplitude;
+              t = clamp01(t); // Ensure t stays within [0, 1]
+            }
+
             const p = pointAlongPolyline(route, t);
             __babyPos = { x: p[0], y: p[1] };
           }
@@ -887,7 +940,7 @@
 
       // Draw progress baby above nodes
       if (__babyPos) {
-        drawProgressBaby(ctx, __babyPos.x, __babyPos.y, 22);
+        drawProgressBaby(ctx, __babyPos.x, __babyPos.y, 22, window.currLevel);
       }
 
       // Finalize/cleanup transition transforms
