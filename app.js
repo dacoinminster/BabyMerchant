@@ -84,7 +84,13 @@ const varsToSave = [
 deepFreeze(varsToSave);
 
 var PAUSE_MULT = 100; // Pause multiplier
-var devMode = false;
+
+// Load development configuration from config.js (included in HTML)
+// If devMode is not defined globally, default to false
+if (typeof devMode === 'undefined') {
+  var devMode = false;
+}
+
 if (devMode) {
   gameSeed = 1;
   PAUSE_MULT = 1;
