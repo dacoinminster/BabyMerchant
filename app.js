@@ -792,6 +792,7 @@ function exitTradingMode() {
     updateLocomoteButton();
   }
   // Restore the standard movement controls at the top
+  // The visibility of storeVisible/upgradesVisible will be determined by setupInitialActions
   setupInitialActions();
 }
 
@@ -924,6 +925,10 @@ function goBaby() {
             }
             oldInv[currLevel] = [0, 0, 0, 0];
             locIndex = oldLocIndex[currLevel];
+            nextLocIndex = locIndex + 1; // Add this line for levelDown
+            if (nextLocIndex > levelData[currLevel].numLocations) {
+              nextLocIndex = 0;
+            }
             storeVisible = false;
             randomizeStore(locIndex, true);
             upgradesVisible = true;
@@ -1002,6 +1007,13 @@ function goBaby() {
               if (el) el.disabled = false;
             }, 8 * PAUSE_MULT);
 
+            // Hide the "enterTrading" button as soon as movement starts
+            var trBtn = document.getElementById('buttonIDenterTrading');
+            if (trBtn) {
+              trBtn.style.visibility = 'hidden';
+              trBtn.disabled = true;
+            }
+
             if (transitMoves == 0) {
               // Handle things related to departing a location
               (function(el){ if (el) el.style.display = 'none'; })(document.getElementById('destinationsAndLabel'));
@@ -1052,8 +1064,6 @@ function goBaby() {
           break;
         case 'doneTrading':
           // Allow exiting trading even when overencumbered; movement will block travel if needed
-          storeVisible = false;
-          upgradesVisible = false;
           exitTradingMode();
           break;
         case 'enterTrading':
@@ -1440,7 +1450,7 @@ function setupInitialActions() {
   // Enter Trading/Upgrades button visibility while in movement mode
   var trBtn = document.getElementById('buttonIDenterTrading');
   if (trBtn) {
-    var canEnterTrading = (uiMode === 'movement') && ((locIndex === 0) || (tradingEnabled && locIndex > 0));
+    var canEnterTrading = (uiMode === 'movement') && (transitMoves === 0) && ((locIndex === 0 && upgradesVisible) || (tradingEnabled && locIndex > 0));
     trBtn.style.visibility = canEnterTrading ? 'visible' : 'hidden';
     trBtn.disabled = !canEnterTrading;
   }
@@ -1698,5 +1708,12 @@ function handleArrivalLogic() {
       storeVisible = true;
     }
     enterTradingMode();
+  }
+  // Explicitly set the visibility of the "enterTrading" button after arrival
+  var trBtn = document.getElementById('buttonIDenterTrading');
+  if (trBtn) {
+    var canEnterTrading = (uiMode === 'movement') && (transitMoves === 0) && ((locIndex === 0 && upgradesVisible) || (tradingEnabled && locIndex > 0));
+    trBtn.style.visibility = canEnterTrading ? 'visible' : 'hidden';
+    trBtn.disabled = !canEnterTrading;
   }
 }
