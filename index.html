@@ -12,16 +12,47 @@
 
   <meta charset="UTF-8"/>
   <!--
-    👶 Baby Merchant 👶
+		👶 Baby Merchant 👶
 
-    A text trading game (and sin against best practices) by J.R. Willett (https://www.linkedin.com/in/jrwillett/)
-    Inspired by:
-    A Dark Room http://adarkroom.doublespeakgames.com/
-    Universal Paperclip https://www.decisionproblem.com/paperclips/
-    Candy Box 2 https://candybox2.github.io/candybox/
-    Taipan! https://en.wikipedia.org/wiki/Taipan
-    Desert Trader, specifically the Apple IIGS version: https://www.reddit.com/r/tipofmytongue/comments/hh2exu/tomtgamelate_80s_to_early_90s_pc_game_about/
-    Galactic Conquest (https://www.galcon.com/classic/history.html), specifically the 1991 version for the Apple IIGS by David Hallwas, which the internet has forgotten
+		A text trading game (and sin against best practices) by J.R. Willett (https://www.linkedin.com/in/jrwillett/)
+		Inspired by:
+		A Dark Room http://adarkroom.doublespeakgames.com/
+		Universal Paperclip https://www.decisionproblem.com/paperclips/
+		Candy Box 2 https://candybox2.github.io/candybox/
+		Taipan! https://en.wikipedia.org/wiki/Taipan
+		Desert Trader, specifically the Apple IIGS version: https://www.reddit.com/r/tipofmytongue/comments/hh2exu/tomtgamelate_80s_to_early_90s_pc_game_about/
+		Galactic Conquest (https://www.galcon.com/classic/history.html), specifically the 1991 version for the Apple IIGS by David Hallwas, which the internet has forgotten
+
+		Goals I'd like to implement:
+		* Each level adds a new gameplay wrinkle
+		* Health, Battles, Upgradeable weapons and/or number of weapons
+			* Weapons should take cargo space
+		* Borrowing from a money lender
+		* Banking Deposits
+		* Owning multiple ships
+		* Gaining/Losing territory to rivals
+		* Karma from doing good or bad things affects luck?
+		* Travel down into massive number of consistently named subworlds
+				* Maybe to earn karma?
+				* Buy upgrades with absurd amoumts of currency from higher levels
+				* Find artifacts based on clues discovered at higher levels
+		* Trading affects supply/demand? (My trading actions affect prices?)
+		* Prices trending over time?
+ 		* Narration needs more voice/humor
+		* 'glowing pill' mechanic allows expensive upgrades that restart the game with perks - only shows up when you can afford it
+		   * Booger pill, Gossip pill
+
+
+		TODOs resulting from play testing:
+		* Bug: repeatedly entering and exiting level 0 to change prices made baby names undefined
+		* Early inventory management is hard to learn. Should make it easier by making slimy boogers
+					and bloody boogers move prices in opposite directions, so that when one is cheap,
+					other is expensive
+		* Eat boogers? This would help with early inventory management frustration, and it could
+		      build HP or have some other benefit
+		* Would be nice to have better graphical visualization of the destinations and of moving up and down the levels
+		* Need more play testing!
+		* Feels awfully repetitive
   -->
   <title>Baby Merchant</title>
   <meta itemprop="description" name="description" property="og:description" content="A minimalist trading game">
