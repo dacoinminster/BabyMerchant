@@ -33,7 +33,7 @@
   }
 
   function getLabelElementForIndex(i) {
-    // Destination labels are rendered as: <label for="nextLoci">...
+    // Destination labels are rendered as: <label for="nextLocN">...
     return document.querySelector('label[for="nextLoc' + i + '"]');
   }
 
@@ -53,7 +53,7 @@
     }
   }
 
-  // Deterministic layout (circle) for now; refine per-level later
+  // Deterministic layout (circle) for now; refined per-level below
   function computeCirclePositions(num, cx, cy, r) {
     const pts = [];
     for (let i = 0; i < num; i++) {
@@ -65,6 +65,7 @@
 
   function drawNode(ctx, node, showName, hasGossip, labelText, ringColor) {
     const r = RADII[node.kind];
+
     // core
     ctx.beginPath();
     ctx.arc(node.x, node.y, r, 0, Math.PI * 2);
@@ -86,15 +87,20 @@
     if (showName && labelText) {
       ctx.font = LABEL_FONT;
       ctx.fillStyle = STROKE;
-      ctx.textAlign = 'center';
+
+      // Label alignment/offset hints possibly supplied by layout
+      const align = node.labelAlign || 'center';
+      ctx.textAlign = align;
       ctx.textBaseline = 'alphabetic';
-      // If label would be too close to the top edge (e.g., boss at 12 o'clock),
-      // draw it below the node to avoid clipping.
-      let labelY = node.y - r - 6;
-      if (labelY < 10) {
+
+      // Y placement: default above; can be forced below; clamp if too close to top
+      let labelY = node.forceLabelBelow ? (node.y + r + 10) : (node.y - r - 6);
+      if (!node.forceLabelBelow && labelY < 10) {
         labelY = node.y + r + 10;
       }
-      ctx.fillText(labelText, node.x, labelY);
+
+      const labelX = node.x + (node.labelDx || 0);
+      ctx.fillText(labelText, labelX, labelY);
     }
   }
 
@@ -118,6 +124,85 @@
     ctx.lineTo(bx, by);
     ctx.stroke();
     ctx.restore();
+  }
+
+  // Draw a dashed polyline for routed paths (e.g., level 2 hallway)
+  function drawDashedPolyline(ctx, pts, strokeStyle, alpha = 1) {
+    if (!pts || pts.length < 2) return;
+    ctx.save();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = strokeStyle || STROKE;
+    ctx.globalAlpha = alpha;
+    ctx.setLineDash([6, 6]);
+    ctx.beginPath();
+    ctx.moveTo(pts[0][0], pts[0][1]);
+    for (let i = 1; i < pts.length; i++) {
+      ctx.lineTo(pts[i][0], pts[i][1]);
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function polylineLength(pts) {
+    let len = 0;
+    for (let i = 1; i < pts.length; i++) {
+      const dx = pts[i][0] - pts[i - 1][0];
+      const dy = pts[i][1] - pts[i - 1][1];
+      len += Math.hypot(dx, dy);
+    }
+    return len;
+  }
+
+  // t in [0,1]
+  function pointAlongPolyline(pts, t) {
+    if (!pts || pts.length === 0) return [0, 0];
+    if (pts.length === 1) return pts[0];
+    const total = polylineLength(pts);
+    if (total === 0) return pts[pts.length - 1];
+    let dist = t * total;
+    for (let i = 1; i < pts.length; i++) {
+      const ax = pts[i - 1][0], ay = pts[i - 1][1];
+      const bx = pts[i][0], by = pts[i][1];
+      const seg = Math.hypot(bx - ax, by - ay);
+      if (dist <= seg || i === pts.length - 1) {
+        const tt = seg ? dist / seg : 0;
+        return [lerp(ax, bx, tt), lerp(ay, by, tt)];
+      }
+      dist -= seg;
+    }
+    return pts[pts.length - 1];
+  }
+
+  // Route computation by level
+  function getRouteBetweenNodes(level, meta, fromNode, toNode) {
+    if (!fromNode || !toNode) return [[0, 0], [0, 0]];
+    if (level === 2 && meta && meta.level2) {
+      const cx = meta.level2.centerX;
+      const a = [fromNode.x, fromNode.y];
+      const b = [toNode.x, toNode.y];
+      const aOnCenter = Math.abs(a[0] - cx) < 1e-3;
+      const bOnCenter = Math.abs(b[0] - cx) < 1e-3;
+      const p1 = aOnCenter ? a : [cx, a[1]];
+      const p2 = bOnCenter ? b : [cx, b[1]];
+      const pts = [a];
+      if (!aOnCenter) pts.push(p1);
+      if (!bOnCenter && (pts.length === 1 || (pts[pts.length - 1][0] !== p2[0] || pts[pts.length - 1][1] !== p2[1]))) {
+        // vertical spine
+        pts.push(p2);
+      }
+      pts.push(b);
+      // Remove any consecutive duplicates
+      const dedup = [pts[0]];
+      for (let i = 1; i < pts.length; i++) {
+        const prev = dedup[dedup.length - 1];
+        if (Math.abs(prev[0] - pts[i][0]) > 1e-6 || Math.abs(prev[1] - pts[i][1]) > 1e-6) {
+          dedup.push(pts[i]);
+        }
+      }
+      return dedup;
+    }
+    // Default straight
+    return [[fromNode.x, fromNode.y], [toNode.x, toNode.y]];
   }
 
   function drawProgressBaby(ctx, x, y, px = 22) {
@@ -180,9 +265,10 @@
     _lastCurrLevel: 0,
 
     // Graph cache
-    _nodes: [], // {i, x, y, kind, discovered, nameKnown, label}
+    _nodes: [], // {i, x, y, kind, discovered, nameKnown, label, labelAlign?, labelDx?, forceLabelBelow?}
     _edges: [], // pairs of node indices (indices into _nodes)
     _positionsValid: false,
+    _layoutMeta: {},
 
     // Travel visualization
     _travelActive: false,
@@ -289,22 +375,81 @@
       }
 
       if (!this._positionsValid || this._nodes.length !== numLocations) {
-        // Layout circle
+        this._layoutMeta = {};
+        let pts = [];
         const pad = 12;
         const cx = this._w * 0.5, cy = this._h * 0.5;
-        const r = Math.max(20, Math.min(this._h * 0.5 - pad, this._w * 0.45 - pad));
-        const pts = computeCirclePositions(numLocations, cx, cy, r);
+
+        if (level === 2) {
+          // Level 2: vertical hallway with walls and elevator at top
+          const hallWidth = Math.min(this._w * 0.5, 140);
+          const xLeft = cx - hallWidth * 0.5;
+          const xRight = cx + hallWidth * 0.5;
+          const yTop = pad + 24;
+          const yBottom = this._h - pad - 8;
+          const centerX = cx;
+
+          // Elevator node (index 0) near top center (moved down for room above)
+          const elevatorY = yTop + 50;
+          pts[0] = [centerX, elevatorY];
+
+          // Four door nodes along hallway, alternating sides
+          const usableHeight = (yBottom - (elevatorY + 40));
+          const step = usableHeight / 4;
+          for (let i = 1; i < numLocations; i++) {
+            const trow = i; // 1..4
+            const y = elevatorY + 40 + (trow - 1) * step + step * 0.5;
+            const leftSide = (i % 2 === 1);
+            const insideLeftX = xLeft + 16;     // place posts INSIDE hallway to avoid door collisions
+            const insideRightX = xRight - 16;
+            const x = leftSide ? insideLeftX : insideRightX;
+            pts[i] = [x, y];
+          }
+
+          this._layoutMeta.level2 = { xLeft, xRight, yTop, yBottom, centerX };
+        } else {
+          // Levels 0 and 1: circle layout (with headroom adjustment for L1 doorway)
+          let r = Math.max(20, Math.min(this._h * 0.5 - pad, this._w * 0.45 - pad));
+
+          if (level === 1) {
+            // Ensure there is headroom above index 0 for the doorway graphic
+            const rBoss = RADII[getNodeKind(1, 0)] || 10; // index 0 is doorway icon on L1
+            const vGap = 16, doorH = 26, marginTop = rBoss + vGap + doorH + 8;
+            const maxRForDoor = Math.max(20, (cy - (pad + marginTop)));
+            r = Math.min(r, maxRForDoor);
+            this._layoutMeta.level1 = { bossIndex: 0, rAdjusted: r };
+          }
+
+          pts = computeCirclePositions(numLocations, cx, cy, r);
+        }
 
         this._nodes = [];
         for (let i = 0; i < numLocations; i++) {
           const kind = getNodeKind(level, i);
           const visited = !!(window.visitedLocation && window.visitedLocation[level] && window.visitedLocation[level][i]);
-          const nameKnown = (level === 0)
-            ? visited
-            : visited; // Level 1+: names revealed on visit
+          const nameKnown = (level === 0) ? visited : visited; // Level 1+: names revealed on visit
           const label = nameKnown
             ? (window.locationName && window.locationName[level] ? window.locationName[level][i] : '')
             : ''; // minimalist: hide labels when unknown
+
+          // Label layout hints
+          let labelAlign = undefined;
+          let labelDx = 0;
+          let forceLabelBelow = false;
+
+          if (level === 2) {
+            if (i === 0) {
+              // Keep the "final boss" (elevator) label below to avoid overlapping elevator drawing
+              forceLabelBelow = true;
+            } else {
+              // Inside hallway: justify away from the wall to avoid crossing the wall line
+              const meta = this._layoutMeta.level2;
+              const isLeft = pts[i][0] < meta.centerX;
+              labelAlign = isLeft ? 'right' : 'left';
+              labelDx = isLeft ? -6 : 6;
+            }
+          }
+
           this._nodes.push({
             i,
             x: pts[i][0],
@@ -312,7 +457,10 @@
             kind,
             discovered: (level === 0 ? visited : true),
             nameKnown,
-            label
+            label,
+            labelAlign,
+            labelDx,
+            forceLabelBelow
           });
         }
 
@@ -334,6 +482,20 @@
             ? (window.locationName && window.locationName[level] ? window.locationName[level][i] : '')
             : '';
           n.kind = getNodeKind(level, i);
+
+          // Re-assert L2 label hints on each rebuild
+          if (level === 2 && this._layoutMeta.level2) {
+            if (n.i === 0) {
+              n.forceLabelBelow = true;
+              n.labelAlign = 'center';
+              n.labelDx = 0;
+            } else {
+              const isLeft = n.x < this._layoutMeta.level2.centerX;
+              n.labelAlign = isLeft ? 'right' : 'left';
+              n.labelDx = isLeft ? -6 : 6;
+              n.forceLabelBelow = false;
+            }
+          }
         }
       }
     },
@@ -350,7 +512,6 @@
       let gossipIndex = (typeof window.gossipLocation === 'number' ? window.gossipLocation : -1);
       const gossipActive = !!window.showingGossipColors;
       this._gossipIndex = gossipActive ? gossipIndex : -1;
-
 
       // Travel state: treat any transitMoves > 0 as "en route"
       const wasLevel = this._lastCurrLevel;
@@ -396,6 +557,167 @@
 
       // Defer drawing the progress baby until after nodes so it's always on top
       let __babyPos = null;
+
+      // Level-specific background/decorations
+      const levelNowForBG = (window.currLevel || 0);
+      if (levelNowForBG === 2 && this._layoutMeta.level2) {
+        // Draw hallway walls with doorway gaps, a closed elevator door at the top, and a bottom cap
+        const { xLeft, xRight, yTop, yBottom, centerX } = this._layoutMeta.level2;
+        const doorGapHalf = 10;
+
+        // Collect doorway y-positions per side from node layout (indices 1..)
+        const leftGaps = [];
+        const rightGaps = [];
+        for (const n of this._nodes) {
+          if (n.i === 0) continue;
+          // Determine which side this door is on by proximity to walls
+          if (n.x < centerX) {
+            leftGaps.push(n.y);
+          } else {
+            rightGaps.push(n.y);
+          }
+        }
+        leftGaps.sort((a, b) => a - b);
+        rightGaps.sort((a, b) => a - b);
+
+        // Helper to draw a vertical line with gaps
+        const drawGappedWall = (x, gaps) => {
+          ctx.beginPath();
+          let yCursor = yTop;
+          for (const gy of gaps) {
+            const y1 = Math.max(yTop, gy - doorGapHalf);
+            const y2 = Math.min(yBottom, gy + doorGapHalf);
+            if (y1 > yCursor) {
+              ctx.moveTo(x, yCursor);
+              ctx.lineTo(x, y1);
+            }
+            yCursor = y2;
+          }
+          if (yCursor < yBottom) {
+            ctx.moveTo(x, yCursor);
+            ctx.lineTo(x, yBottom);
+          }
+          ctx.stroke();
+        };
+
+        ctx.save();
+        ctx.strokeStyle = STROKE;
+        ctx.lineWidth = 2;
+        ctx.setLineDash([]);
+
+        // Left and right walls with gaps for doorways
+        drawGappedWall(xLeft, leftGaps);
+        drawGappedWall(xRight, rightGaps);
+
+        // Elevator header (top lintel) across the hall
+        ctx.beginPath();
+        ctx.moveTo(xLeft, yTop);
+        ctx.lineTo(xRight, yTop);
+        ctx.stroke();
+
+        // Closed elevator door (rectangle with center line), positioned above the boss label
+        const bossNode = this._nodes.find(n => n.i === 0);
+        const elevW = Math.min(52, xRight - xLeft - 8);
+        const elevH = 28;
+        const elevX = centerX - elevW * 0.5;
+        let elevY = yTop + 2;
+        if (bossNode) {
+          const rBoss = RADII[bossNode.kind] || 10;
+          // place the elevator block just above the boss node (and thus above its label, which sits below)
+          elevY = bossNode.y - (rBoss + 10) - elevH;
+        }
+        ctx.beginPath();
+        ctx.rect(elevX, elevY, elevW, elevH);
+        ctx.stroke();
+        // Center split line
+        ctx.beginPath();
+        ctx.moveTo(centerX, elevY);
+        ctx.lineTo(centerX, elevY + elevH);
+        ctx.stroke();
+
+        // Bottom cap to close the hallway
+        ctx.beginPath();
+        ctx.moveTo(xLeft, yBottom);
+        ctx.lineTo(xRight, yBottom);
+        ctx.stroke();
+
+        // Open door leaves at each hallway doorway (open into the rooms, away from hallway)
+        // Hinge leaves from the wall edges (gap endpoints) so they visually connect to frames
+        ctx.lineWidth = 3;
+
+        for (const gy of leftGaps) {
+          const y1 = Math.max(yTop, gy - doorGapHalf);
+          const y2 = Math.min(yBottom, gy + doorGapHalf);
+          // Top leaf (hinge at top gap edge)
+          ctx.beginPath();
+          ctx.moveTo(xLeft, y1);
+          ctx.lineTo(xLeft - 12, y1 - 10);
+          ctx.stroke();
+          // Bottom leaf (hinge at bottom gap edge)
+          ctx.beginPath();
+          ctx.moveTo(xLeft, y2);
+          ctx.lineTo(xLeft - 12, y2 + 10);
+          ctx.stroke();
+        }
+        for (const gy of rightGaps) {
+          const y1 = Math.max(yTop, gy - doorGapHalf);
+          const y2 = Math.min(yBottom, gy + doorGapHalf);
+          // Top leaf
+          ctx.beginPath();
+          ctx.moveTo(xRight, y1);
+          ctx.lineTo(xRight + 12, y1 - 10);
+          ctx.stroke();
+          // Bottom leaf
+          ctx.beginPath();
+          ctx.moveTo(xRight, y2);
+          ctx.lineTo(xRight + 12, y2 + 10);
+          ctx.stroke();
+        }
+
+        ctx.restore();
+      } else if (levelNowForBG === 1) {
+        // Draw a larger doorway above the boss (index 0), with an open door leaf
+        const boss = this._nodes.find(n => n.i === 0);
+        if (boss) {
+          const rBoss = RADII[boss.kind] || 8;
+          const w = 46, h = 26;
+          const vGap = 16; // vertical gap between boss and doorway
+          let topY = boss.y - rBoss - vGap - h;
+          const leftX = boss.x - w * 0.5;
+          const rightX = boss.x + w * 0.5;
+          const bottomY = topY + h;
+
+          // Clamp doorway so it doesn't render off-canvas if boss sits too high
+          const minTop = 6;
+          if (topY < minTop) {
+            topY = minTop;
+          }
+
+          ctx.save();
+          ctx.strokeStyle = STROKE;
+          ctx.lineWidth = 2;
+          ctx.setLineDash([]);
+
+          // Doorway frame (sides + header only; open at bottom)
+          ctx.beginPath();
+          ctx.moveTo(leftX, topY);
+          ctx.lineTo(leftX, bottomY);
+          ctx.moveTo(rightX, topY);
+          ctx.lineTo(rightX, bottomY);
+          ctx.moveTo(leftX, topY);
+          ctx.lineTo(rightX, topY);
+          ctx.stroke();
+
+          // Open door leaf: a diagonal panel from the left jamb
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.moveTo(leftX, bottomY - 2);
+          ctx.lineTo(leftX - 10, bottomY - 10);
+          ctx.stroke();
+
+          ctx.restore();
+        }
+      }
 
       // Level transition rendering: draw previous snapshot shrinking/fading, and scale current scene
       let __transitionInfo = null;
@@ -445,17 +767,13 @@
           const allowPath = (levelNow === 0) ? true : (fromNode.discovered && toNode.discovered);
           if (allowPath) {
             const pathColor = getComputedColorForLabel(toNode.i) || STROKE;
-            ctx.save();
-            ctx.globalAlpha = 0.5;
-            drawDashedPath(ctx, fromNode.x, fromNode.y, toNode.x, toNode.y, pathColor);
-            ctx.restore();
+            const route = getRouteBetweenNodes(levelNow, this._layoutMeta, fromNode, toNode);
+            drawDashedPolyline(ctx, route, pathColor, 0.5);
+            // Progress along routed path
+            const t = this._travelTotalSteps ? clamp01(this._travelProgressSteps / this._travelTotalSteps) : 0;
+            const p = pointAlongPolyline(route, t);
+            __babyPos = { x: p[0], y: p[1] };
           }
-
-          // Progress along line
-          const t = this._travelTotalSteps ? clamp01(this._travelProgressSteps / this._travelTotalSteps) : 0;
-          const px = lerp(fromNode.x, toNode.x, t);
-          const py = lerp(fromNode.y, toNode.y, t);
-          __babyPos = { x: px, y: py };
         }
       } else {
         // Not traveling: if a destination is selected, we can faintly show the intended path
@@ -468,10 +786,8 @@
           const allowPath = (levelNow === 0) ? true : (fromNode.discovered && toNode.discovered);
           if (allowPath) {
             const pathColor = getComputedColorForLabel(toNode.i) || STROKE;
-            ctx.save();
-            ctx.globalAlpha = 0.5;
-            drawDashedPath(ctx, fromNode.x, fromNode.y, toNode.x, toNode.y, pathColor);
-            ctx.restore();
+            const route = getRouteBetweenNodes(levelNow, this._layoutMeta, fromNode, toNode);
+            drawDashedPolyline(ctx, route, pathColor, 0.5);
           }
           // Place baby at current location after nodes
           __babyPos = { x: fromNode.x, y: fromNode.y };
@@ -491,6 +807,34 @@
         const hasGossip = (this._gossipIndex === n.i);
         const ringColor = hasGossip ? (getComputedColorForLabel(n.i) || STROKE) : undefined;
         drawNode(ctx, n, showName, hasGossip, labelText, ringColor);
+
+        // Level-specific embellishments (minimalist)
+        if (level === 1 && n.i > 0) {
+          // Four larger circles arranged in a row directly below the trading post
+          const rdot = 4.6;
+          const gap = 14;
+          const below = RADII[n.kind] + 12;
+          const baseY = n.y + below;
+          const baseX = n.x;
+
+          const offsets = [-1.5 * gap, -0.5 * gap, 0.5 * gap, 1.5 * gap];
+
+          ctx.save();
+          ctx.fillStyle = FILL;
+          ctx.strokeStyle = STROKE;
+          ctx.lineWidth = 2;
+          for (let idx = 0; idx < offsets.length; idx++) {
+            const dx = offsets[idx];
+            const isOuter = (idx === 0 || idx === offsets.length - 1);
+            const cxDot = baseX + dx;
+            const cyDot = baseY - (isOuter ? rdot * 0.5 : 0); // raise outer two to suggest a semicircle
+            ctx.beginPath();
+            ctx.arc(cxDot, cyDot, rdot, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+          }
+          ctx.restore();
+        }
       }
 
       // Draw progress baby above nodes
