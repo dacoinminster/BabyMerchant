@@ -192,6 +192,10 @@ function setupLevel(index, seed, mainLocationName) {
 }
 
 function setupLocationRadioButtons() {
+  // Map-only destination selection; hide legacy radio UI
+  setDestinationsHTML('');
+  (function(el){ if (el) el.style.display = 'none'; })(document.getElementById('destinationsAndLabel'));
+  return;
   var rbHTML = '';
   for (var i = 0; i < levelData[currLevel].numLocations; i++) {
     rbHTML += '<div class="locChoice">';
@@ -701,12 +705,6 @@ function randomizeStore(initAll = false) {
 }
 
 function updateLocomoteButton() {
-  for (var i = 0; i < levelData[currLevel].numLocations; i++) {
-    var rb = document.getElementById('nextLoc' + i);
-    if (rb && rb.checked) {
-      nextLocIndex = i;
-    }
-  }
   var newLocomoteText = levelData[currLevel].locomotionType + '&nbsp;to ';
   if (visitedLocation[currLevel][nextLocIndex]) {
     newLocomoteText +=
@@ -739,7 +737,7 @@ function updatePickButtonVisibility() {
 function showMovementUI() {
   (function(el){ if (el) el.style.display = 'flex'; })(document.getElementById('controlsGoHere'));
   (function(el){ if (el) el.style.display = 'flex'; })(document.getElementById('actionsGoHere'));
-  if (currLevel > 0) { var dn = document.getElementById('destinationsAndLabel'); if (dn) dn.style.display = 'flex'; }
+  if (currLevel > 0) { var dn = document.getElementById('destinationsAndLabel'); if (dn) dn.style.display = 'none'; }
   if (currLevel < maxLevel) { var lu = document.getElementById('buttonIDlevelUp'); if (lu) lu.style.visibility = 'visible'; }
   if (currLevel > 0) { var ld = document.getElementById('buttonIDlevelDown'); if (ld) ld.style.visibility = (locIndex > 0 ? 'visible' : 'hidden'); }
   // Show map alongside movement UI
@@ -1441,7 +1439,6 @@ function setupInitialActions() {
   setActionsHTML(
     getButtonHTML('locomote', addLineBreaks(initialLocomoteText)) +
       getButtonHTML('pick', addLineBreaks('pick nose')) +
-      getButtonHTML('enterTrading', addLineBreaks(initialTradeText)) +
       getButtonHTML('levelDown', addLineBreaks(initialLevelDownText)) +
       getButtonHTML('levelUp', addLineBreaks(levelData[currLevel].levelUpLabel))
   );
@@ -1456,13 +1453,7 @@ function setupInitialActions() {
   var ldBtn = document.getElementById('buttonIDlevelDown');
   if (ldBtn) ldBtn.style.visibility = (currLevel > 0 && locIndex > 0 ? 'visible' : 'hidden');
 
-  // Enter Trading/Upgrades button visibility while in movement mode
-  var trBtn = document.getElementById('buttonIDenterTrading');
-  if (trBtn) {
-    var canEnterTrading = (uiMode === 'movement') && (transitMoves === 0) && ((locIndex === 0 && upgradesVisible) || (tradingEnabled && locIndex > 0));
-    trBtn.style.visibility = canEnterTrading ? 'visible' : 'hidden';
-    trBtn.disabled = !canEnterTrading;
-  }
+  // Enter Trading/Upgrades is now accessed via map (player click); no button needed
 
   updatePickButtonVisibility();
 
@@ -1604,7 +1595,7 @@ function handleArrivalLogic() {
   var pickButton = document.getElementById('buttonIDpick');
 
   if (currLevel > 0) {
-    var dn2 = document.getElementById('destinationsAndLabel'); if (dn2) dn2.style.display = 'flex';
+    var dn2 = document.getElementById('destinationsAndLabel'); if (dn2) dn2.style.display = 'none';
     if (locIndex > 0) {
       if (levelDownButton) levelDownButton.innerHTML = addLineBreaks(
         levelData[currLevel].levelDownLabel +

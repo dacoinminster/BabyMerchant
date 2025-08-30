@@ -278,6 +278,10 @@
     _intervalId: null,
     _rafHandle: 0,
     _resizeListenerAdded: false,
+    _evtBound: false,
+    _evtBoundHost: false,
+    _evtBoundWin: false,
+    _host: null,
 
     // Level transition animation
     _transitionActive: false,
@@ -327,6 +331,50 @@
       this._ctx = c.getContext('2d');
       this._dpr = getDevicePixelRatio();
       this._resize();
+
+      // Enable interactions on the canvas
+      this._canvas.style.pointerEvents = 'auto';
+      this._canvas.style.zIndex = '1'; // ensure above any backgrounds inside wrapper
+      if (!this._evtBound) {
+        this._canvas.addEventListener('click', (e) => this._handleClick(e));
+        this._canvas.addEventListener('mousemove', (e) => this._handleMouseMove(e));
+        this._evtBound = true;
+        try { console.debug('[mapRenderer] canvas event listeners bound'); } catch (_) {}
+      }
+
+      // Also bind on host as a fallback (in case the canvas isn't receiving events in some browsers)
+      this._host = host;
+      this._host.style.pointerEvents = 'auto';
+      this._host.style.zIndex = '1';
+      if (!this._evtBoundHost) {
+        this._host.addEventListener('click', (e) => {
+          // If canvas already handles, this will be stopped in _handleClick
+          this._handleClick(e);
+        });
+        this._host.addEventListener('mousemove', (e) => this._handleMouseMove(e));
+        // Basic touch support
+        this._host.addEventListener('touchstart', (e) => {
+          try {
+            const t = e.touches && e.touches[0] ? e.touches[0] : e;
+            this._handleClick(t);
+          } catch (_) {}
+        }, { passive: true });
+        this._evtBoundHost = true;
+        try { console.debug('[mapRenderer] host event listeners bound'); } catch (_) {}
+      }
+
+      // As a final fallback, bind capture-phase listeners on window to handle cases where
+      // other elements intercept/bubble differently (e.g., Chrome oddities).
+      if (!this._evtBoundWin) {
+        const clickCap = (e) => this._handleClick(e);
+        const moveCap = (e) => this._handleMouseMove(e);
+        window.addEventListener('click', clickCap, { capture: true });
+        window.addEventListener('mousemove', moveCap, { capture: true });
+        // Basic pointer support where mousemove may be throttled/absent
+        window.addEventListener('pointermove', moveCap, { capture: true });
+        this._evtBoundWin = true;
+        try { console.debug('[mapRenderer] window capture event listeners bound'); } catch (_) {}
+      }
 
       // Add resize listener only once
       if (!this._resizeListenerAdded) {
@@ -597,6 +645,359 @@
       this._lastTransitMoves = transit;
       this._lastLocIndex = loc;
       this._lastCurrLevel = level;
+    },
+
+    // Interactivity helpers
+    _cssPointFromEvent(e) {
+      const rect = this._canvas.getBoundingClientRect();
+      // Support touch/pointer fallback
+      const cx = (typeof e.clientX === 'number') ? e.clientX : (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
+      const cy = (typeof e.clientY === 'number') ? e.clientY : (e.touches && e.touches[0] ? e.touches[0].clientY : 0);
+      return { x: cx - rect.left, y: cy - rect.top };
+    },
+
+    _distancePointToSegment(px, py, ax, ay, bx, by) {
+      const vx = bx - ax, vy = by - ay;
+      const wx = px - ax, wy = py - ay;
+      const c1 = vx * wx + vy * wy;
+      if (c1 <= 0) return Math.hypot(px - ax, py - ay);
+      const c2 = vx * vx + vy * vy;
+      if (c2 <= c1) return Math.hypot(px - bx, py - by);
+      const t = c1 / c2;
+      const qx = ax + t * vx, qy = ay + t * vy;
+      return Math.hypot(px - qx, py - qy);
+    },
+
+    _distancePointToPolyline(p, pts) {
+      if (!pts || pts.length < 2) return Infinity;
+      let best = Infinity;
+      for (let i = 1; i < pts.length; i++) {
+        const ax = pts[i - 1][0], ay = pts[i - 1][1];
+        const bx = pts[i][0], by = pts[i][1];
+        const d = this._distancePointToSegment(p.x, p.y, ax, ay, bx, by);
+        if (d < best) best = d;
+      }
+      return best;
+    },
+
+    _computeBabyPos() {
+      const level = (window.currLevel || 0);
+      const loc = (typeof window.locIndex === 'number' ? window.locIndex : 0);
+      const fromNode = this._nodes.find(n => n.i === loc);
+      if (this._travelActive) {
+        const toIdx = (typeof window.nextLocIndex === 'number' ? window.nextLocIndex : 0);
+        const toNode = this._nodes.find(n => n.i === toIdx);
+        if (fromNode && toNode) {
+          const route = getRouteBetweenNodes(level, this._layoutMeta, fromNode, toNode);
+          let t = this._travelTotalSteps ? clamp01(this._travelProgressSteps / this._travelTotalSteps) : 0;
+          const p = pointAlongPolyline(route, t);
+          return { x: p[0], y: p[1] };
+        }
+      }
+      return fromNode ? { x: fromNode.x, y: fromNode.y } : { x: 0, y: 0 };
+    },
+
+    _computeL1DoorwayRect() {
+      // Matches layout used in draw() for level 1 room walls and doorway gap
+      const pad = 8;
+      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+      for (const n of this._nodes) {
+        const r = RADII[n.kind] || 8;
+        const labelHeight = n.forceLabelBelow ? 0 : 16;
+        minX = Math.min(minX, n.x - r);
+        maxX = Math.max(maxX, n.x + r);
+        minY = Math.min(minY, n.y - r - labelHeight);
+        maxY = Math.max(maxY, n.y + r);
+      }
+      const wallPad = 25;
+      const roomLeft = Math.max(pad, minX - wallPad);
+      const roomRight = Math.min(this._w - pad, maxX + wallPad);
+      const roomTop = Math.max(pad, minY - wallPad);
+      const doorGapWidth = 50;
+      const doorGapCenter = this._w * 0.5;
+      const doorGapLeft = doorGapCenter - doorGapWidth * 0.5;
+      const doorGapRight = doorGapCenter + doorGapWidth * 0.5;
+      // Expanded hit area around the doorway gap
+      return {
+        x: doorGapLeft - 8,
+        y: roomTop - 12,
+        w: (doorGapRight - doorGapLeft) + 16,
+        h: 30
+      };
+    },
+
+    _computeL2ElevatorRect() {
+      if (!this._layoutMeta.level2) return null;
+      const { xLeft, xRight, yTop, centerX } = this._layoutMeta.level2;
+      const bossNode = this._nodes.find(n => n.i === 0);
+      const elevW = Math.min(52, xRight - xLeft - 8);
+      const elevH = 28;
+      const elevX = centerX - elevW * 0.5;
+      let elevY = yTop + 2;
+      if (bossNode) {
+        const rBoss = RADII[bossNode.kind] || 10;
+        elevY = bossNode.y - (rBoss + 10) - elevH;
+      }
+      // Expanded hit area
+      return { x: elevX - 4, y: elevY - 4, w: elevW + 8, h: elevH + 8 };
+    },
+
+    _hitTest(p) {
+      const level = (window.currLevel || 0);
+      this._buildGraphIfNeeded();
+
+      // 1) Player icon
+      const baby = this._computeBabyPos();
+      if (dist(p.x, p.y, baby.x, baby.y) <= 16) return { type: 'player' };
+
+      // 2) Node circles and labels
+      const ctx = this._ctx;
+      ctx.save();
+      ctx.font = LABEL_FONT;
+      for (const n of this._nodes) {
+        if (level === 0 && !n.discovered && n.i !== (window.locIndex || 0)) {
+          continue;
+        }
+        const rr = (RADII[n.kind] || 8) + 6;
+        if (dist(p.x, p.y, n.x, n.y) <= rr) { ctx.restore(); return { type: 'node', index: n.i }; }
+
+        if (n.label && n.nameKnown) {
+          const r = RADII[n.kind] || 8;
+          const align = n.labelAlign || 'center';
+          let labelY = n.forceLabelBelow ? (n.y + r + 10) : (n.y - r - 6);
+          if (!n.forceLabelBelow && labelY < 10) labelY = n.y + r + 10;
+          const labelX = n.x + (n.labelDx || 0);
+          const w = ctx.measureText(n.label).width;
+          const h = 12;
+          let x0;
+          if (align === 'left') x0 = labelX;
+          else if (align === 'right') x0 = labelX - w;
+          else x0 = labelX - w * 0.5;
+          const y0 = labelY - 10;
+          if (p.x >= x0 && p.x <= x0 + w && p.y >= y0 && p.y <= y0 + h) {
+            ctx.restore();
+            return { type: 'node', index: n.i };
+          }
+        }
+      }
+      ctx.restore();
+
+      // 3) Level 1: group-circle cluster under each trading post
+      if (level === 1) {
+        for (const n of this._nodes) {
+          if (n.i === 0) continue; // skip doorway node
+          const rdot = 4.6;
+          const gap = 14;
+          const below = (RADII[n.kind] || 8) + 12;
+          const baseY = n.y + below;
+          const baseX = n.x;
+          const offsets = [-1.5 * gap, -0.5 * gap, 0.5 * gap, 1.5 * gap];
+          for (let idx = 0; idx < offsets.length; idx++) {
+            const dx = offsets[idx];
+            const isOuter = (idx === 0 || idx === offsets.length - 1);
+            const cxDot = baseX + dx;
+            const cyDot = baseY - (isOuter ? rdot * 0.5 : 0);
+            if (dist(p.x, p.y, cxDot, cyDot) <= 8) {
+              return { type: 'groupCircles', index: n.i };
+            }
+          }
+        }
+      }
+
+      // 4) Level 1: doorway gap at top
+      if (level === 1) {
+        const rc = this._computeL1DoorwayRect();
+        if (rc && p.x >= rc.x && p.x <= rc.x + rc.w && p.y >= rc.y && p.y <= rc.y + rc.h) {
+          return { type: 'doorwayL1' };
+        }
+      }
+
+      // 5) Level 2: elevator at top
+      if (level === 2) {
+        const rc2 = this._computeL2ElevatorRect();
+        if (rc2 && p.x >= rc2.x && p.x <= rc2.x + rc2.w && p.y >= rc2.y && p.y <= rc2.y + rc2.h) {
+          return { type: 'elevatorL2' };
+        }
+      }
+
+      // 5b) Level 2: doorway gaps along the hallway (treat as clickable targets)
+      if (level === 2 && this._layoutMeta.level2) {
+        const { xLeft, xRight, yTop, yBottom, centerX } = this._layoutMeta.level2;
+        const doorGapHalf = 10;
+        // Hit rect thickness near each wall
+        const wallHitThickness = 14; // px
+        for (const n of this._nodes) {
+          if (n.i === 0) continue; // skip elevator node
+          const isLeft = n.x < centerX;
+          const wallX = isLeft ? xLeft : xRight;
+          const x0 = isLeft ? (wallX - wallHitThickness) : wallX;
+          const w = wallHitThickness;
+          const y0 = Math.max(yTop, n.y - (doorGapHalf + 6));
+          const h = Math.min(yBottom, n.y + (doorGapHalf + 6)) - y0;
+          if (p.x >= x0 && p.x <= x0 + w && p.y >= y0 && p.y <= y0 + h) {
+            return { type: 'doorL2', index: n.i };
+          }
+        }
+      }
+
+      // 6) Dotted path between current and next destination
+      const loc = (typeof window.locIndex === 'number' ? window.locIndex : 0);
+      const next = (typeof window.nextLocIndex === 'number' ? window.nextLocIndex : 0);
+      if (loc !== next) {
+        const fromNode = this._nodes.find(n => n.i === loc);
+        const toNode = this._nodes.find(n => n.i === next);
+        if (fromNode && toNode) {
+          const route = getRouteBetweenNodes(level, this._layoutMeta, fromNode, toNode);
+          const d = this._distancePointToPolyline(p, route);
+          if (d <= 10) return { type: 'path' };
+        }
+      }
+
+      return null;
+    },
+
+    _handleClick(e) {
+      // Only intercept clicks that occur inside the map host bounds and when the map is visible
+      const hostEl = this._host || this._canvas;
+      if (!hostEl) return;
+      const rectAbs = hostEl.getBoundingClientRect();
+      const cx = (typeof e.clientX === 'number') ? e.clientX : (e.touches && e.touches[0] ? e.touches[0].clientX : -Infinity);
+      const cy = (typeof e.clientY === 'number') ? e.clientY : (e.touches && e.touches[0] ? e.touches[0].clientY : -Infinity);
+      const insideAbs = (cx >= rectAbs.left && cx <= rectAbs.right && cy >= rectAbs.top && cy <= rectAbs.bottom);
+      const visible = hostEl.offsetParent !== null && getComputedStyle(hostEl).display !== 'none' && getComputedStyle(hostEl).visibility !== 'hidden';
+      if (!insideAbs || !visible) {
+        return; // do not interfere with clicks elsewhere (e.g., title screen buttons)
+      }
+
+      if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+      if (e && typeof e.preventDefault === 'function') e.preventDefault();
+
+      const p = this._cssPointFromEvent(e);
+      try {
+        const tgt = (e && e.target && e.target.id) ? ('#' + e.target.id) : (e && e.target ? e.target.tagName : 'unknown');
+        console.debug('[mapRenderer] click @', { x: Math.round(p.x), y: Math.round(p.y), target: tgt, level: window.currLevel, transitMoves: window.transitMoves, locIndex: window.locIndex, nextLocIndex: window.nextLocIndex });
+      } catch (_) {}
+      const hit = this._hitTest(p);
+      if (!hit) {
+        try { console.debug('[mapRenderer] no hit'); } catch (_) {}
+        return;
+      }
+      try { console.debug('[mapRenderer] hit', hit); } catch (_) {}
+
+      const transit = (window.transitMoves || 0);
+      const curr = (window.currLevel || 0);
+      const loc = (typeof window.locIndex === 'number' ? window.locIndex : 0);
+
+      const locomote = () => { if (typeof window.doButtonAction === 'function') window.doButtonAction('locomote'); };
+      const enterTrading = () => { if (typeof window.doButtonAction === 'function') window.doButtonAction('enterTrading'); };
+      const levelUp = () => { if (typeof window.doButtonAction === 'function') window.doButtonAction('levelUp'); };
+      const levelDown = () => { if (typeof window.doButtonAction === 'function') window.doButtonAction('levelDown'); };
+
+      switch (hit.type) {
+        case 'player':
+          if (transit > 0) { try { console.debug('[mapRenderer] action: locomote (player, in transit)'); } catch(_){}; locomote(); }
+          else { try { console.debug('[mapRenderer] action: enterTrading (player, idle)'); } catch(_){}; enterTrading(); }
+          break;
+
+        case 'path':
+          if (transit > 0 || ((typeof window.nextLocIndex === 'number') && window.nextLocIndex !== loc)) { try { console.debug('[mapRenderer] action: locomote (path)'); } catch(_){}; locomote(); }
+          break;
+
+        case 'doorwayL1':
+        case 'elevatorL2':
+          if (transit > 0) {
+            try { console.debug('[mapRenderer] action: locomote (door/elevator, in transit)'); } catch(_){}
+            locomote();
+          } else if ((window.maxLevel || 0) > curr) {
+            try { console.debug('[mapRenderer] action: levelUp (door/elevator)'); } catch(_){}
+            levelUp();
+          } else {
+            try { console.debug('[mapRenderer] levelUp locked; maxLevel<=curr'); } catch(_){}
+          }
+          break;
+
+        case 'doorL2': {
+          const i = (hit.index !== undefined ? hit.index : -1);
+          if (i === -1) break;
+          if (transit > 0) {
+            try { console.debug('[mapRenderer] action: locomote (L2 doorway, in transit)'); } catch(_){}
+            locomote();
+          } else if (i === loc) {
+            try { console.debug('[mapRenderer] action: levelDown (L2 doorway @ current)'); } catch(_){}
+            levelDown(); // Return to level 1 from the door's trading post
+          } else {
+            try { console.debug('[mapRenderer] action: set nextLocIndex (L2 doorway) ->', i); } catch(_){}
+            window.nextLocIndex = i;
+            try {
+              var rb2 = document.getElementById('nextLoc' + i);
+              if (rb2) rb2.checked = true;
+            } catch (_) {}
+            if (typeof window.updateLocomoteButton === 'function') window.updateLocomoteButton();
+            window.inventoryChanged = true;
+          }
+          break;
+        }
+
+        case 'groupCircles':
+        case 'node': {
+          const i = (hit.index !== undefined ? hit.index : -1);
+          if (i === -1) break;
+
+          if (transit > 0) {
+            try { console.debug('[mapRenderer] action: locomote (node/group, in transit)'); } catch(_){}
+            locomote();
+          } else if (i === loc) {
+            // Special cases when clicking the current post
+            if (curr === 1 && hit.type === 'groupCircles') {
+              try { console.debug('[mapRenderer] action: levelDown (L1 group circles @ current)'); } catch(_){}
+              levelDown(); // Return to level 0 from the group's trading post
+            } else if (curr === 2 && i > 0 && hit.type === 'node') {
+              try { console.debug('[mapRenderer] action: levelDown (L2 door @ current)'); } catch(_){}
+              levelDown(); // Return to level 1 from door trading post
+            } else {
+              try { console.debug('[mapRenderer] action: enterTrading (current location)'); } catch(_){}
+              enterTrading(); // Enter trading/upgrading at current location
+            }
+          } else if (curr === 0) {
+            if (typeof window.typeText === 'function') {
+              try { console.debug('[mapRenderer] message: level 0 chaotic movement'); } catch(_){}
+              window.typeText("Can't choose destination when thrashing about.");
+            }
+          } else if (typeof window.nextLocIndex === 'number' && i === window.nextLocIndex) {
+            // Clicking the already-selected destination commences movement
+            try { console.debug('[mapRenderer] action: locomote (clicked selected destination)'); } catch(_){}
+            locomote();
+          } else {
+            // Level 1+ and at a trading/upgrade post: set next destination
+            try { console.debug('[mapRenderer] action: set nextLocIndex ->', i); } catch(_){}
+            window.nextLocIndex = i;
+
+            // Sync the radio button selection so updateLocomoteButton doesn't overwrite nextLocIndex
+            try {
+              var rb = document.getElementById('nextLoc' + i);
+              if (rb) {
+                rb.checked = true;
+              }
+            } catch (_) {}
+
+            if (typeof window.updateLocomoteButton === 'function') window.updateLocomoteButton();
+            window.inventoryChanged = true; // trigger UI refresh next tick
+          }
+          break;
+        }
+
+        default:
+          break;
+      }
+    },
+
+    _handleMouseMove(e) {
+      const p = this._cssPointFromEvent(e);
+      const hit = this._hitTest(p);
+      const cur = hit ? 'pointer' : 'default';
+      this._canvas.style.cursor = cur;
+      if (this._host) this._host.style.cursor = cur;
+
     },
 
     _draw() {
