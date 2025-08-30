@@ -118,6 +118,8 @@ function loadGameState() {
   }
 
   document.getElementById('normalGameGoesHere').innerHTML = lastGameHTML;
+  // Guard against bad/missing indices from older saves
+  normalizeLocationIndices();
 
   // Rebuild UI safely after restoring lastGameHTML
   // Ensure action buttons exist, then show appropriate mode
@@ -171,6 +173,20 @@ function loadGameState() {
   setTimeout('goBaby()', 100);
   if (typeof gtag === 'function') {
     gtag('event', 'loadGame', { event_category: 'gameState' });
+  }
+}
+
+/**
+ * Ensure locIndex and nextLocIndex are valid for the current level.
+ * If undefined or out of range, set locIndex=0 and nextLocIndex to a sensible default.
+ */
+function normalizeLocationIndices() {
+  var num = (levelData && levelData[currLevel] ? levelData[currLevel].numLocations : 0);
+  if (typeof locIndex !== 'number' || !isFinite(locIndex) || locIndex < 0 || locIndex >= num) {
+    locIndex = 0;
+  }
+  if (typeof nextLocIndex !== 'number' || !isFinite(nextLocIndex) || nextLocIndex < 0 || nextLocIndex >= num) {
+    nextLocIndex = (num > 1 ? (locIndex === 0 ? 1 : 0) : 0);
   }
 }
 
@@ -804,6 +820,8 @@ function exitTradingMode() {
 }
 
 function goBaby() {
+  // Guard against bad/missing indices when loop starts (e.g., right after level changes)
+  normalizeLocationIndices();
   if (!typingText) {
     var thisAction = buttonAction;
     if (buttonAction != '') {
@@ -866,6 +884,8 @@ function goBaby() {
             }
             oldInv[currLevel] = [0, 0, 0, 0];
             locIndex = oldLocIndex[currLevel];
+            // Ensure indices are valid before computing the next default destination
+            normalizeLocationIndices();
             nextLocIndex = locIndex + 1;
             if (nextLocIndex > levelData[currLevel].numLocations) {
               nextLocIndex = 0;
@@ -932,6 +952,8 @@ function goBaby() {
             }
             oldInv[currLevel] = [0, 0, 0, 0];
             locIndex = oldLocIndex[currLevel];
+            // Ensure indices are valid before computing the next default destination
+            normalizeLocationIndices();
             nextLocIndex = locIndex + 1; // Add this line for levelDown
             if (nextLocIndex > levelData[currLevel].numLocations) {
               nextLocIndex = 0;
