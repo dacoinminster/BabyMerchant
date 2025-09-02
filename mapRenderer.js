@@ -15,32 +15,12 @@
 (function () {
   'use strict';
 
-
-
-
-  function getDevicePixelRatio() {
-    return (window.devicePixelRatio || 1);
-  }
-
-
-
-  // Determines node kind based on level/index and spec
-
-  // Deterministic layout (circle) for now; refined per-level below
-
-
-
-  // Utility: centroid of nodes array
-
-  // Build a snapshot of node positions for an arbitrary level using current viewport
-
-
-  // Draw a dashed polyline for routed paths (e.g., level 2 hallway)
-
-
-  // t in [0,1]
-
-  // Route computation by level
+// Dependencies loaded before this file:
+// - map.constants.js, map.math.js, map.layout.js, map.drawing.js
+// - map.backgrounds.js, map.hittest.js, map.interactions.js
+function getDevicePixelRatio() {
+ return (window.devicePixelRatio || 1);
+}
 
 
 
