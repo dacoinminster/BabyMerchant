@@ -606,7 +606,7 @@
 
           this._layoutMeta.level2 = { xLeft, xRight, yTop, yBottom, centerX };
         } else {
-          // Levels 0 and 1: circle layout (with headroom adjustment for L1 doorway)
+          // Levels 0 and 1: circle layout (with headroom adjustment for labels/doorway)
           let r = Math.max(20, Math.min(this._h * 0.5 - pad, this._w * 0.45 - pad));
 
           if (level === 1) {
@@ -616,6 +616,14 @@
             const maxRForDoor = Math.max(20, (cy - (pad + marginTop)));
             r = Math.min(r, maxRForDoor);
             this._layoutMeta.level1 = { bossIndex: 0, rAdjusted: r };
+          } else if (level === 0) {
+            // Ensure headroom for L0 boss label above top node (index 0)
+            const rBoss0 = RADII[getNodeKind(0, 0)] || 8;
+            const labelH = 10, vGap0 = 10;
+            const marginTop0 = rBoss0 + vGap0 + labelH + 6;
+            const maxRForLabel0 = Math.max(20, (cy - (pad + marginTop0)));
+            r = Math.min(r, maxRForLabel0);
+            this._layoutMeta.level0 = { bossIndex: 0, rAdjusted: r };
           }
 
           pts = computeCirclePositions(numLocations, cx, cy, r);
@@ -1802,6 +1810,62 @@
             } catch (_) {}
           }
           ctx.restore();
+
+          // Boss↔Group label morph at constant size, moving along the link path
+          try {
+            const baseFontPx = 10;
+            if (fromL === 0 && toL === 1) {
+              const f0 = snapFrom.nodes.find(n => n.i === 0);
+              const idxG = (this._preparedTransition ? this._preparedTransition.toIdx : 1);
+              const gN = snapTo.nodes.find(n => n.i === idxG) || snapTo.nodes[1];
+              if (f0 && gN) {
+                const r0 = RADII[getNodeKind(0,0)] || 8;
+                const rG = RADII[getNodeKind(1,idxG)] || 8;
+                const x0 = f0.x, y0 = f0.y - r0 - 6;
+                const x1 = gN.x, y1 = gN.y - rG - 6;
+                const xm = lerp(x0, x1, e), ym = lerp(y0, y1, e);
+                let bossText = '';
+                if (window.locationName && window.locationName[0] && window.locationName[0][0]) bossText = window.locationName[0][0];
+                if (!bossText && window.levelData && window.levelData[0]) bossText = (window.levelData[0].locationLabel[0]||'spot');
+                let groupText = '';
+                if (window.locationName && window.locationName[1] && window.locationName[1][idxG]) groupText = window.locationName[1][idxG];
+                if (!groupText && window.levelData && window.levelData[1]) groupText = (window.levelData[1].locationLabel[idxG]||'group') + (idxG>0?(' #'+idxG):'');
+                ctx.save();
+                ctx.font = baseFontPx + 'px monospace';
+                ctx.fillStyle = STROKE; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+                // Move L0 label to L1 label position with fading out
+                if (bossText) { ctx.globalAlpha = 1 - e; ctx.fillText(bossText, xm, ym); }
+                // Move L1 group label along same path fading in
+                if (groupText) { ctx.globalAlpha = e; ctx.fillText(groupText, xm, ym); }
+                ctx.restore();
+              }
+            } else if (fromL === 1 && toL === 0) {
+              const idxG = (this._preparedTransition ? this._preparedTransition.fromIdx : 1);
+              const gN = this._explicitFromSnapshot.nodes.find(n => n.i === idxG) || this._explicitFromSnapshot.nodes[1];
+              const t0 = snapTo.nodes.find(n => n.i === 0);
+              if (gN && t0) {
+                const r0 = RADII[getNodeKind(0,0)] || 8;
+                const rG = RADII[getNodeKind(1,idxG)] || 8;
+                const x0 = gN.x, y0 = gN.y - rG - 6;
+                const x1 = t0.x, y1 = t0.y - r0 - 6;
+                const xm = lerp(x0, x1, e), ym = lerp(y0, y1, e);
+                let bossText = '';
+                if (window.locationName && window.locationName[0] && window.locationName[0][0]) bossText = window.locationName[0][0];
+                if (!bossText && window.levelData && window.levelData[0]) bossText = (window.levelData[0].locationLabel[0]||'spot');
+                let groupText = '';
+                if (window.locationName && window.locationName[1] && window.locationName[1][idxG]) groupText = window.locationName[1][idxG];
+                if (!groupText && window.levelData && window.levelData[1]) groupText = (window.levelData[1].locationLabel[idxG]||'group') + (idxG>0?(' #'+idxG):'');
+                ctx.save();
+                ctx.font = baseFontPx + 'px monospace';
+                ctx.fillStyle = STROKE; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+                // Move L1 group label toward L0 boss label, fading out
+                if (groupText) { ctx.globalAlpha = 1 - e; ctx.fillText(groupText, xm, ym); }
+                // Move L0 boss label along same path fading in
+                if (bossText) { ctx.globalAlpha = e; ctx.fillText(bossText, xm, ym); }
+                ctx.restore();
+              }
+            }
+          } catch (_) {}
 
           // Log key morph stages with current scale and pivot
           try {
