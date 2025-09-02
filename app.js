@@ -1159,7 +1159,7 @@ function goBaby() {
       var invHTML = '';
       var allUpgradesBought = true;
       if (hasAnything()) {
-        if (upgradesVisible) {
+        if (upgradesVisible && !isLevelTransitioning) {
           invHTML += "<table class='collapseborder'>";
           invHTML +=
             "<tr><td class='singleborder invCell invHeaderCell'>Upgrade</td>" +
@@ -1261,7 +1261,7 @@ function goBaby() {
           } else {
             invHTML += levelData[currLevel].tradeableItems[3];
           }
-        } else if (storeVisible) {
+        } else if (storeVisible && !isLevelTransitioning) {
           invHTML += "<table class='collapseborder'>";
           invHTML +=
             "<tr><td class='invCell invHeaderCell'>Sell</td>" +
