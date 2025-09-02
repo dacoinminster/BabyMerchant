@@ -501,29 +501,7 @@
       return { x: cx - rect.left, y: cy - rect.top };
     },
 
-    _distancePointToSegment(px, py, ax, ay, bx, by) {
-      const vx = bx - ax, vy = by - ay;
-      const wx = px - ax, wy = py - ay;
-      const c1 = vx * wx + vy * wy;
-      if (c1 <= 0) return Math.hypot(px - ax, py - ay);
-      const c2 = vx * vx + vy * vy;
-      if (c2 <= c1) return Math.hypot(px - bx, py - by);
-      const t = c1 / c2;
-      const qx = ax + t * vx, qy = ay + t * vy;
-      return Math.hypot(px - qx, py - qy);
-    },
 
-    _distancePointToPolyline(p, pts) {
-      if (!pts || pts.length < 2) return Infinity;
-      let best = Infinity;
-      for (let i = 1; i < pts.length; i++) {
-        const ax = pts[i - 1][0], ay = pts[i - 1][1];
-        const bx = pts[i][0], by = pts[i][1];
-        const d = this._distancePointToSegment(p.x, p.y, ax, ay, bx, by);
-        if (d < best) best = d;
-      }
-      return best;
-    },
 
     _computeBabyPos() {
       const level = (window.currLevel || 0);
@@ -542,163 +520,25 @@
       return fromNode ? { x: fromNode.x, y: fromNode.y } : { x: 0, y: 0 };
     },
 
-    _computeL1DoorwayRect() {
-      // Matches layout used in draw() for level 1 room walls and doorway gap
-      const pad = 8;
-      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-      for (const n of this._nodes) {
-        const r = RADII[n.kind] || 8;
-        const labelHeight = n.forceLabelBelow ? 0 : 16;
-        minX = Math.min(minX, n.x - r);
-        maxX = Math.max(maxX, n.x + r);
-        minY = Math.min(minY, n.y - r - labelHeight);
-        maxY = Math.max(maxY, n.y + r);
-      }
-      const wallPad = 25;
-      const roomLeft = Math.max(pad, minX - wallPad);
-      const roomRight = Math.min(this._w - pad, maxX + wallPad);
-      const roomTop = Math.max(pad, minY - wallPad);
-      const doorGapWidth = 50;
-      const doorGapCenter = this._w * 0.5;
-      const doorGapLeft = doorGapCenter - doorGapWidth * 0.5;
-      const doorGapRight = doorGapCenter + doorGapWidth * 0.5;
-      // Expanded hit area around the doorway gap
-      return {
-        x: doorGapLeft - 8,
-        y: roomTop - 12,
-        w: (doorGapRight - doorGapLeft) + 16,
-        h: 30
-      };
-    },
 
-    _computeL2ElevatorRect() {
-      if (!this._layoutMeta.level2) return null;
-      const { xLeft, xRight, yTop, centerX } = this._layoutMeta.level2;
-      const bossNode = this._nodes.find(n => n.i === 0);
-      const elevW = Math.min(52, xRight - xLeft - 8);
-      const elevH = 28;
-      const elevX = centerX - elevW * 0.5;
-      let elevY = yTop + 2;
-      if (bossNode) {
-        const rBoss = RADII[bossNode.kind] || 10;
-        elevY = bossNode.y - (rBoss + 10) - elevH;
-      }
-      // Expanded hit area
-      return { x: elevX - 4, y: elevY - 4, w: elevW + 8, h: elevH + 8 };
-    },
 
     _hitTest(p) {
       const level = (window.currLevel || 0);
       this._buildGraphIfNeeded();
 
-      // 1) Player icon
+      // 1) Player icon stays handled here
       const baby = this._computeBabyPos();
       if (dist(p.x, p.y, baby.x, baby.y) <= 16) return { type: 'player' };
 
-      // 2) Node circles and labels
-      const ctx = this._ctx;
-      ctx.save();
-      ctx.font = LABEL_FONT;
-      for (const n of this._nodes) {
-        if (level === 0 && !n.discovered && n.i !== (window.locIndex || 0)) {
-          continue;
-        }
-        const rr = (RADII[n.kind] || 8) + 6;
-        if (dist(p.x, p.y, n.x, n.y) <= rr) { ctx.restore(); return { type: 'node', index: n.i }; }
-
-        if (n.label && n.nameKnown) {
-          const r = RADII[n.kind] || 8;
-          const align = n.labelAlign || 'center';
-          let labelY = n.forceLabelBelow ? (n.y + r + 10) : (n.y - r - 6);
-          if (!n.forceLabelBelow && labelY < 10) labelY = n.y + r + 10;
-          const labelX = n.x + (n.labelDx || 0);
-          const w = ctx.measureText(n.label).width;
-          const h = 12;
-          let x0;
-          if (align === 'left') x0 = labelX;
-          else if (align === 'right') x0 = labelX - w;
-          else x0 = labelX - w * 0.5;
-          const y0 = labelY - 10;
-          if (p.x >= x0 && p.x <= x0 + w && p.y >= y0 && p.y <= y0 + h) {
-            ctx.restore();
-            return { type: 'node', index: n.i };
-          }
-        }
-      }
-      ctx.restore();
-
-      // 3) Level 1: group-circle cluster under each trading post
-      if (level === 1) {
-        for (const n of this._nodes) {
-          if (n.i === 0) continue; // skip doorway node
-          const rdot = 4.6;
-          const gap = 14;
-          const below = (RADII[n.kind] || 8) + 12;
-          const baseY = n.y + below;
-          const baseX = n.x;
-          const offsets = [-1.5 * gap, -0.5 * gap, 0.5 * gap, 1.5 * gap];
-          for (let idx = 0; idx < offsets.length; idx++) {
-            const dx = offsets[idx];
-            const isOuter = (idx === 0 || idx === offsets.length - 1);
-            const cxDot = baseX + dx;
-            const cyDot = baseY - (isOuter ? rdot * 0.5 : 0);
-            if (dist(p.x, p.y, cxDot, cyDot) <= 8) {
-              return { type: 'groupCircles', index: n.i };
-            }
-          }
-        }
-      }
-
-      // 4) Level 1: doorway gap at top
-      if (level === 1) {
-        const rc = this._computeL1DoorwayRect();
-        if (rc && p.x >= rc.x && p.x <= rc.x + rc.w && p.y >= rc.y && p.y <= rc.y + rc.h) {
-          return { type: 'doorwayL1' };
-        }
-      }
-
-      // 5) Level 2: elevator at top
-      if (level === 2) {
-        const rc2 = this._computeL2ElevatorRect();
-        if (rc2 && p.x >= rc2.x && p.x <= rc2.x + rc2.w && p.y >= rc2.y && p.y <= rc2.y + rc2.h) {
-          return { type: 'elevatorL2' };
-        }
-      }
-
-      // 5b) Level 2: doorway gaps along the hallway (treat as clickable targets)
-      if (level === 2 && this._layoutMeta.level2) {
-        const { xLeft, xRight, yTop, yBottom, centerX } = this._layoutMeta.level2;
-        const doorGapHalf = 10;
-        // Hit rect thickness near each wall
-        const wallHitThickness = 14; // px
-        for (const n of this._nodes) {
-          if (n.i === 0) continue; // skip elevator node
-          const isLeft = n.x < centerX;
-          const wallX = isLeft ? xLeft : xRight;
-          const x0 = isLeft ? (wallX - wallHitThickness) : wallX;
-          const w = wallHitThickness;
-          const y0 = Math.max(yTop, n.y - (doorGapHalf + 6));
-          const h = Math.min(yBottom, n.y + (doorGapHalf + 6)) - y0;
-          if (p.x >= x0 && p.x <= x0 + w && p.y >= y0 && p.y <= y0 + h) {
-            return { type: 'doorL2', index: n.i };
-          }
-        }
-      }
-
-      // 6) Dotted path between current and next destination
-      const loc = (typeof window.locIndex === 'number' ? window.locIndex : 0);
-      const next = (typeof window.nextLocIndex === 'number' ? window.nextLocIndex : 0);
-      if (loc !== next) {
-        const fromNode = this._nodes.find(n => n.i === loc);
-        const toNode = this._nodes.find(n => n.i === next);
-        if (fromNode && toNode) {
-          const route = getRouteBetweenNodes(level, this._layoutMeta, fromNode, toNode);
-          const d = this._distancePointToPolyline(p, route);
-          if (d <= 10) return { type: 'path' };
-        }
-      }
-
-      return null;
+      const state = {
+        level,
+        nodes: this._nodes,
+        layoutMeta: this._layoutMeta,
+        dims: { w: this._w, h: this._h },
+        locIndex: (typeof window.locIndex === 'number' ? window.locIndex : 0),
+        nextLocIndex: (typeof window.nextLocIndex === 'number' ? window.nextLocIndex : 0),
+      };
+      return MapHitTest.atPoint(this._ctx, p, state);
     },
 
     _handleClick(e) {
@@ -879,192 +719,9 @@
       const levelNowForBG = (window.currLevel || 0);
       // Suppress normal background while explicit morphing; we'll draw transformed backgrounds ourselves
       if (!(this._transitionActive && this._explicitFromSnapshot) && levelNowForBG === 2 && this._layoutMeta.level2) {
-        // Draw hallway walls with doorway gaps, a closed elevator door at the top, and a bottom cap
-        const { xLeft, xRight, yTop, yBottom, centerX } = this._layoutMeta.level2;
-        const doorGapHalf = 10;
-
-        // Collect doorway y-positions per side from node layout (indices 1..)
-        const leftGaps = [];
-        const rightGaps = [];
-        for (const n of this._nodes) {
-          if (n.i === 0) continue;
-          // Determine which side this door is on by proximity to walls
-          if (n.x < centerX) {
-            leftGaps.push(n.y);
-          } else {
-            rightGaps.push(n.y);
-          }
-        }
-        leftGaps.sort((a, b) => a - b);
-        rightGaps.sort((a, b) => a - b);
-
-        // Helper to draw a vertical line with gaps
-        const drawGappedWall = (x, gaps) => {
-          ctx.beginPath();
-          let yCursor = yTop;
-          for (const gy of gaps) {
-            const y1 = Math.max(yTop, gy - doorGapHalf);
-            const y2 = Math.min(yBottom, gy + doorGapHalf);
-            if (y1 > yCursor) {
-              ctx.moveTo(x, yCursor);
-              ctx.lineTo(x, y1);
-            }
-            yCursor = y2;
-          }
-          if (yCursor < yBottom) {
-            ctx.moveTo(x, yCursor);
-            ctx.lineTo(x, yBottom);
-          }
-          ctx.stroke();
-        };
-
-        ctx.save();
-        ctx.strokeStyle = STROKE;
-        ctx.lineWidth = 2;
-        ctx.setLineDash([]);
-
-        // Left and right walls with gaps for doorways
-        drawGappedWall(xLeft, leftGaps);
-        drawGappedWall(xRight, rightGaps);
-
-        // Elevator header (top lintel) across the hall
-        ctx.beginPath();
-        ctx.moveTo(xLeft, yTop);
-        ctx.lineTo(xRight, yTop);
-        ctx.stroke();
-
-        // Closed elevator door (rectangle with center line), positioned above the boss label
-        const bossNode = this._nodes.find(n => n.i === 0);
-        const elevW = Math.min(52, xRight - xLeft - 8);
-        const elevH = 28;
-        const elevX = centerX - elevW * 0.5;
-        let elevY = yTop + 2;
-        if (bossNode) {
-          const rBoss = RADII[bossNode.kind] || 10;
-          // place the elevator block just above the boss node (and thus above its label, which sits below)
-          elevY = bossNode.y - (rBoss + 10) - elevH;
-        }
-        ctx.beginPath();
-        ctx.rect(elevX, elevY, elevW, elevH);
-        ctx.stroke();
-
-        // Bottom cap to close the hallway
-        ctx.beginPath();
-        ctx.moveTo(xLeft, yBottom);
-        ctx.lineTo(xRight, yBottom);
-        ctx.stroke();
-
-        // Open door leaves at each hallway doorway (open into the rooms, away from hallway)
-        // Hinge leaves from the wall edges (gap endpoints) so they visually connect to frames
-        ctx.lineWidth = 3;
-
-        for (const gy of leftGaps) {
-          const y1 = Math.max(yTop, gy - doorGapHalf);
-          const y2 = Math.min(yBottom, gy + doorGapHalf);
-          // Top leaf (hinge at top gap edge)
-          ctx.beginPath();
-          ctx.moveTo(xLeft, y1);
-          ctx.lineTo(xLeft - 12, y1 - 10);
-          ctx.stroke();
-          // Bottom leaf (hinge at bottom gap edge)
-          ctx.beginPath();
-          ctx.moveTo(xLeft, y2);
-          ctx.lineTo(xLeft - 12, y2 + 10);
-          ctx.stroke();
-        }
-        for (const gy of rightGaps) {
-          const y1 = Math.max(yTop, gy - doorGapHalf);
-          const y2 = Math.min(yBottom, gy + doorGapHalf);
-          // Top leaf
-          ctx.beginPath();
-          ctx.moveTo(xRight, y1);
-          ctx.lineTo(xRight + 12, y1 - 10);
-          ctx.stroke();
-          // Bottom leaf
-          ctx.beginPath();
-          ctx.moveTo(xRight, y2);
-          ctx.lineTo(xRight + 12, y2 + 10);
-          ctx.stroke();
-        }
-
-        ctx.restore();
+        MapBackgrounds.drawLevel2Background(ctx, this._nodes, { w: this._w, h: this._h }, this._layoutMeta);
       } else if (!(this._transitionActive && this._explicitFromSnapshot) && levelNowForBG === 1) {
-        // Draw room walls around baby groups with top doorway and inward diagonal doors
-        const pad = 8;
-
-        // Calculate bounds of all nodes including boss/upgrade post
-        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-        for (const n of this._nodes) {
-          const r = RADII[n.kind] || 8;
-          // Include extra space for labels above nodes
-          const labelHeight = n.forceLabelBelow ? 0 : 16; // space for label above
-          minX = Math.min(minX, n.x - r);
-          maxX = Math.max(maxX, n.x + r);
-          minY = Math.min(minY, n.y - r - labelHeight);
-          maxY = Math.max(maxY, n.y + r);
-        }
-
-        // Add generous padding around all bounds for walls and text clearance
-        const wallPad = 25;
-        const roomLeft = Math.max(pad, minX - wallPad);
-        const roomRight = Math.min(this._w - pad, maxX + wallPad);
-        const roomBottom = Math.min(this._h - pad, maxY + wallPad);
-        const roomTop = Math.max(pad, minY - wallPad);
-
-        // Doorway gap in the top wall
-        const doorGapWidth = 50;
-        const doorGapCenter = this._w * 0.5;
-        const doorGapLeft = doorGapCenter - doorGapWidth * 0.5;
-        const doorGapRight = doorGapCenter + doorGapWidth * 0.5;
-
-        ctx.save();
-        ctx.strokeStyle = STROKE;
-        ctx.lineWidth = 2;
-        ctx.setLineDash([]);
-
-        // Draw room walls with doorway gap in top
-        // Top wall with gap for doorway
-        ctx.beginPath();
-        ctx.moveTo(roomLeft, roomTop);
-        ctx.lineTo(doorGapLeft, roomTop);
-        ctx.moveTo(doorGapRight, roomTop);
-        ctx.lineTo(roomRight, roomTop);
-        ctx.stroke();
-
-        // Left wall
-        ctx.beginPath();
-        ctx.moveTo(roomLeft, roomTop);
-        ctx.lineTo(roomLeft, roomBottom);
-        ctx.stroke();
-
-        // Right wall
-        ctx.beginPath();
-        ctx.moveTo(roomRight, roomTop);
-        ctx.lineTo(roomRight, roomBottom);
-        ctx.stroke();
-
-        // Bottom wall
-        ctx.beginPath();
-        ctx.moveTo(roomLeft, roomBottom);
-        ctx.lineTo(roomRight, roomBottom);
-        ctx.stroke();
-
-        // Double doors: single diagonal lines descending down and outward from door jambs
-        ctx.lineWidth = 3;
-
-        // Left door: diagonal from top-left of gap down and left
-        ctx.beginPath();
-        ctx.moveTo(doorGapLeft, roomTop);
-        ctx.lineTo(doorGapLeft - 12, roomTop + 12);
-        ctx.stroke();
-
-        // Right door: diagonal from top-right of gap down and right
-        ctx.beginPath();
-        ctx.moveTo(doorGapRight, roomTop);
-        ctx.lineTo(doorGapRight + 12, roomTop + 12);
-        ctx.stroke();
-
-        ctx.restore();
+        MapBackgrounds.drawLevel1Background(ctx, this._nodes, { w: this._w, h: this._h }, this._layoutMeta);
       }
 
       // Level transition rendering: draw morph/zoom between levels
