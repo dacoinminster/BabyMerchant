@@ -585,103 +585,24 @@
       const enterTrading = () => { if (typeof window.doButtonAction === 'function') window.doButtonAction('enterTrading'); };
       const levelUp = () => { if (typeof window.doButtonAction === 'function') window.doButtonAction('levelUp'); };
       const levelDown = () => { if (typeof window.doButtonAction === 'function') window.doButtonAction('levelDown'); };
-
-      switch (hit.type) {
-        case 'player':
-          if (transit > 0) { try { console.debug('[mapRenderer] action: locomote (player, in transit)'); } catch(_){}; locomote(); }
-          else { try { console.debug('[mapRenderer] action: enterTrading (player, idle)'); } catch(_){}; enterTrading(); }
-          break;
-
-        case 'path':
-          if (transit > 0 || ((typeof window.nextLocIndex === 'number') && window.nextLocIndex !== loc)) { try { console.debug('[mapRenderer] action: locomote (path)'); } catch(_){}; locomote(); }
-          break;
-
-        case 'doorwayL1':
-        case 'elevatorL2':
-          if (transit > 0) {
-            try { console.debug('[mapRenderer] action: locomote (door/elevator, in transit)'); } catch(_){}
-            locomote();
-          } else if ((window.maxLevel || 0) > curr) {
-            try { console.debug('[mapRenderer] action: levelUp (door/elevator)'); } catch(_){}
-            levelUp();
-          } else {
-            try { console.debug('[mapRenderer] levelUp locked; maxLevel<=curr'); } catch(_){}
-          }
-          break;
-
-        case 'doorL2': {
-          const i = (hit.index !== undefined ? hit.index : -1);
-          if (i === -1) break;
-          if (transit > 0) {
-            try { console.debug('[mapRenderer] action: locomote (L2 doorway, in transit)'); } catch(_){}
-            locomote();
-          } else if (i === loc) {
-            try { console.debug('[mapRenderer] action: levelDown (L2 doorway @ current)'); } catch(_){}
-            levelDown(); // Return to level 1 from the door's trading post
-          } else {
-            try { console.debug('[mapRenderer] action: set nextLocIndex (L2 doorway) ->', i); } catch(_){}
-            window.nextLocIndex = i;
-            try {
-              var rb2 = document.getElementById('nextLoc' + i);
-              if (rb2) rb2.checked = true;
-            } catch (_) {}
-            if (typeof window.updateLocomoteButton === 'function') window.updateLocomoteButton();
-            window.inventoryChanged = true;
-          }
-          break;
-        }
-
-        case 'groupCircles':
-        case 'node': {
-          const i = (hit.index !== undefined ? hit.index : -1);
-          if (i === -1) break;
-
-          if (transit > 0) {
-            try { console.debug('[mapRenderer] action: locomote (node/group, in transit)'); } catch(_){}
-            locomote();
-          } else if (i === loc) {
-            // Special cases when clicking the current post
-            if (curr === 1 && hit.type === 'groupCircles') {
-              try { console.debug('[mapRenderer] action: levelDown (L1 group circles @ current)'); } catch(_){}
-              levelDown(); // Return to level 0 from the group's trading post
-            } else if (curr === 2 && i > 0 && hit.type === 'node') {
-              try { console.debug('[mapRenderer] action: levelDown (L2 door @ current)'); } catch(_){}
-              levelDown(); // Return to level 1 from door trading post
-            } else {
-              try { console.debug('[mapRenderer] action: enterTrading (current location)'); } catch(_){}
-              enterTrading(); // Enter trading/upgrading at current location
-            }
-          } else if (curr === 0) {
-            if (typeof window.typeText === 'function') {
-              try { console.debug('[mapRenderer] message: level 0 chaotic movement'); } catch(_){}
-              window.typeText("Can't choose destination when thrashing about.");
-            }
-          } else if (typeof window.nextLocIndex === 'number' && i === window.nextLocIndex) {
-            // Clicking the already-selected destination commences movement
-            try { console.debug('[mapRenderer] action: locomote (clicked selected destination)'); } catch(_){}
-            locomote();
-          } else {
-            // Level 1+ and at a trading/upgrade post: set next destination
-            try { console.debug('[mapRenderer] action: set nextLocIndex ->', i); } catch(_){}
-            window.nextLocIndex = i;
-
-            // Sync the radio button selection so updateLocomoteButton doesn't overwrite nextLocIndex
-            try {
-              var rb = document.getElementById('nextLoc' + i);
-              if (rb) {
-                rb.checked = true;
-              }
-            } catch (_) {}
-
-            if (typeof window.updateLocomoteButton === 'function') window.updateLocomoteButton();
-            window.inventoryChanged = true; // trigger UI refresh next tick
-          }
-          break;
-        }
-
-        default:
-          break;
-      }
+      
+      // Delegate to interactions module (keeps renderer thin)
+      MapInteractions.routeClick(hit, {
+        transit: (window.transitMoves || 0),
+        curr: (window.currLevel || 0),
+        loc: (typeof window.locIndex === 'number' ? window.locIndex : 0),
+        next: (typeof window.nextLocIndex === 'number' ? window.nextLocIndex : 0),
+        maxLevel: (window.maxLevel || 0),
+      }, {
+        locomote,
+        enterTrading,
+        levelUp,
+        levelDown,
+        setNextLocIndex: (i) => { window.nextLocIndex = i; },
+        syncRadio: (i) => { try { var rb = document.getElementById('nextLoc' + i); if (rb) rb.checked = true; } catch (_) {} },
+        updateLocomoteButton: () => { if (typeof window.updateLocomoteButton === 'function') window.updateLocomoteButton(); },
+        markInventoryChanged: () => { window.inventoryChanged = true; }
+      });
     },
 
     _handleMouseMove(e) {
