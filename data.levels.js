@@ -179,3 +179,12 @@ const levelData = [
 ];
 
 deepFreeze(levelData);
+
+// Expose to window for modules that read window.levelData/basePrice via the global object
+try {
+  if (typeof window !== 'undefined') {
+    // Do not overwrite if already present
+    if (!window.levelData) window.levelData = levelData;
+    if (!window.basePrice) window.basePrice = basePrice;
+  }
+} catch (_) {}

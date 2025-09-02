@@ -38,6 +38,8 @@ function getDevicePixelRatio() {
     _evtBoundHost: false,
     _evtBoundWin: false,
     _host: null,
+    _bootLogged: false,
+    _lastNodesLenLogged: -1,
 
     // Level transition animation
     _transitionActive: false,
@@ -143,6 +145,17 @@ function getDevicePixelRatio() {
         try { console.debug('[mapRenderer] window capture event listeners bound'); } catch (_) {}
       }
 
+      try {
+        const cs = this._host ? getComputedStyle(this._host) : null;
+        console.debug('[mapRenderer] init snapshot', {
+          dpr: this._dpr, w: this._w, h: this._h,
+          hostDisplay: cs ? cs.display : null,
+          hostVisibility: cs ? cs.visibility : null,
+          hasMapGraph: !!(window.MapGraph && typeof MapGraph.rebuildIfNeeded === 'function'),
+          currLevel: window.currLevel,
+          numLocations: (window.levelData && window.levelData[(window.currLevel||0)]) ? window.levelData[(window.currLevel||0)].numLocations : 'NA'
+        });
+      } catch (_) {}
       // Add resize listener only once
       if (!this._resizeListenerAdded) {
         window.addEventListener('resize', () => this._resize(), { passive: true });
@@ -182,6 +195,8 @@ function getDevicePixelRatio() {
       // CSS size already 100%
       const ctx = this._ctx;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      
+      MapGraph.invalidate();
       this._positionsValid = false;
 
       // Cancel any in-flight transition if size changed
@@ -254,169 +269,26 @@ function getDevicePixelRatio() {
           nodeTo: { x: Math.round(nodeTo.x), y: Math.round(nodeTo.y) },
           ts: Date.now(),
         };
-        console.log('[mapRenderer] level transition start', this._transitionContext);
+        console.debug('[mapRenderer] level transition start', this._transitionContext);
       } catch (_) { /* ignore logging errors */ }
     },
 
     _buildGraphIfNeeded() {
+      if (!window.MapGraph || typeof MapGraph.rebuildIfNeeded !== 'function') { try { console.error('[mapRenderer] MapGraph missing - check script tags and order'); } catch (_) {} return; }
       const level = (window.currLevel || 0);
-      const numLocations = (levelData && levelData[level] ? levelData[level].numLocations : 0);
-      if (!numLocations) {
-        this._nodes = [];
-        this._edges = [];
-        return;
-      }
-
-      if (!this._positionsValid || this._nodes.length !== numLocations) {
-        this._layoutMeta = {};
-        let pts = [];
-        const pad = 12;
-        const cx = this._w * 0.5, cy = this._h * 0.5;
-
-        if (level === 2) {
-          // Level 2: vertical hallway with walls and elevator at top
-          const hallWidth = Math.min(this._w * 0.5, 140);
-          const xLeft = cx - hallWidth * 0.5;
-          const xRight = cx + hallWidth * 0.5;
-          const yTop = pad + 24;
-          const yBottom = this._h - pad - 8;
-          const centerX = cx;
-
-          // Elevator node (index 0) near top center (moved back up for proper spacing)
-          const elevatorY = yTop + 20;
-          pts[0] = [centerX, elevatorY];
-
-          // Four door nodes along hallway, alternating sides
-          const usableHeight = (yBottom - (elevatorY + 40));
-          const step = usableHeight / 4;
-          for (let i = 1; i < numLocations; i++) {
-            const trow = i; // 1..4
-            const y = elevatorY + 40 + (trow - 1) * step + step * 0.5;
-            const leftSide = (i % 2 === 1);
-            const insideLeftX = xLeft + 16;     // place posts INSIDE hallway to avoid door collisions
-            const insideRightX = xRight - 16;
-            const x = leftSide ? insideLeftX : insideRightX;
-            pts[i] = [x, y];
-          }
-
-          this._layoutMeta.level2 = { xLeft, xRight, yTop, yBottom, centerX };
-        } else {
-          // Levels 0 and 1: circle layout (with headroom adjustment for labels/doorway)
-          let r = Math.max(20, Math.min(this._h * 0.5 - pad, this._w * 0.45 - pad));
-
-          if (level === 1) {
-            // Ensure there is headroom above index 0 for the doorway graphic
-            const rBoss = RADII[getNodeKind(1, 0)] || 10; // index 0 is doorway icon on L1
-            const vGap = 16, doorH = 26, marginTop = rBoss + vGap + doorH + 8;
-            const maxRForDoor = Math.max(20, (cy - (pad + marginTop)));
-            r = Math.min(r, maxRForDoor);
-            this._layoutMeta.level1 = { bossIndex: 0, rAdjusted: r };
-          } else if (level === 0) {
-            // Ensure headroom for L0 boss label above top node (index 0)
-            const rBoss0 = RADII[getNodeKind(0, 0)] || 8;
-            const labelH = 10, vGap0 = 10;
-            const marginTop0 = rBoss0 + vGap0 + labelH + 6;
-            const maxRForLabel0 = Math.max(20, (cy - (pad + marginTop0)));
-            r = Math.min(r, maxRForLabel0);
-            this._layoutMeta.level0 = { bossIndex: 0, rAdjusted: r };
-          }
-
-          pts = computeCirclePositions(numLocations, cx, cy, r);
-        }
-
-        this._nodes = [];
-        for (let i = 0; i < numLocations; i++) {
-          const kind = getNodeKind(level, i);
-          const visited = !!(window.visitedLocation && window.visitedLocation[level] && window.visitedLocation[level][i]);
-          const nameKnown = (level === 0) ? visited : visited; // Level 1+: names revealed on visit
-          const label = nameKnown
-            ? (window.locationName && window.locationName[level] ? window.locationName[level][i] : '')
-            : ''; // minimalist: hide labels when unknown
-
-          // Label layout hints
-          let labelAlign = undefined;
-          let labelDx = 0;
-          let forceLabelBelow = false;
-
-          if (level === 2) {
-            if (i === 0) {
-              // Keep the "final boss" (elevator) label below to avoid overlapping elevator drawing
-              forceLabelBelow = true;
-            } else {
-              // Left side posts: left-justify text with left side of circle
-              // Right side posts: right-justify text with right side of circle
-              const meta = this._layoutMeta.level2;
-              const x = pts[i][0];
-              const r = RADII[getNodeKind(2, i)] || 8;
-              const isLeft = x < meta.centerX;
-              if (isLeft) {
-                labelAlign = 'left';
-                labelDx = -r; // align with left side of circle
-              } else {
-                labelAlign = 'right';
-                labelDx = r; // align with right side of circle
-              }
-            }
-          }
-
-          this._nodes.push({
-            i,
-            x: pts[i][0],
-            y: pts[i][1],
-            kind,
-            discovered: (level === 0 ? visited : true),
-            nameKnown,
-            label,
-            labelAlign,
-            labelDx,
-            forceLabelBelow
-          });
-        }
-
-        // Edges: simple star to index 0, except self
-        this._edges = [];
-        for (let i = 1; i < numLocations; i++) {
-          this._edges.push([0, i]);
-        }
-
-        this._positionsValid = true;
-      } else {
-        // Update discovered/nameKnown/label without recompute positions
-        for (const n of this._nodes) {
-          const i = n.i;
-          const visited = !!(window.visitedLocation && window.visitedLocation[level] && window.visitedLocation[level][i]);
-          n.discovered = (level === 0 ? visited : true);
-          n.nameKnown = (level === 0 ? visited : visited);
-          n.label = n.nameKnown
-            ? (window.locationName && window.locationName[level] ? window.locationName[level][i] : '')
-            : '';
-          n.kind = getNodeKind(level, i);
-
-          // Re-assert L2 label hints on each rebuild
-          if (level === 2 && this._layoutMeta.level2) {
-            if (n.i === 0) {
-              n.forceLabelBelow = true;
-              n.labelAlign = 'center';
-              n.labelDx = 0;
-            } else {
-              // Left side posts: left-justify text with left side of circle
-              // Right side posts: right-justify text with right side of circle
-              const meta = this._layoutMeta.level2;
-              const x = n.x;
-              const r = RADII[getNodeKind(2, n.i)] || 8;
-              const isLeft = x < meta.centerX;
-              if (isLeft) {
-                n.labelAlign = 'left';
-                n.labelDx = -r; // align with left side of circle
-              } else {
-                n.labelAlign = 'right';
-                n.labelDx = r; // align with right side of circle
-              }
-              n.forceLabelBelow = false;
-            }
-          }
-        }
-      }
+      const res = MapGraph.rebuildIfNeeded({
+        level,
+        w: this._w,
+        h: this._h,
+        nodes: this._nodes,
+        edges: this._edges,
+        layoutMeta: this._layoutMeta
+      });
+      this._nodes = res.nodes;
+      this._edges = res.edges;
+      this._layoutMeta = res.layoutMeta;
+      this._positionsValid = res.positionsValid;
+      
     },
 
     _syncFromGameState() {
@@ -426,6 +298,12 @@ function getDevicePixelRatio() {
       const loc = (typeof window.locIndex === 'number' ? window.locIndex : 0);
 
       this._buildGraphIfNeeded();
+      try {
+        if (this._nodes && this._nodes.length !== this._lastNodesLenLogged) {
+          console.debug('[mapRenderer] nodes len changed', { len: this._nodes.length, level, w: this._w, h: this._h });
+          this._lastNodesLenLogged = this._nodes.length;
+        }
+      } catch (_) {}
 
       // Determine gossip highlight and destination green (read from DOM)
       let gossipIndex = (typeof window.gossipLocation === 'number' ? window.gossipLocation : -1);
@@ -438,6 +316,7 @@ function getDevicePixelRatio() {
         // Start a zoom transition between levels
         this._beginLevelTransition(level);
         this._travelActive = false;
+        MapGraph.invalidate();
         this._positionsValid = false;
       }
 
@@ -459,6 +338,7 @@ function getDevicePixelRatio() {
 
       // If we just arrived (transitMoves was 1 and now is 0), ensure positions are re-evaluated
       if (this._lastTransitMoves === 1 && transit === 0) {
+        MapGraph.invalidate();
         this._positionsValid = false;
       }
 
@@ -597,19 +477,24 @@ function getDevicePixelRatio() {
     _draw() {
       const ctx = this._ctx;
       if (!ctx) return;
+      if (!this._bootLogged) { this._bootLogged = true; try { const host = this._host || (this._canvas ? this._canvas.parentElement : null); const cs = host ? getComputedStyle(host) : null; console.debug('[mapRenderer] first draw', { level: (window.currLevel||0), w: this._w, h: this._h, nodes: Array.isArray(this._nodes) ? this._nodes.length : 0, meta: this._layoutMeta ? Object.keys(this._layoutMeta) : [], hostDisplay: cs ? cs.display : null, hostVisibility: cs ? cs.visibility : null, transit: (window.transitMoves||0), uiMode: window.uiMode }); } catch (_) {} }
 
       // Detect parent size changes (e.g., title card hide/show) and resize canvas
       const parentRect = this._canvas.parentElement.getBoundingClientRect();
-      if (Math.floor(parentRect.width) !== this._w || Math.floor(parentRect.height) !== this._h) {
+      const pw = Math.floor(parentRect.width), ph = Math.floor(parentRect.height);
+      if (pw !== this._w || ph !== this._h) {
+        
         this._resize();
       }
 
       ctx.clearRect(0, 0, this._w, this._h);
+      
+      this._buildGraphIfNeeded();
 
       // If app prepared a transition and level just changed but transition not started yet,
       // suppress drawing this frame to avoid a flash of the new level's walls/groups.
       if (this._preparedTransition && (this._lastCurrLevel !== (window.currLevel || 0)) && !this._transitionActive && this._pendingTransitionHold) {
-        try { console.log('[mapRenderer] draw suppressed to avoid flash before transition'); } catch (_) {}
+        try { console.debug('[mapRenderer] draw suppressed to avoid flash before transition'); } catch (_) {}
         return;
       }
 
@@ -729,7 +614,7 @@ function getDevicePixelRatio() {
         }
       }
       if (this._transitionActive && this._explicitFromSnapshot && !this._loggedPathSuppressedOnce) {
-        try { console.log('[mapRenderer] suppressing path rendering during level morph'); } catch (_) {}
+        try { console.debug('[mapRenderer] suppressing path rendering during level morph'); } catch (_) {}
         this._loggedPathSuppressedOnce = true;
       }
 
@@ -951,7 +836,7 @@ function getDevicePixelRatio() {
               ctx.translate(gNodeBG.x, gNodeBG.y); ctx.scale(s, s); ctx.translate(-gNodeBG.x, -gNodeBG.y);
               // Draw walls first
               const rcWalls = drawL1WallsFromNodes.call(this, ctx, snapTo.nodes, e);
-              try { if (e < 0.02 || Math.abs(e-0.25)<0.01 || Math.abs(e-0.5)<0.01 || Math.abs(e-0.75)<0.01 || e>0.98) console.log('[mapRenderer] L0->L1 walls bbox@e', e.toFixed(2), rcWalls); } catch(_){}
+              try { if (e < 0.02 || Math.abs(e-0.25)<0.01 || Math.abs(e-0.5)<0.01 || Math.abs(e-0.75)<0.01 || e>0.98) console.debug('[mapRenderer] L0->L1 walls bbox@e', e.toFixed(2), rcWalls); } catch(_){}
               // Draw other groups (exclude the active group node) as full groups (post + four dots) with labels
               ctx.globalAlpha = e;
               for (const n of snapTo.nodes) {
@@ -988,7 +873,7 @@ function getDevicePixelRatio() {
               ctx.translate(gNodeBG.x, gNodeBG.y); ctx.scale(s, s); ctx.translate(-gNodeBG.x, -gNodeBG.y);
               // Draw walls fading out
               const rcWalls2 = drawL1WallsFromNodes.call(this, ctx, this._explicitFromSnapshot.nodes, 1 - e);
-              try { if (e < 0.02 || Math.abs(e-0.25)<0.01 || Math.abs(e-0.5)<0.01 || Math.abs(e-0.75)<0.01 || e>0.98) console.log('[mapRenderer] L1->L0 walls bbox@e', e.toFixed(2), rcWalls2); } catch(_){}
+              try { if (e < 0.02 || Math.abs(e-0.25)<0.01 || Math.abs(e-0.5)<0.01 || Math.abs(e-0.75)<0.01 || e>0.98) console.debug('[mapRenderer] L1->L0 walls bbox@e', e.toFixed(2), rcWalls2); } catch(_){}
               // Draw other groups fading out (exclude the active group node) as full groups with labels
               ctx.globalAlpha = 1 - e;
               for (const n of this._explicitFromSnapshot.nodes) {
@@ -1145,7 +1030,7 @@ function getDevicePixelRatio() {
             const stage = (e < 0.02) ? '0%' : (e < 0.27 ? '25%' : (e < 0.52 ? '50%' : (e < 0.77 ? '75%' : (e > 0.98 ? '100%' : ''))));
             if (stage && stage !== this._lastMorphLogStage) {
               const sNow = (fromL === 0 && toL === 1) ? lerp(sStart, 1, e) : lerp(1, sStart, e);
-              console.log('[mapRenderer] morph stage', stage, {
+              console.debug('[mapRenderer] morph stage', stage, {
                 fromL, toL,
                 pivot: gNodeBG ? { x: Math.round(gNodeBG.x), y: Math.round(gNodeBG.y) } : null,
                 sStart: Number.isFinite(sStart) ? sStart.toFixed(2) : sStart,
@@ -1230,6 +1115,20 @@ function getDevicePixelRatio() {
           this._transitionContext = null;
         }
       }
+    },
+    onHostVisibilityChange(show) {
+      
+      if (!show) return;
+      // Force graph invalidation and schedule resize after layout becomes stable
+      try { MapGraph.invalidate(); } catch (_) {}
+      this._positionsValid = false;
+      const doResize = () => {
+        try { this._resize(); }
+        catch (e) { try { console.warn('[mapRenderer] resize on visibility failed', e); } catch (_) {} }
+      };
+      // Attempt both next frame and microtask tick to catch various engines
+      try { requestAnimationFrame(doResize); } catch (_) {}
+      setTimeout(doResize, 0);
     }
   };
 

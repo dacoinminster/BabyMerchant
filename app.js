@@ -168,7 +168,9 @@ function loadGameState() {
       }
     }
   })();
-  // Initialize map renderer after ensuring container; visibility already handled by mode above
+  // Ensure map visibility matches UI mode now that container exists
+  if (typeof setMapVisible === 'function') setMapVisible(uiMode === 'movement');
+  // Initialize map renderer after ensuring container
   if (window.mapRenderer && typeof window.mapRenderer.init === 'function') window.mapRenderer.init();
 
   setTimeout('goBaby()', 100);

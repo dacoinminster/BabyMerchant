@@ -100,6 +100,12 @@ function setMapVisible(show) {
   var el = document.getElementById('mapGoesHere');
   if (!el) return;
   el.style.display = show ? 'flex' : 'none';
+  // Notify the renderer so it can re-measure when the host becomes visible
+  try {
+    if (window.mapRenderer && typeof window.mapRenderer.onHostVisibilityChange === 'function') {
+      window.mapRenderer.onHostVisibilityChange(show);
+    }
+  } catch (_) {}
 }
 
 // UI formatting helpers
