@@ -15,319 +15,34 @@
 (function () {
   'use strict';
 
-  const RADII = { baby: 6, leader: 8, doorway: 10 };
-  const LABEL_FONT = '10px monospace';
-  const STROKE = '#000';
-  const FILL = '#fff';
-  const TRANSITION_DEFAULT_MS = 700;
-  const TRANSITION_L0_L1_MS = 20000; // extreme slow (5x more) for debugging level 0<->1 zooms
-  const SCALE_BOOST_L0L1 = 4.0; // push room/walls further offscreen when fully zoomed in
 
-  function easeInOutQuad(t) {
-    return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
-  }
 
-  function clamp01(x) { return Math.max(0, Math.min(1, x)); }
-  function lerp(a, b, t) { return a + (b - a) * t; }
 
   function getDevicePixelRatio() {
     return (window.devicePixelRatio || 1);
   }
 
-  function getLabelElementForIndex(i) {
-    // Destination labels are rendered as: <label for="nextLocN">...
-    return document.querySelector('label[for="nextLoc' + i + '"]');
-  }
 
-  function getComputedColorForLabel(i) {
-    const el = getLabelElementForIndex(i);
-    if (!el) return null;
-    const style = getComputedStyle(el);
-    return style && style.color ? style.color : null; // e.g., "rgb(0, 200, 0)" when gossip highlights
-  }
 
   // Determines node kind based on level/index and spec
-  function getNodeKind(level, index) {
-    if (level === 0) {
-      return index === 0 ? 'leader' : 'baby';
-    } else {
-      return index === 0 ? 'doorway' : 'leader';
-    }
-  }
 
   // Deterministic layout (circle) for now; refined per-level below
-  function computeCirclePositions(num, cx, cy, r) {
-    const pts = [];
-    for (let i = 0; i < num; i++) {
-      const t = (i / num) * Math.PI * 2 - Math.PI / 2;
-      pts.push([cx + r * Math.cos(t), cy + r * Math.sin(t)]);
-    }
-    return pts;
-  }
 
-  function drawNode(ctx, node, showName, hasGossip, labelText, ringColor) {
-    const r = RADII[node.kind];
 
-    // core
-    ctx.beginPath();
-    ctx.arc(node.x, node.y, r, 0, Math.PI * 2);
-    ctx.fillStyle = FILL;
-    ctx.fill();
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = STROKE;
-    ctx.stroke();
-
-    if (hasGossip) {
-      ctx.save();
-      ctx.beginPath();
-      ctx.strokeStyle = ringColor || STROKE;
-      ctx.arc(node.x, node.y, r + 3, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.restore();
-    }
-
-    if (showName && labelText) {
-      ctx.font = LABEL_FONT;
-      ctx.fillStyle = STROKE;
-
-      // Label alignment/offset hints possibly supplied by layout
-      const align = node.labelAlign || 'center';
-      ctx.textAlign = align;
-      ctx.textBaseline = 'alphabetic';
-
-      // Y placement: default above; can be forced below; clamp if too close to top
-      let labelY = node.forceLabelBelow ? (node.y + r + 10) : (node.y - r - 6);
-      if (!node.forceLabelBelow && labelY < 10) {
-        labelY = node.y + r + 10;
-      }
-
-      const labelX = node.x + (node.labelDx || 0);
-      ctx.fillText(labelText, labelX, labelY);
-    }
-  }
-
-  function drawEdge(ctx, ax, ay, bx, by) {
-    ctx.beginPath();
-    ctx.moveTo(ax, ay);
-    ctx.lineTo(bx, by);
-    ctx.lineWidth = 1;
-    ctx.strokeStyle = STROKE;
-    ctx.setLineDash([]);
-    ctx.stroke();
-  }
 
   // Utility: centroid of nodes array
-  function centroidOf(nodes) {
-    if (!nodes || !nodes.length) return { x: 0, y: 0 };
-    let sx = 0, sy = 0;
-    for (const n of nodes) { sx += n.x; sy += n.y; }
-    return { x: sx / nodes.length, y: sy / nodes.length };
-  }
 
   // Build a snapshot of node positions for an arbitrary level using current viewport
-  function computeSnapshotForLevel(level, w, h) {
-    const numLocations = (levelData && levelData[level] ? levelData[level].numLocations : 0);
-    const nodes = [];
-    if (!numLocations) return { nodes, layoutMeta: {}, level };
-    const pad = 12;
-    const cx = w * 0.5, cy = h * 0.5;
-    if (level === 2) {
-      const hallWidth = Math.min(w * 0.5, 140);
-      const xLeft = cx - hallWidth * 0.5;
-      const xRight = cx + hallWidth * 0.5;
-      const yTop = pad + 24;
-      const yBottom = h - pad - 8;
-      const centerX = cx;
-      const elevatorY = yTop + 20;
-      const pts = [];
-      pts[0] = [centerX, elevatorY];
-      const usableHeight = (yBottom - (elevatorY + 40));
-      const step = usableHeight / 4;
-      for (let i = 1; i < numLocations; i++) {
-        const trow = i;
-        const y = elevatorY + 40 + (trow - 1) * step + step * 0.5;
-        const leftSide = (i % 2 === 1);
-        const insideLeftX = xLeft + 16;
-        const insideRightX = xRight - 16;
-        const x = leftSide ? insideLeftX : insideRightX;
-        pts[i] = [x, y];
-      }
-      for (let i = 0; i < numLocations; i++) {
-        const kind = getNodeKind(level, i);
-        nodes.push({ i, x: pts[i][0], y: pts[i][1], kind });
-      }
-      return { nodes, layoutMeta: { level2: { xLeft, xRight, yTop, yBottom, centerX } }, level };
-    }
-    // Levels 0 and 1: circle
-    let r = Math.max(20, Math.min(h * 0.5 - pad, w * 0.45 - pad));
-    if (level === 1) {
-      const rBoss = RADII[getNodeKind(1, 0)] || 10;
-      const vGap = 16, doorH = 26, marginTop = rBoss + vGap + doorH + 8;
-      const maxRForDoor = Math.max(20, (cy - (pad + marginTop)));
-      r = Math.min(r, maxRForDoor);
-    }
-    const pts = computeCirclePositions(numLocations, cx, cy, r);
-    for (let i = 0; i < numLocations; i++) {
-      const kind = getNodeKind(level, i);
-      nodes.push({ i, x: pts[i][0], y: pts[i][1], kind });
-    }
-    const layoutMeta = (level === 1) ? { level1: { rAdjusted: r } } : {};
-    return { nodes, layoutMeta, level };
-  }
 
-  function drawDashedPath(ctx, ax, ay, bx, by, strokeStyle) {
-    ctx.save();
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = strokeStyle || STROKE;
-    ctx.setLineDash([6, 6]);
-    ctx.beginPath();
-    ctx.moveTo(ax, ay);
-    ctx.lineTo(bx, by);
-    ctx.stroke();
-    ctx.restore();
-  }
 
   // Draw a dashed polyline for routed paths (e.g., level 2 hallway)
-  function drawDashedPolyline(ctx, pts, strokeStyle, alpha = 1) {
-    if (!pts || pts.length < 2) return;
-    ctx.save();
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = strokeStyle || STROKE;
-    ctx.globalAlpha = alpha;
-    ctx.setLineDash([6, 6]);
-    ctx.beginPath();
-    ctx.moveTo(pts[0][0], pts[0][1]);
-    for (let i = 1; i < pts.length; i++) {
-      ctx.lineTo(pts[i][0], pts[i][1]);
-    }
-    ctx.stroke();
-    ctx.restore();
-  }
 
-  function polylineLength(pts) {
-    let len = 0;
-    for (let i = 1; i < pts.length; i++) {
-      const dx = pts[i][0] - pts[i - 1][0];
-      const dy = pts[i][1] - pts[i - 1][1];
-      len += Math.hypot(dx, dy);
-    }
-    return len;
-  }
 
   // t in [0,1]
-  function pointAlongPolyline(pts, t) {
-    if (!pts || pts.length === 0) return [0, 0];
-    if (pts.length === 1) return pts[0];
-    const total = polylineLength(pts);
-    if (total === 0) return pts[pts.length - 1];
-    let dist = t * total;
-    for (let i = 1; i < pts.length; i++) {
-      const ax = pts[i - 1][0], ay = pts[i - 1][1];
-      const bx = pts[i][0], by = pts[i][1];
-      const seg = Math.hypot(bx - ax, by - ay);
-      if (dist <= seg || i === pts.length - 1) {
-        const tt = seg ? dist / seg : 0;
-        return [lerp(ax, bx, tt), lerp(ay, by, tt)];
-      }
-      dist -= seg;
-    }
-    return pts[pts.length - 1];
-  }
 
   // Route computation by level
-  function getRouteBetweenNodes(level, meta, fromNode, toNode) {
-    if (!fromNode || !toNode) return [[0, 0], [0, 0]];
-    if (level === 2 && meta && meta.level2) {
-      const cx = meta.level2.centerX;
-      const a = [fromNode.x, fromNode.y];
-      const b = [toNode.x, toNode.y];
-      const aOnCenter = Math.abs(a[0] - cx) < 1e-3;
-      const bOnCenter = Math.abs(b[0] - cx) < 1e-3;
-      const p1 = aOnCenter ? a : [cx, a[1]];
-      const p2 = bOnCenter ? b : [cx, b[1]];
-      const pts = [a];
-      if (!aOnCenter) pts.push(p1);
-      if (!bOnCenter && (pts.length === 1 || (pts[pts.length - 1][0] !== p2[0] || pts[pts.length - 1][1] !== p2[1]))) {
-        // vertical spine
-        pts.push(p2);
-      }
-      pts.push(b);
-      // Remove any consecutive duplicates
-      const dedup = [pts[0]];
-      for (let i = 1; i < pts.length; i++) {
-        const prev = dedup[dedup.length - 1];
-        if (Math.abs(prev[0] - pts[i][0]) > 1e-6 || Math.abs(prev[1] - pts[i][1]) > 1e-6) {
-          dedup.push(pts[i]);
-        }
-      }
-      return dedup;
-    }
-    // Default straight
-    return [[fromNode.x, fromNode.y], [toNode.x, toNode.y]];
-  }
 
-  function drawProgressBaby(ctx, x, y, px = 22, level = 0) {
-    // Grayscale emoji rendering. Use filter when available, else pixel fallback.
-    const supportsFilter = ('filter' in ctx);
-    ctx.save();
-    ctx.font = `${px}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",emoji,sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
 
-    // Apply level-specific transformations when travel is active and animation is within its duration
-    if (mapRenderer._travelActive && mapRenderer._stepAnimationStartTime > 0) {
-      const animationDurationPerStep = 800; // Duration for one step's animation
-      const elapsedTime = performance.now() - mapRenderer._stepAnimationStartTime;
-      const animationProgress = clamp01(elapsedTime / animationDurationPerStep);
-
-      if (animationProgress < 1) { // Only animate if within the step's animation duration
-        if (window.currLevel === 1) {
-          // Level 1: Rolling over (360 rotation)
-          const rotation = animationProgress * Math.PI * 2; // 360 degrees in radians
-          ctx.translate(x, y);
-          ctx.rotate(rotation);
-          ctx.translate(-x, -y);
-        } else if (window.currLevel === 0) {
-          // Level 0: Thrashing about
-          const shakeCycleDuration = 100; // 100ms cycle for thrashing
-          const shakeProgress = (elapsedTime % shakeCycleDuration) / shakeCycleDuration;
-          const shakeX = Math.sin(shakeProgress * Math.PI * 2) * 2; // 2px shake
-          const shakeY = Math.cos(shakeProgress * Math.PI * 2) * 2; // 2px shake
-          ctx.translate(x + shakeX, y + shakeY);
-          ctx.translate(-x, -y);
-        }
-      }
-    }
-    // Level 2: Crawling (three quick scootches) is handled by modifying the 't' value in _draw.
-
-    if (supportsFilter) {
-      ctx.filter = 'grayscale(1) contrast(1.1)';
-      ctx.fillText('👶', x, y);
-    } else {
-      // Fallback: offscreen canvas, convert to luminance
-      const w = px * 2, h = px * 2;
-      const oc = document.createElement('canvas'); oc.width = w; oc.height = h;
-      const octx = oc.getContext('2d');
-      octx.font = `${px}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",emoji,sans-serif`;
-      octx.textAlign = 'center'; octx.textBaseline = 'middle';
-      octx.fillText('👶', w / 2, h / 2);
-      const img = octx.getImageData(0, 0, w, h);
-      const d = img.data;
-      for (let i = 0; i < d.length; i += 4) {
-        const r = d[i], g = d[i + 1], b = d[i + 2];
-        const yLum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-        d[i] = d[i + 1] = d[i + 2] = yLum;
-      }
-      octx.putImageData(img, 0, 0);
-      ctx.drawImage(oc, Math.round(x - w / 2), Math.round(y - h / 2));
-    }
-    ctx.restore();
-  }
-
-  function dist(ax, ay, bx, by) {
-    const dx = bx - ax, dy = by - ay;
-    return Math.hypot(dx, dy);
-  }
 
   const mapRenderer = {
     _canvas: null,
