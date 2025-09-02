@@ -40,6 +40,7 @@ var inventoryChanged = false;
 var showingGossipColors = false;
 var gossipLocation = 0;
 var uiMode = 'movement';
+var isLevelTransitioning = false; // block inputs during level transition animation
 // End variables to save between sessions
 const varsToSave = [
   'gameVersion',
@@ -823,6 +824,10 @@ function goBaby() {
   // Guard against bad/missing indices when loop starts (e.g., right after level changes)
   normalizeLocationIndices();
   if (!typingText) {
+    if (isLevelTransitioning) {
+      // Swallow inputs while a level transition animation is running
+      buttonAction = '';
+    }
     var thisAction = buttonAction;
     if (buttonAction != '') {
       var locomoteButton = document.getElementById('buttonIDlocomote');
@@ -853,18 +858,24 @@ function goBaby() {
               'sadbaby.jpeg'
             );
           } else if (currLevel < maxLevel) {
-            typeText(
-              levelData[currLevel].levelUpMessage +
-                ', taking only your ' +
-                levelData[currLevel].tradeableItems[3] +
-                ' with you.' +
-                '\n\nNEW THIS LEVEL: ' +
-                levelData[currLevel].levelUpAwesomeness,
-              'Advancing to level ' + (currLevel + 1) + ':',
-              'Go Baby!',
-              'OK',
-              levelData[currLevel].levelUpImg
-            );
+            // If in trading view, exit so the map is visible for the zoom animation
+            if (uiMode === 'trading') {
+              try { exitTradingMode(); } catch (_) {}
+            }
+            // Prepare the renderer with an explicit transition BEFORE changing currLevel
+            try {
+              if (window.mapRenderer && typeof window.mapRenderer.prepareLevelTransition === 'function') {
+                var targetGroupOnL1 = (oldLocIndex[currLevel + 1] != null ? oldLocIndex[currLevel + 1] : 1);
+                window.mapRenderer.prepareLevelTransition(currLevel, currLevel + 1, locIndex, targetGroupOnL1);
+              }
+            } catch (_) {}
+            // Prepare title card content but defer display until after zoom animation
+            var _msgText = levelData[currLevel].levelUpMessage +
+              ', taking only your ' + levelData[currLevel].tradeableItems[3] + ' with you.' +
+              '\n\nNEW THIS LEVEL: ' + levelData[currLevel].levelUpAwesomeness;
+            var _msgHeader = 'Advancing to level ' + (currLevel + 1) + ':';
+            var _msgFooter = 'Go Baby!';
+            var _msgImg = levelData[currLevel].levelUpImg;
             (function(el){ if (el) el.style.display = 'flex'; })(document.getElementById('destinationsAndLabel'));
 
             // Preserve inventory that can't go up to the next level
@@ -894,8 +905,7 @@ function goBaby() {
             upgradesVisible = false;
             storeVisible = true;
             randomizeStore(locIndex, true);
-            // Open trading view immediately on level-up and hide the map
-            enterTradingMode();
+            // Do not enter trading yet; keep map visible for zoom animation
             if (levelDownButton) levelDownButton.style.visibility = (locIndex > 0 ? 'visible' : 'hidden');
             if (levelDownButton) levelDownButton.innerHTML = addLineBreaks(
               levelData[currLevel].levelDownLabel +
@@ -916,24 +926,41 @@ function goBaby() {
                 levelData[currLevel].locationLabel[locIndex]
             );
             updateLocomoteButton();
-
-            if (typeof gtag === 'function') {
-              gtag('event', 'levelUp', { event_category: 'levelChange', value: currLevel });
-            }
+            // Await map renderer transition (if present), then show title card and enter trading
+            isLevelTransitioning = true;
+            var _wait = (window.mapRenderer && typeof window.mapRenderer.waitForTransition === 'function')
+              ? window.mapRenderer.waitForTransition()
+              : Promise.resolve();
+            _wait.finally(function () {
+              try {
+                typeText(_msgText, _msgHeader, _msgFooter, 'OK', _msgImg);
+                enterTradingMode();
+                if (typeof gtag === 'function') {
+                  gtag('event', 'levelUp', { event_category: 'levelChange', value: currLevel });
+                }
+              } finally {
+                isLevelTransitioning = false;
+              }
+            });
           }
           break;
         case 'levelDown':
           if (currLevel > 0) {
-            typeText(
-              levelData[currLevel].levelDownMessage +
-                ', taking only your ' +
-                levelData[currLevel].tradeableItems[0] +
-                ' with you.',
-              'Retreating to level ' + (currLevel - 1) + ':',
-              'Humble thyself',
-              'OK',
-              levelData[currLevel].levelDownImg
-            );
+            // If in trading view, exit so the map is visible for the zoom animation
+            if (uiMode === 'trading') {
+              try { exitTradingMode(); } catch (_) {}
+            }
+            // Prepare the renderer with an explicit transition BEFORE changing currLevel
+            try {
+              if (window.mapRenderer && typeof window.mapRenderer.prepareLevelTransition === 'function') {
+                window.mapRenderer.prepareLevelTransition(currLevel, currLevel - 1, locIndex, 0);
+              }
+            } catch (_) {}
+            // Prepare title card content but defer display until after zoom animation
+            var _downMsgText = levelData[currLevel].levelDownMessage + ', taking only your ' + levelData[currLevel].tradeableItems[0] + ' with you.';
+            var _downHeader = 'Retreating to level ' + (currLevel - 1) + ':';
+            var _downFooter = 'Humble thyself';
+            var _downImg = levelData[currLevel].levelDownImg;
             // Preserve inventory that can't go down to the previous level
             oldInv[currLevel] = [0, 0, 0, 0];
             for (var i = 1; i < inv.length; i++) {
@@ -961,8 +988,7 @@ function goBaby() {
             storeVisible = false;
             randomizeStore(locIndex, true);
             upgradesVisible = true;
-            // Open trading view immediately on level-down and hide the map
-            enterTradingMode();
+            // Do not enter trading yet; keep map visible for zoom animation
             levelDownButton.innerHTML = addLineBreaks(
               levelData[currLevel].levelDownLabel +
                 locationName[currLevel][locIndex] +
@@ -987,9 +1013,22 @@ function goBaby() {
                 levelData[currLevel].locationLabel[locIndex]
             );
             updateLocomoteButton();
-            if (typeof gtag === 'function') {
-              gtag('event', 'levelDown', { event_category: 'levelChange', value: currLevel });
-            }
+            // Await map renderer transition (if present), then show title card and enter trading
+            isLevelTransitioning = true;
+            var _waitDown = (window.mapRenderer && typeof window.mapRenderer.waitForTransition === 'function')
+              ? window.mapRenderer.waitForTransition()
+              : Promise.resolve();
+            _waitDown.finally(function () {
+              try {
+                typeText(_downMsgText, _downHeader, _downFooter, 'OK', _downImg);
+                enterTradingMode();
+                if (typeof gtag === 'function') {
+                  gtag('event', 'levelDown', { event_category: 'levelChange', value: currLevel });
+                }
+              } finally {
+                isLevelTransitioning = false;
+              }
+            });
           }
           break;
         case 'pick':
