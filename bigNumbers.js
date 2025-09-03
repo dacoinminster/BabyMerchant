@@ -80,3 +80,37 @@ if (!Hund && TensList[Ten][1][10]) TenName = TenName.slice(0,-1)+"i";
 
  return UnitName + TenName + HundName + "llion"; // Create name
 }
+
+// Number formatting helper moved from app.js
+function getDisplayNumber(num, compact = '') {
+  var modIndex = Math.floor(Math.log10(num) / 3) - 1;
+  if (compact != '') {
+    var mod = ['k', 'm', 'b', 't', 'qd', 'qn', 'sx', 'sp', 'oc', 'nn', 'dc'];
+    if (num < 1000 || (compact != 'super' && num < 2000)) {
+      return num.toLocaleString();
+    } else if (modIndex < mod.length) {
+      num /= Math.pow(1000, modIndex + 1);
+      if (compact == 'super') {
+        return Math.round(num) + mod[modIndex];
+      } else {
+        return num.toPrecision(3) + mod[modIndex];
+      }
+    } else {
+      if (compact == 'super') {
+        return num.toExponential(0);
+      } else {
+        return num.toExponential(2);
+      }
+    }
+  } else {
+    modIndex--;
+    if (num < 2000000) {
+      return num.toLocaleString();
+    } else if (modIndex < 998) {
+      num /= Math.pow(1000, modIndex + 2);
+      return num.toPrecision(4) + ' ' + numberScaleNameShortScale(modIndex + 2);
+    } else {
+      return num.toExponential(5);
+    }
+  }
+}
