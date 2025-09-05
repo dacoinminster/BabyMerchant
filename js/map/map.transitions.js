@@ -341,15 +341,13 @@
                   for (const c of circ) {
                     ctx.beginPath(); ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
                   }
-                  // Label above the group post (show even if not visited, fallback to generic label)
+                  // Label above the group post (only if already visited on level 1)
                   try {
                     const lvl = 1; const idx = n.i;
                     let labelText = '';
                     const visited = (window.visitedLocation && window.visitedLocation[lvl] && window.visitedLocation[lvl][idx]);
                     if (visited && window.locationName && window.locationName[lvl] && window.locationName[lvl][idx]) {
                       labelText = window.locationName[lvl][idx];
-                    } else if (window.levelData && window.levelData[lvl]) {
-                      labelText = (window.levelData[lvl].locationLabel[idx] || 'group') + (idx > 0 ? (' #' + idx) : '');
                     }
                     if (labelText) {
                       ctx.save();
@@ -390,7 +388,7 @@
               // Draw walls fading out
               const rcWalls2 = drawL1WallsFromNodes.call(this, ctx, this._explicitFromSnapshot.nodes, 1 - e);
               try { if (e < 0.02 || Math.abs(e-0.25)<0.01 || Math.abs(e-0.5)<0.01 || Math.abs(e-0.75)<0.01 || e>0.98) console.debug('[MapTransitions] L1->L0 walls bbox@e', e.toFixed(2), rcWalls2); } catch(_){}
-              // Draw other groups fading out (exclude the active group node) as full groups with labels
+              // Draw other groups fading out (exclude the active group node) as full groups; labels only if visited
               ctx.globalAlpha = 1 - e;
               for (const n of this._explicitFromSnapshot.nodes) {
                 if (n.i === toIdxBG) continue;
@@ -400,15 +398,13 @@
                   for (const c of circ) {
                     ctx.beginPath(); ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
                   }
-                  // Label above the group post
+                  // Label above the group post (only if already visited on level 1)
                   try {
                     const lvl = 1; const idx = n.i;
                     let labelText = '';
                     const visited = (window.visitedLocation && window.visitedLocation[lvl] && window.visitedLocation[lvl][idx]);
                     if (visited && window.locationName && window.locationName[lvl] && window.locationName[lvl][idx]) {
                       labelText = window.locationName[lvl][idx];
-                    } else if (window.levelData && window.levelData[lvl]) {
-                      labelText = (window.levelData[lvl].locationLabel[idx] || 'group') + (idx > 0 ? (' #' + idx) : '');
                     }
                     if (labelText) {
                       ctx.save();
