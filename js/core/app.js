@@ -1227,6 +1227,8 @@ function setupInitialActions() {
   setActionsHTML(
     getButtonHTML('locomote', addLineBreaks(initialLocomoteText)) +
       getButtonHTML('pick', addLineBreaks('pick nose')) +
+      // Place Enter Trading/Upgrades before level up/down controls
+      getButtonHTML('enterTrading', addLineBreaks(initialTradeText)) +
       getButtonHTML('levelDown', addLineBreaks(initialLevelDownText)) +
       getButtonHTML('levelUp', addLineBreaks(levelData[currLevel].levelUpLabel))
   );
@@ -1241,7 +1243,13 @@ function setupInitialActions() {
   var ldBtn = document.getElementById('buttonIDlevelDown');
   if (ldBtn) ldBtn.style.visibility = (currLevel > 0 && locIndex > 0 ? 'visible' : 'hidden');
 
-  // Enter Trading/Upgrades is now accessed via map (player click); no button needed
+  // Configure Enter Trading/Upgrades button visibility/enabled
+  var trBtn0 = document.getElementById('buttonIDenterTrading');
+  if (trBtn0) {
+    var canEnterTrading0 = (uiMode === 'movement') && (transitMoves === 0) && ((locIndex === 0 && upgradesVisible) || (tradingEnabled && locIndex > 0));
+    trBtn0.style.visibility = canEnterTrading0 ? 'visible' : 'hidden';
+    trBtn0.disabled = !canEnterTrading0;
+  }
 
   updatePickButtonVisibility();
 
