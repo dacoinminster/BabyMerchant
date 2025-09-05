@@ -136,6 +136,22 @@
           ctx.translate(cx, cy);
           ctx.scale(scaleNew, scaleNew);
           ctx.translate(-cx, -cy);
+
+          // When the cross-zoom reaches the end, mark transition complete here.
+          // MapRenderer will handle ctx.restore() at the end of its draw pass.
+          if (t >= 1) {
+            this._transitionActive = false;
+            this._prevFrameCanvas = null;
+            try {
+              if (this._transitionContext) {
+                const endInfo = Object.assign({}, this._transitionContext, { doneTs: Date.now() });
+                console.debug('[MapTransitions] level transition end', endInfo);
+              }
+            } catch (_) {}
+            const waiters = this._onTransitionDone.splice(0, this._onTransitionDone.length);
+            for (const res of waiters) { try { res(); } catch (_) {} }
+            this._transitionContext = null;
+          }
         }
       }
       
@@ -535,22 +551,6 @@
           this._prevFrameCanvas = null;
           this._explicitFromSnapshot = null;
           this._preparedTransition = null;
-          try {
-            if (this._transitionContext) {
-              const endInfo = Object.assign({}, this._transitionContext, { doneTs: Date.now() });
-              console.debug('[MapTransitions] level transition end', endInfo);
-            }
-          } catch (_) {}
-          const waiters = this._onTransitionDone.splice(0, this._onTransitionDone.length);
-          for (const res of waiters) { try { res(); } catch (_) {} }
-          this._transitionContext = null;
-        }
-      } else if (__transitionInfo) {
-        // Finalize/cleanup transforms for default snapshot-based transition
-        ctx.restore();
-        if (__transitionInfo.t >= 1) {
-          this._transitionActive = false;
-          this._prevFrameCanvas = null;
           try {
             if (this._transitionContext) {
               const endInfo = Object.assign({}, this._transitionContext, { doneTs: Date.now() });
