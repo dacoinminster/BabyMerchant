@@ -99,6 +99,157 @@ if (devMode) {
 
 var needToSave = false;
 
+// Secret debug: allow quick "qq" to save/load alternate state on localhost or file://
+var __debugLastQTime = 0;
+var __debugKeyListenerAdded = false;
+
+function __isLocalDebugEnabled() {
+  try {
+    var proto = (window.location && window.location.protocol) ? window.location.protocol : '';
+    if (proto === 'file:') return true;
+    var host = (window.location && window.location.hostname) ? window.location.hostname : '';
+    return host === 'localhost' || host === '127.0.0.1' || host === '::1';
+  } catch (_) { return false; }
+}
+
+function __debugSavePrefix() { return 'alt_'; }
+
+function saveAltGameState() {
+  var prefix = __debugSavePrefix();
+  try {
+    for (const key of varsToSave) {
+      localStorage.setItem(prefix + key, JSON.stringify(window[key]));
+    }
+    // Mark alt save availability/version
+    localStorage.setItem(prefix + 'gameVersion', JSON.stringify(gameVersion));
+    if (typeof showToast === 'function') showToast('Debug save stored');
+  } catch (e) {
+    try { if (typeof showToast === 'function') showToast('Debug save failed'); } catch(_) {}
+  }
+}
+
+function loadGameStateFromPrefix(prefix) {
+  try {
+    // Load variables (skip gameVersion)
+    for (const key of varsToSave) {
+      if (key === 'gameVersion') continue;
+      var value = localStorage.getItem(prefix + key);
+      if (value != null && value != 'undefined') {
+        window[key] = JSON.parse(value);
+      }
+    }
+
+    // Restore DOM snapshot
+    var ng = document.getElementById('normalGameGoesHere');
+    if (ng) ng.innerHTML = lastGameHTML;
+    // Clear any persisted animHide class on restored markup
+    try { if (typeof setActionButtonsTemporarilyHidden === 'function') setActionButtonsTemporarilyHidden(false); } catch (_) {}
+
+    // Guard and rebuild UI similar to loadGameState()
+    normalizeLocationIndices();
+    if (storeVisible || upgradesVisible) {
+      setupInitialActions();
+      enterTradingMode();
+    } else {
+      setupInitialActions();
+      showMovementUI();
+      var pkBtn = document.getElementById('buttonIDpick');
+      if (pkBtn) {
+        if (currLevel > 0) {
+          pkBtn.style.display = 'none';
+        } else {
+          pkBtn.style.display = 'block';
+          pkBtn.style.visibility = pickingEnabled ? 'visible' : 'hidden';
+          pkBtn.disabled = !pickingEnabled;
+        }
+      }
+    }
+
+    // Ensure map container exists
+    (function ensureMapContainer() {
+      var mapEl = document.getElementById('mapGoesHere');
+      if (!mapEl) {
+        var newDiv = document.createElement('div');
+        newDiv.id = 'mapGoesHere';
+        newDiv.className = 'gameArea bordered mapWrapper';
+        var parent = document.getElementById('normalGameGoesHere');
+        var controls = document.getElementById('controlsGoHere');
+        if (parent) {
+          if (controls && controls.parentElement === parent) {
+            if (controls.nextSibling) {
+              parent.insertBefore(newDiv, controls.nextSibling);
+            } else {
+              parent.appendChild(newDiv);
+            }
+          } else {
+            parent.appendChild(newDiv);
+          }
+        }
+      }
+    })();
+    if (typeof setMapVisible === 'function') setMapVisible(uiMode === 'movement');
+    if (window.mapRenderer && typeof window.mapRenderer.init === 'function') window.mapRenderer.init();
+    setTimeout('goBaby()', 100);
+    if (typeof gtag === 'function') {
+      gtag('event', 'loadGame', { event_category: 'gameState', event_label: 'alt' });
+    }
+  } catch (e) {
+    try { if (typeof showToast === 'function') showToast('Debug load failed'); } catch(_) {}
+  }
+}
+
+function __isTitleCardVisible() {
+  try {
+    var tc = document.getElementById('titleCard');
+    if (!tc) return false;
+    var ds = window.getComputedStyle ? getComputedStyle(tc) : tc.style;
+    return !!ds && ds.display !== 'none';
+  } catch (_) { return false; }
+}
+
+function __handleSecretQQ() {
+  if (!__isLocalDebugEnabled()) return;
+  if (__isTitleCardVisible()) {
+    var prefix = __debugSavePrefix();
+    var altVer = null;
+    try { altVer = JSON.parse(localStorage.getItem(prefix + 'gameVersion')); } catch(_) {}
+    if (altVer && altVer === gameVersion) {
+      try { hideTitleCard(); } catch(_) {}
+      loadGameStateFromPrefix(prefix);
+    } else {
+      if (typeof showToast === 'function') showToast('No debug save found');
+    }
+  } else {
+    saveAltGameState();
+  }
+}
+
+function __installDebugKeyHandler() {
+  if (__debugKeyListenerAdded) return;
+  if (!__isLocalDebugEnabled()) return;
+  try {
+    window.addEventListener('keydown', function (e) {
+      try {
+        var k = (e && typeof e.key === 'string') ? e.key : '';
+        var code = (typeof e.keyCode === 'number') ? e.keyCode : 0;
+        var isQ = (k === 'q' || k === 'Q' || code === 81);
+        if (!isQ) return;
+        var now = Date.now();
+        if (__debugLastQTime && (now - __debugLastQTime) <= 500) {
+          __debugLastQTime = 0;
+          // Prevent default so buttons/links don't accidentally trigger
+          try { e.preventDefault(); } catch(_) {}
+          __handleSecretQQ();
+        } else {
+          __debugLastQTime = now;
+        }
+      } catch (_) {}
+    }, { passive: true });
+    __debugKeyListenerAdded = true;
+  } catch (_) {}
+}
+
+
 function saveGameState() {
   lastGameHTML = document.getElementById('normalGameGoesHere').innerHTML;
 
@@ -119,6 +270,8 @@ function loadGameState() {
   }
 
   document.getElementById('normalGameGoesHere').innerHTML = lastGameHTML;
+  // Ensure action buttons are not stuck hidden due to a saved animHide class
+  try { if (typeof setActionButtonsTemporarilyHidden === 'function') setActionButtonsTemporarilyHidden(false); } catch (_) {}
   // Guard against bad/missing indices from older saves
   normalizeLocationIndices();
 
@@ -600,6 +753,9 @@ function showMovementUI() {
   if (typeof setMapVisible === 'function') setMapVisible(true);
 
   updatePickButtonVisibility();
+
+  // Defensive: if anything left the actions hidden previously, clear it now
+  try { if (typeof setActionButtonsTemporarilyHidden === 'function') setActionButtonsTemporarilyHidden(false); } catch (_) {}
 }
 
 function hideMovementUI() {
@@ -950,8 +1106,7 @@ function goBaby() {
               if (!showingGossipColors) {
                 randomizeStore();
               }
-              // Hide action buttons for the duration of the movement animation
-              try { if (typeof window.setActionButtonsTemporarilyHidden === 'function') window.setActionButtonsTemporarilyHidden(true); } catch (_) {}
+              // Do not hide action buttons during intra-level movement animations
             }
             transitMoves--;
             var ctype = levelData[currLevel].characterType;
@@ -1204,3 +1359,6 @@ var saveAvailable = oldGameVersion != null && oldGameVersion == gameVersion;
 setTimeout('askToContinue(' + saveAvailable + ')', 1);
 
 /* moved to movement.arrival.js: handleArrivalLogic() */
+
+// Install local debug key handler (no-op unless file:// or localhost)
+try { __installDebugKeyHandler(); } catch (_) {}

@@ -340,5 +340,5 @@ button {
 
 /* Hide action buttons during animations without shrinking layout */
 .controlsWrapper.animHide .babyButton {
-  visibility: hidden;
+  visibility: hidden !important;
 }

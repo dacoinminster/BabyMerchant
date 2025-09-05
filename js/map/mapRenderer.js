@@ -292,7 +292,8 @@ function getDevicePixelRatio() {
 
       let nowTs; try { nowTs = performance.now(); } catch (_) { nowTs = Date.now(); }
       const holdActive = (this._postAnimHoldUntil && nowTs < this._postAnimHoldUntil);
-      const shouldHide = !!(isCurrentlyTraveling || transActive || holdActive);
+      // Only hide during the brief per-step animation window, not for the entire transit state
+      const shouldHide = !!(transActive || holdActive);
       if (shouldHide !== this._lastButtonsHidden) {
         try {
           if (typeof window.setActionButtonsTemporarilyHidden === 'function') {

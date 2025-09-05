@@ -41,6 +41,8 @@ function hideTitleCard() {
   } else {
     document.getElementById('titleCard').style.display = 'none';
     document.getElementById('normalGameGoesHere').style.display = 'flex';
+    // Defensive: ensure action buttons are not left hidden after returning from dialogs
+    try { if (typeof setActionButtonsTemporarilyHidden === 'function') setActionButtonsTemporarilyHidden(false); } catch (_) {}
   }
 }
 
@@ -108,30 +110,38 @@ function setMapVisible(show) {
   } catch (_) {}
 }
 
+// Lightweight toast for debug notifications; auto-dismisses
+function showToast(msg, ms) {
+  try {
+    var dur = (typeof ms === 'number' && isFinite(ms) && ms > 0) ? ms : 1500;
+    var t = document.createElement('div');
+    t.textContent = msg;
+    t.style.position = 'fixed';
+    t.style.left = '50%';
+    t.style.bottom = '24px';
+    t.style.transform = 'translateX(-50%)';
+    t.style.background = 'rgba(0,0,0,0.85)';
+    t.style.color = '#fff';
+    t.style.padding = '8px 12px';
+    t.style.borderRadius = '6px';
+    t.style.fontSize = '14px';
+    t.style.zIndex = '9999';
+    t.style.pointerEvents = 'none';
+    document.body.appendChild(t);
+    setTimeout(function(){ try { if (t && t.parentNode) t.parentNode.removeChild(t); } catch(_){} }, dur);
+  } catch (_) {}
+}
+
 // Temporarily hide all action buttons (by visibility) without collapsing layout.
 // Stores/restores each button's previous inline visibility in a data attribute.
 function setActionButtonsTemporarilyHidden(hide) {
   var container = document.getElementById('controlsGoHere');
   if (!container) return;
-  var btns = container.querySelectorAll('button.babyButton');
-  for (var i = 0; i < btns.length; i++) {
-    var b = btns[i];
-    if (hide) {
-      if (!b.hasAttribute('data-prev-visibility')) {
-        b.setAttribute('data-prev-visibility', (b.style && typeof b.style.visibility === 'string') ? b.style.visibility : '');
-      }
-      b.style.visibility = 'hidden';
-    } else {
-      if (b.hasAttribute('data-prev-visibility')) {
-        var prev = b.getAttribute('data-prev-visibility');
-        if (prev === '') {
-          b.style.removeProperty('visibility');
-        } else {
-          b.style.visibility = prev;
-        }
-        b.removeAttribute('data-prev-visibility');
-      }
-    }
+  var cls = container.className || '';
+  if (hide) {
+    if (!/\banimHide\b/.test(cls)) container.className = (cls + ' animHide').trim();
+  } else {
+    container.className = cls.replace(/\banimHide\b/g, '').replace(/\s{2,}/g, ' ').trim();
   }
 }
 
