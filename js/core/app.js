@@ -772,12 +772,19 @@ function goBaby() {
               : Promise.resolve();
             _wait.finally(function () {
               try {
-                typeText(_msgText, _msgHeader, _msgFooter, 'OK', _msgImg);
-                enterTradingMode();
-                if (typeof gtag === 'function') {
-                  gtag('event', 'levelUp', { event_category: 'levelChange', value: currLevel });
-                }
-              } finally {
+                // Add a small pause after animation completes before showing the confirmation/title card
+                setTimeout(function () {
+                  try {
+                    typeText(_msgText, _msgHeader, _msgFooter, 'OK', _msgImg);
+                    enterTradingMode();
+                    if (typeof gtag === 'function') {
+                      gtag('event', 'levelUp', { event_category: 'levelChange', value: currLevel });
+                    }
+                  } finally {
+                    isLevelTransitioning = false;
+                  }
+                }, 500);
+              } catch (_) {
                 isLevelTransitioning = false;
               }
             });
@@ -859,12 +866,19 @@ function goBaby() {
               : Promise.resolve();
             _waitDown.finally(function () {
               try {
-                typeText(_downMsgText, _downHeader, _downFooter, 'OK', _downImg);
-                enterTradingMode();
-                if (typeof gtag === 'function') {
-                  gtag('event', 'levelDown', { event_category: 'levelChange', value: currLevel });
-                }
-              } finally {
+                // Add a small pause after animation completes before showing the confirmation/title card
+                setTimeout(function () {
+                  try {
+                    typeText(_downMsgText, _downHeader, _downFooter, 'OK', _downImg);
+                    enterTradingMode();
+                    if (typeof gtag === 'function') {
+                      gtag('event', 'levelDown', { event_category: 'levelChange', value: currLevel });
+                    }
+                  } finally {
+                    isLevelTransitioning = false;
+                  }
+                }, 500);
+              } catch (_) {
                 isLevelTransitioning = false;
               }
             });
