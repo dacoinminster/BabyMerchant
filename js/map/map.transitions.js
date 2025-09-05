@@ -405,42 +405,46 @@
               const baseFontPx = 10;
               if (fromL === 0 && toL === 1 && typeof p.fi === 'number') {
                 const lvl = 0, idx = p.fi;
-                let text = '';
-                if (window.locationName && window.locationName[lvl] && window.locationName[lvl][idx]) {
-                  text = window.locationName[lvl][idx];
-                } else if (window.levelData && window.levelData[lvl]) {
-                  text = (window.levelData[lvl].locationLabel[idx] || 'spot') + (idx > 0 ? (' #' + idx) : '');
-                }
-                if (text) {
-                  const ls = Math.max(0.15, 1 - e);
-                  ctx.save();
-                  ctx.font = Math.round(baseFontPx * ls) + 'px monospace';
-                  ctx.fillStyle = STROKE;
-                  ctx.textAlign = 'center';
-                  ctx.textBaseline = 'alphabetic';
-                  ctx.globalAlpha = (1 - e);
-                  ctx.fillText(text, x, y - r - 6);
-                  ctx.restore();
+                if (idx !== 0) { // skip boss label here; handled by constant-path morph below
+                  let text = '';
+                  if (window.locationName && window.locationName[lvl] && window.locationName[lvl][idx]) {
+                    text = window.locationName[lvl][idx];
+                  } else if (window.levelData && window.levelData[lvl]) {
+                    text = (window.levelData[lvl].locationLabel[idx] || 'spot') + (idx > 0 ? (' #' + idx) : '');
+                  }
+                  if (text) {
+                    const ls = Math.max(0.15, 1 - e);
+                    ctx.save();
+                    ctx.font = Math.round(baseFontPx * ls) + 'px monospace';
+                    ctx.fillStyle = STROKE;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'alphabetic';
+                    ctx.globalAlpha = (1 - e);
+                    ctx.fillText(text, x, y - r - 6);
+                    ctx.restore();
+                  }
                 }
               }
               if (fromL === 1 && toL === 0 && typeof p.ti === 'number') {
                 const lvl = 0, idx = p.ti;
-                let text = '';
-                if (window.locationName && window.locationName[lvl] && window.locationName[lvl][idx]) {
-                  text = window.locationName[lvl][idx];
-                } else if (window.levelData && window.levelData[lvl]) {
-                  text = (window.levelData[lvl].locationLabel[idx] || 'spot') + (idx > 0 ? (' #' + idx) : '');
-                }
-                if (text) {
-                  const ls = Math.max(0.15, e);
-                  ctx.save();
-                  ctx.font = Math.round(baseFontPx * ls) + 'px monospace';
-                  ctx.fillStyle = STROKE;
-                  ctx.textAlign = 'center';
-                  ctx.textBaseline = 'alphabetic';
-                  ctx.globalAlpha = e;
-                  ctx.fillText(text, x, y - r - 6);
-                  ctx.restore();
+                if (idx !== 0) { // skip boss label here; handled by constant-path morph below
+                  let text = '';
+                  if (window.locationName && window.locationName[lvl] && window.locationName[lvl][idx]) {
+                    text = window.locationName[lvl][idx];
+                  } else if (window.levelData && window.levelData[lvl]) {
+                    text = (window.levelData[lvl].locationLabel[idx] || 'spot') + (idx > 0 ? (' #' + idx) : '');
+                  }
+                  if (text) {
+                    const ls = Math.max(0.15, e);
+                    ctx.save();
+                    ctx.font = Math.round(baseFontPx * ls) + 'px monospace';
+                    ctx.fillStyle = STROKE;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'alphabetic';
+                    ctx.globalAlpha = e;
+                    ctx.fillText(text, x, y - r - 6);
+                    ctx.restore();
+                  }
                 }
               }
             } catch (_) {}
@@ -519,44 +523,9 @@
             }
           } catch (_) {}
           
-          // Active group label scaling
+          // Active group label scaling is suppressed for L0<->L1 transitions, to avoid duplicates; handled by constant-path morph above
           try {
-            const baseFontPx = 10;
-            if (gNodeBG) {
-              if (fromL === 0 && toL === 1) {
-                // Draw level 1 group label scaling in
-                const s = lerp(sStart, 1, e);
-                const idx = (this._preparedTransition ? this._preparedTransition.toIdx : 1);
-                let name = '';
-                if (window.locationName && window.locationName[1] && window.locationName[1][idx]) name = window.locationName[1][idx];
-                if (!name && window.levelData && window.levelData[1]) name = (window.levelData[1].locationLabel[idx] || 'group') + (idx>0?(' #'+idx):'');
-                if (name) {
-                  ctx.save();
-                  ctx.translate(gNodeBG.x, gNodeBG.y); ctx.scale(s, s); ctx.translate(-gNodeBG.x, -gNodeBG.y);
-                  ctx.font = baseFontPx + 'px monospace';
-                  ctx.fillStyle = STROKE; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
-                  ctx.globalAlpha = e;
-                  ctx.fillText(name, gNodeBG.x, gNodeBG.y - (RADII[getNodeKind(1, idx)]||8) - 6);
-                  ctx.restore();
-                }
-              } else if (fromL === 1 && toL === 0) {
-                // Draw level 1 group label scaling out
-                const s = lerp(1, sStart, e);
-                const idx = (this._preparedTransition ? this._preparedTransition.fromIdx : 1);
-                let name = '';
-                if (window.locationName && window.locationName[1] && window.locationName[1][idx]) name = window.locationName[1][idx];
-                if (!name && window.levelData && window.levelData[1]) name = (window.levelData[1].locationLabel[idx] || 'group') + (idx>0?(' #'+idx):'');
-                if (name) {
-                  ctx.save();
-                  ctx.translate(gNodeBG.x, gNodeBG.y); ctx.scale(s, s); ctx.translate(-gNodeBG.x, -gNodeBG.y);
-                  ctx.font = baseFontPx + 'px monospace';
-                  ctx.fillStyle = STROKE; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
-                  ctx.globalAlpha = (1 - e);
-                  ctx.fillText(name, gNodeBG.x, gNodeBG.y - (RADII[getNodeKind(1, idx)]||8) - 6);
-                  ctx.restore();
-                }
-              }
-            }
+            /* no-op: intentionally disabled while fromL/toL is 0<->1 */
           } catch (_) {}
         }
         
