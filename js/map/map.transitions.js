@@ -360,6 +360,28 @@
                   } catch (_) {}
                 }
               }
+              // Also draw the doorway (index 0) label fading in
+              try {
+                const dn = snapTo.nodes.find(n => n.i === 0);
+                if (dn) {
+                  let labelText = '';
+                  const lvl = 1, idx = 0;
+                  const visited = (window.visitedLocation && window.visitedLocation[lvl] && window.visitedLocation[lvl][idx]);
+                  if (visited && window.locationName && window.locationName[lvl] && window.locationName[lvl][idx]) {
+                    labelText = window.locationName[lvl][idx];
+                  } else if (window.levelData && window.levelData[lvl]) {
+                    labelText = (window.levelData[lvl].locationLabel[idx] || 'doorway');
+                  }
+                  if (labelText) {
+                    const r = RADII[getNodeKind(1, 0)] || 8;
+                    ctx.save();
+                    ctx.globalAlpha = e;
+                    ctx.font = LABEL_FONT; ctx.fillStyle = STROKE; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+                    ctx.fillText(labelText, dn.x, dn.y - r - 6);
+                    ctx.restore();
+                  }
+                }
+              } catch (_) {}
               ctx.restore();
             } else if (fromL === 1 && toL === 0) {
               const s = lerp(1, sStart, e);
@@ -397,6 +419,28 @@
                   } catch (_) {}
                 }
               }
+              // Also draw the doorway (index 0) label fading out
+              try {
+                const dn = this._explicitFromSnapshot.nodes.find(n => n.i === 0);
+                if (dn) {
+                  let labelText = '';
+                  const lvl = 1, idx = 0;
+                  const visited = (window.visitedLocation && window.visitedLocation[lvl] && window.visitedLocation[lvl][idx]);
+                  if (visited && window.locationName && window.locationName[lvl] && window.locationName[lvl][idx]) {
+                    labelText = window.locationName[lvl][idx];
+                  } else if (window.levelData && window.levelData[lvl]) {
+                    labelText = (window.levelData[lvl].locationLabel[idx] || 'doorway');
+                  }
+                  if (labelText) {
+                    const r = RADII[getNodeKind(1, 0)] || 8;
+                    ctx.save();
+                    ctx.globalAlpha = 1 - e;
+                    ctx.font = LABEL_FONT; ctx.fillStyle = STROKE; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+                    ctx.fillText(labelText, dn.x, dn.y - r - 6);
+                    ctx.restore();
+                  }
+                }
+              } catch (_) {}
               ctx.restore();
             }
           }
