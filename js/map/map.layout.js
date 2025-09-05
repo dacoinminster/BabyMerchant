@@ -21,6 +21,20 @@ function computeCirclePositions(num, cx, cy, r) {
 
 // Build a snapshot of node positions for an arbitrary level using current viewport
 function computeSnapshotForLevel(level, w, h) {
+  // Prefer the same logic used by the live map so snapshots match exactly
+  try {
+    if (window.MapGraph && typeof window.MapGraph.rebuildIfNeeded === 'function') {
+      const built = window.MapGraph.rebuildIfNeeded({ level, w, h, nodes: [], edges: [], layoutMeta: {} });
+      // Return a compatible snapshot object
+      return {
+        nodes: built.nodes || [],
+        layoutMeta: built.layoutMeta || {},
+        level
+      };
+    }
+  } catch (_) {}
+
+  // Fallback: local computation that mirrors MapGraph (kept in sync)
   const numLocations = (levelData && levelData[level] ? levelData[level].numLocations : 0);
   const nodes = [];
   if (!numLocations) return { nodes, layoutMeta: {}, level };
@@ -55,19 +69,28 @@ function computeSnapshotForLevel(level, w, h) {
     return { nodes, layoutMeta: { level2: { xLeft, xRight, yTop, yBottom, centerX } }, level };
   }
 
-  // Levels 0 and 1: circle
+  // Levels 0 and 1: circle (with headroom for labels/doorway)
   let r = Math.max(20, Math.min(h * 0.5 - pad, w * 0.45 - pad));
+  let layoutMeta = {};
   if (level === 1) {
     const rBoss = RADII[getNodeKind(1, 0)] || 10;
     const vGap = 16, doorH = 26, marginTop = rBoss + vGap + doorH + 8;
     const maxRForDoor = Math.max(20, (cy - (pad + marginTop)));
     r = Math.min(r, maxRForDoor);
+    layoutMeta.level1 = { bossIndex: 0, rAdjusted: r };
+  } else if (level === 0) {
+    // Mirror MapGraph: headroom for boss label above index 0
+    const rBoss0 = RADII[getNodeKind(0, 0)] || 8;
+    const labelH = 10, vGap0 = 10;
+    const marginTop0 = rBoss0 + vGap0 + labelH + 6;
+    const maxRForLabel0 = Math.max(20, (cy - (pad + marginTop0)));
+    r = Math.min(r, maxRForLabel0);
+    layoutMeta.level0 = { bossIndex: 0, rAdjusted: r };
   }
   const pts = computeCirclePositions(numLocations, cx, cy, r);
   for (let i = 0; i < numLocations; i++) {
     const kind = getNodeKind(level, i);
     nodes.push({ i, x: pts[i][0], y: pts[i][1], kind });
   }
-  const layoutMeta = (level === 1) ? { level1: { rAdjusted: r } } : {};
   return { nodes, layoutMeta, level };
 }
