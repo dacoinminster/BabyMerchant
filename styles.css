@@ -293,7 +293,8 @@ button {
 	font-size: min(4vw, 4vh);
 	text-align: center;
 	width: 100%;
-  flex: 1 1 auto;
+  /* Do not compete with the image for vertical space */
+  flex: 0 0 auto;
 }
 
 .titleCardImage {
@@ -302,10 +303,11 @@ button {
   background-size: contain;
   background-repeat: no-repeat;
   background-position: 50% 50%;
-	width: auto;
+	/* Cross-browser: let the image area take remaining vertical space */
+	width: 100%;
 	max-width: 100%;
-	width: -webkit-fill-available;
-	height: -webkit-fill-available;
+	flex: 1 1 auto;
+	min-height: 0; /* allow flex child to shrink properly in Firefox */
 }
 
 .titleCardFooterText {
