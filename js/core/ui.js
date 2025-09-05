@@ -108,6 +108,33 @@ function setMapVisible(show) {
   } catch (_) {}
 }
 
+// Temporarily hide all action buttons (by visibility) without collapsing layout.
+// Stores/restores each button's previous inline visibility in a data attribute.
+function setActionButtonsTemporarilyHidden(hide) {
+  var container = document.getElementById('controlsGoHere');
+  if (!container) return;
+  var btns = container.querySelectorAll('button.babyButton');
+  for (var i = 0; i < btns.length; i++) {
+    var b = btns[i];
+    if (hide) {
+      if (!b.hasAttribute('data-prev-visibility')) {
+        b.setAttribute('data-prev-visibility', (b.style && typeof b.style.visibility === 'string') ? b.style.visibility : '');
+      }
+      b.style.visibility = 'hidden';
+    } else {
+      if (b.hasAttribute('data-prev-visibility')) {
+        var prev = b.getAttribute('data-prev-visibility');
+        if (prev === '') {
+          b.style.removeProperty('visibility');
+        } else {
+          b.style.visibility = prev;
+        }
+        b.removeAttribute('data-prev-visibility');
+      }
+    }
+  }
+}
+
 // UI formatting helpers
 function getButtonHTML(actionName, buttonText) {
   return '<button class=babyButton id="buttonID' + actionName + '" onclick="doButtonAction(\'' + actionName +'\')">' + buttonText + '</button>';

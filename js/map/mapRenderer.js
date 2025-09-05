@@ -45,6 +45,9 @@ function getDevicePixelRatio() {
     _lastTransitMoves: 0,
     _lastLocIndex: 0,
     _lastCurrLevel: 0,
+    _lastButtonsHidden: false,
+    _lastTransitionActive: false,
+    _postAnimHoldUntil: 0,
 
     // Graph cache
     _nodes: [], // {i, x, y, kind, discovered, nameKnown, label, labelAlign?, labelDx?, forceLabelBelow?}
@@ -278,6 +281,30 @@ function getDevicePixelRatio() {
       this._lastTransitMoves = transit;
       this._lastLocIndex = loc;
       this._lastCurrLevel = level;
+
+      // Hide/show action buttons during animations and 1s after level transitions
+      const transActive = !!(window.MapTransitions && typeof MapTransitions.isActive === 'function' && MapTransitions.isActive());
+      // Detect end of a transition to start a 1s hold
+      if (this._lastTransitionActive && !transActive) {
+        try { this._postAnimHoldUntil = performance.now() + 1000; } catch (_) { this._postAnimHoldUntil = Date.now() + 1000; }
+      }
+      this._lastTransitionActive = transActive;
+
+      let nowTs; try { nowTs = performance.now(); } catch (_) { nowTs = Date.now(); }
+      const holdActive = (this._postAnimHoldUntil && nowTs < this._postAnimHoldUntil);
+      const shouldHide = !!(isCurrentlyTraveling || transActive || holdActive);
+      if (shouldHide !== this._lastButtonsHidden) {
+        try {
+          if (typeof window.setActionButtonsTemporarilyHidden === 'function') {
+            window.setActionButtonsTemporarilyHidden(shouldHide);
+          }
+        } catch (_) {}
+        this._lastButtonsHidden = shouldHide;
+      }
+      if (!shouldHide) {
+        // Clear expired hold marker
+        this._postAnimHoldUntil = 0;
+      }
     },
 
     // Interactivity helpers

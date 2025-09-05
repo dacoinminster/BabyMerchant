@@ -701,6 +701,8 @@ function goBaby() {
             if (uiMode === 'trading') {
               try { exitTradingMode(); } catch (_) {}
             }
+            // Hide action buttons immediately while the level transition animation runs
+            try { if (typeof window.setActionButtonsTemporarilyHidden === 'function') window.setActionButtonsTemporarilyHidden(true); } catch (_) {}
             // Prepare the renderer with an explicit transition BEFORE changing currLevel
             try {
               if (window.mapRenderer && typeof window.mapRenderer.prepareLevelTransition === 'function') {
@@ -796,6 +798,8 @@ function goBaby() {
             if (uiMode === 'trading') {
               try { exitTradingMode(); } catch (_) {}
             }
+            // Hide action buttons immediately while the level transition animation runs
+            try { if (typeof window.setActionButtonsTemporarilyHidden === 'function') window.setActionButtonsTemporarilyHidden(true); } catch (_) {}
             // Prepare the renderer with an explicit transition BEFORE changing currLevel
             try {
               if (window.mapRenderer && typeof window.mapRenderer.prepareLevelTransition === 'function') {
@@ -946,6 +950,8 @@ function goBaby() {
               if (!showingGossipColors) {
                 randomizeStore();
               }
+              // Hide action buttons for the duration of the movement animation
+              try { if (typeof window.setActionButtonsTemporarilyHidden === 'function') window.setActionButtonsTemporarilyHidden(true); } catch (_) {}
             }
             transitMoves--;
             var ctype = levelData[currLevel].characterType;
