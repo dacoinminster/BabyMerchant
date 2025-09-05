@@ -783,7 +783,7 @@ function goBaby() {
                   } finally {
                     isLevelTransitioning = false;
                   }
-                }, 500);
+                }, 1000);
               } catch (_) {
                 isLevelTransitioning = false;
               }
@@ -877,7 +877,7 @@ function goBaby() {
                   } finally {
                     isLevelTransitioning = false;
                   }
-                }, 500);
+                }, 1000);
               } catch (_) {
                 isLevelTransitioning = false;
               }
