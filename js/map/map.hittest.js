@@ -67,6 +67,12 @@
     return { x: elevX - 4, y: elevY - 4, w: elevW + 8, h: elevH + 8 };
   }
 
+  // Expose the standard L2 doorway half-gap used in background/hit-test
+  function getL2DoorGapHalf() {
+    // Keep this in sync with map.backgrounds.js and hit-test usage
+    return 10;
+  }
+
   // Main hit test entry point (delegated by mapRenderer)
   // ctx is used for label measurement; state carries current snapshot/meta
   function atPoint(ctx, p, state) {
@@ -185,5 +191,6 @@
     distancePointToPolyline,
     computeL1DoorwayRect,
     computeL2ElevatorRect,
+    getL2DoorGapHalf,
   };
 })();

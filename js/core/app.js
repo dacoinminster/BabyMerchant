@@ -780,6 +780,9 @@ function enterTradingMode() {
   // Hide the map while trading
   if (typeof setMapVisible === 'function') setMapVisible(false);
 
+  // Ensure any temporary animation hide is cleared so primary controls are visible immediately
+  try { if (typeof setActionButtonsTemporarilyHidden === 'function') setActionButtonsTemporarilyHidden(false); } catch (_) {}
+
   // Put primary trading controls at the top in controlsGoHere
   var topHTML = getButtonHTML('doneTrading', addLineBreaks('done trading'));
   if (currLevel == 0 && pickingEnabled) {

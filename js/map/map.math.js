@@ -5,6 +5,13 @@ function easeInOutQuad(t) {
   return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
 }
 
+// Slightly stronger ease than quad; smoother acceleration/deceleration
+function easeInOutCubic(t) {
+  return t < 0.5
+    ? 4 * t * t * t
+    : 1 - Math.pow(-2 * t + 2, 3) / 2;
+}
+
 function clamp01(x) { return Math.max(0, Math.min(1, x)); }
 function lerp(a, b, t) { return a + (b - a) * t; }
 

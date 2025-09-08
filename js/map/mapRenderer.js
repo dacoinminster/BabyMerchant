@@ -293,7 +293,9 @@ function getDevicePixelRatio() {
       let nowTs; try { nowTs = performance.now(); } catch (_) { nowTs = Date.now(); }
       const holdActive = (this._postAnimHoldUntil && nowTs < this._postAnimHoldUntil);
       // Only hide during the brief per-step animation window, not for the entire transit state
-      const shouldHide = !!(transActive || holdActive);
+      // And never hide while in trading mode, so primary trading controls remain visible without flicker
+      const isTrading = (typeof window.uiMode === 'string' && window.uiMode === 'trading');
+      const shouldHide = !isTrading && !!(transActive || holdActive);
       if (shouldHide !== this._lastButtonsHidden) {
         try {
           if (typeof window.setActionButtonsTemporarilyHidden === 'function') {
