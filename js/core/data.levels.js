@@ -67,6 +67,9 @@ const levelData = [
     exploreMsg:
       'You have visited every baby in this group and are starting to get better at thrashing about.',
     exploreImg: 'BabyCircuit0.jpeg',
+    backgroundSpec: {
+      ops: []
+    },
     numLocations: 5,
   },
   {
@@ -120,6 +123,98 @@ const levelData = [
     exploreMsg:
       'You have visited every group in this room and you notice your rolling skills have improved.',
     exploreImg: 'BabyCircuit1.jpeg',
+    backgroundSpec: {
+      preComputes: [
+        {
+          type: 'computeRoomBounds',
+          pad: 8,
+          wallPad: 25,
+          storeAs: 'bounds'
+        },
+        {
+          type: 'computeDoorGapLeft',
+          doorGapWidth: 50,
+          storeAs: 'doorGapLeft'
+        },
+        {
+          type: 'computeDoorGapRight',
+          doorGapWidth: 50,
+          storeAs: 'doorGapRight'
+        }
+      ],
+      ops: [
+        {
+          type: 'line',
+          params: {
+            x1: 'bounds.roomLeft',
+            y1: 'bounds.roomTop',
+            x2: 'doorGapLeft',
+            y2: 'bounds.roomTop'
+          },
+          style: { lineWidth: 2 }
+        },
+        {
+          type: 'line',
+          params: {
+            x1: 'doorGapRight',
+            y1: 'bounds.roomTop',
+            x2: 'bounds.roomRight',
+            y2: 'bounds.roomTop'
+          },
+          style: { lineWidth: 2 }
+        },
+        {
+          type: 'line',
+          params: {
+            x1: 'bounds.roomLeft',
+            y1: 'bounds.roomTop',
+            x2: 'bounds.roomLeft',
+            y2: 'bounds.roomBottom'
+          },
+          style: { lineWidth: 2 }
+        },
+        {
+          type: 'line',
+          params: {
+            x1: 'bounds.roomRight',
+            y1: 'bounds.roomTop',
+            x2: 'bounds.roomRight',
+            y2: 'bounds.roomBottom'
+          },
+          style: { lineWidth: 2 }
+        },
+        {
+          type: 'line',
+          params: {
+            x1: 'bounds.roomLeft',
+            y1: 'bounds.roomBottom',
+            x2: 'bounds.roomRight',
+            y2: 'bounds.roomBottom'
+          },
+          style: { lineWidth: 2 }
+        },
+        {
+          type: 'line',
+          params: {
+            x1: 'doorGapLeft',
+            y1: 'bounds.roomTop',
+            x2: 'doorGapLeft - 12',
+            y2: 'bounds.roomTop + 12'
+          },
+          style: { lineWidth: 3 }
+        },
+        {
+          type: 'line',
+          params: {
+            x1: 'doorGapRight',
+            y1: 'bounds.roomTop',
+            x2: 'doorGapRight + 12',
+            y2: 'bounds.roomTop + 12'
+          },
+          style: { lineWidth: 3 }
+        }
+      ]
+    },
     numLocations: 5,
   },
   {
@@ -174,6 +269,118 @@ const levelData = [
     exploreMsg:
       'You have visited every room on this floor and you notice your crawling skills have improved.',
     exploreImg: 'BabyCircuit2.jpeg',
+    backgroundSpec: {
+      preComputes: [
+        { type: 'computeLeftGaps', storeAs: 'leftGaps' },
+        { type: 'computeRightGaps', storeAs: 'rightGaps' },
+        { type: 'computeBossNode', storeAs: 'bossNode' },
+        { type: 'computeElevatorParams', elevWMax: 52, elevH: 28, storeAs: 'elevator' }
+      ],
+      ops: [
+        {
+          type: 'gappedVerticalLine',
+          params: {
+            x: 'layoutMeta.level2.xLeft',
+            yTop: 'layoutMeta.level2.yTop',
+            yBottom: 'layoutMeta.level2.yBottom',
+            gaps: 'leftGaps'
+          },
+          style: { lineWidth: 2, gapHalf: 10 }
+        },
+        {
+          type: 'gappedVerticalLine',
+          params: {
+            x: 'layoutMeta.level2.xRight',
+            yTop: 'layoutMeta.level2.yTop',
+            yBottom: 'layoutMeta.level2.yBottom',
+            gaps: 'rightGaps'
+          },
+          style: { lineWidth: 2, gapHalf: 10 }
+        },
+        {
+          type: 'line',
+          params: {
+            x1: 'layoutMeta.level2.xLeft',
+            y1: 'layoutMeta.level2.yTop',
+            x2: 'layoutMeta.level2.xRight',
+            y2: 'layoutMeta.level2.yTop'
+          },
+          style: { lineWidth: 2 }
+        },
+        {
+          type: 'rect',
+          params: {
+            x: 'elevator.x',
+            y: 'elevator.y',
+            w: 'elevator.w',
+            h: 'elevator.h'
+          },
+          style: { lineWidth: 2 }
+        },
+        {
+          type: 'line',
+          params: {
+            x1: 'layoutMeta.level2.xLeft',
+            y1: 'layoutMeta.level2.yBottom',
+            x2: 'layoutMeta.level2.xRight',
+            y2: 'layoutMeta.level2.yBottom'
+          },
+          style: { lineWidth: 2 }
+        },
+        {
+          type: 'forEach',
+          over: 'leftGaps',
+          forEachOp: [
+            {
+              type: 'line',
+              params: {
+                x1: 'layoutMeta.level2.xLeft',
+                y1: 'current - 10',
+                x2: 'layoutMeta.level2.xLeft - 12',
+                y2: 'current - 20'
+              },
+              style: { lineWidth: 3 }
+            },
+            {
+              type: 'line',
+              params: {
+                x1: 'layoutMeta.level2.xLeft',
+                y1: 'current + 10',
+                x2: 'layoutMeta.level2.xLeft - 12',
+                y2: 'current + 20'
+              },
+              style: { lineWidth: 3 }
+            }
+          ]
+        },
+        {
+          type: 'forEach',
+          over: 'rightGaps',
+          forEachOp: [
+            {
+              type: 'line',
+              params: {
+                x1: 'layoutMeta.level2.xRight',
+                y1: 'current - 10',
+                x2: 'layoutMeta.level2.xRight + 12',
+                y2: 'current - 20'
+              },
+              style: { lineWidth: 3 }
+            },
+            {
+              type: 'line',
+              params: {
+                x1: 'layoutMeta.level2.xRight',
+                y1: 'current + 10',
+                x2: 'layoutMeta.level2.xRight + 12',
+                y2: 'current + 20'
+              },
+              style: { lineWidth: 3 }
+            }
+          ]
+        }
+      ]
+    },
     numLocations: 5,
   },
 ];

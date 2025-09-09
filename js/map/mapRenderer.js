@@ -465,13 +465,19 @@ function getDevicePixelRatio() {
       // Level-specific background/decorations
       const levelNowForBG = (window.currLevel || 0);
       // Suppress normal background while explicit morphing; we'll draw transformed backgrounds ourselves
-      if (!(window.MapTransitions && typeof MapTransitions.hasExplicitSnapshot === 'function' &&
-             window.MapTransitions.hasExplicitSnapshot() && window.MapTransitions.isActive()) &&
-         levelNowForBG === 2 && this._layoutMeta.level2) {
-        MapBackgrounds.drawLevel2Background(ctx, this._nodes, { w: this._w, h: this._h }, this._layoutMeta);
-      } else if (!(window.MapTransitions && typeof MapTransitions.hasExplicitSnapshot === 'function' &&
-                  window.MapTransitions.hasExplicitSnapshot() && window.MapTransitions.isActive()) && levelNowForBG === 1) {
-        MapBackgrounds.drawLevel1Background(ctx, this._nodes, { w: this._w, h: this._h }, this._layoutMeta);
+      const suppressBG = (window.MapTransitions && typeof MapTransitions.hasExplicitSnapshot === 'function' &&
+                          MapTransitions.hasExplicitSnapshot() && MapTransitions.isActive());
+      if (!suppressBG) {
+        if (window.MapBackgrounds && typeof MapBackgrounds.drawLevelBackground === 'function') {
+          MapBackgrounds.drawLevelBackground(ctx, this._nodes, { w: this._w, h: this._h }, this._layoutMeta, levelNowForBG);
+        } else {
+          // Fallback to legacy per-level backgrounds if generic renderer unavailable
+          if (levelNowForBG === 2 && this._layoutMeta.level2) {
+            MapBackgrounds.drawLevel2Background(ctx, this._nodes, { w: this._w, h: this._h }, this._layoutMeta);
+          } else if (levelNowForBG === 1) {
+            MapBackgrounds.drawLevel1Background(ctx, this._nodes, { w: this._w, h: this._h }, this._layoutMeta);
+          }
+        }
       }
 
       // Level transition rendering: draw morph/zoom between levels
