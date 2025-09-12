@@ -866,7 +866,7 @@ function goBaby() {
             try {
               if (window.mapRenderer && typeof window.mapRenderer.prepareLevelTransition === 'function') {
                 var targetGroupOnL1 = (oldLocIndex[currLevel + 1] != null ? oldLocIndex[currLevel + 1] : 1);
-                window.mapRenderer.prepareLevelTransition(currLevel, currLevel + 1, locIndex, targetGroupOnL1);
+                window.mapRenderer.prepareLevelTransition(currLevel, currLevel + 1, locIndex, targetGroupOnL1, false);
               }
             } catch (_) {}
             // Prepare title card content but defer display until after zoom animation
@@ -962,7 +962,7 @@ function goBaby() {
             // Prepare the renderer with an explicit transition BEFORE changing currLevel
             try {
               if (window.mapRenderer && typeof window.mapRenderer.prepareLevelTransition === 'function') {
-                window.mapRenderer.prepareLevelTransition(currLevel, currLevel - 1, locIndex, 0);
+                window.mapRenderer.prepareLevelTransition(currLevel, currLevel - 1, locIndex, 0, true);
               }
             } catch (_) {}
             // Prepare title card content but defer display until after zoom animation

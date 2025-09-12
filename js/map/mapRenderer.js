@@ -48,6 +48,8 @@ function getDevicePixelRatio() {
     _lastButtonsHidden: false,
     _lastTransitionActive: false,
     _postAnimHoldUntil: 0,
+    _transitionArmed: false,
+    _suppressFlashLogged: false,
 
     // Graph cache
     _nodes: [], // {i, x, y, kind, discovered, nameKnown, label, labelAlign?, labelDx?, forceLabelBelow?}
@@ -238,9 +240,14 @@ function getDevicePixelRatio() {
       // Travel state: treat any transitMoves > 0 as "en route"
       const wasLevel = this._lastCurrLevel;
       if (wasLevel !== level) {
-        // Start a zoom transition between levels
-        if (window.MapTransitions && typeof MapTransitions.beginLevelTransition === 'function') {
+        // Only animate if we've armed transitions (prevents spurious animation on first show)
+        if (this._transitionArmed && window.MapTransitions && typeof MapTransitions.beginLevelTransition === 'function') {
           MapTransitions.beginLevelTransition(level);
+        } else {
+          // Keep MapTransitions in sync without animating
+          if (window.MapTransitions && typeof MapTransitions.updateLastLevel === 'function') {
+            MapTransitions.updateLastLevel(level);
+          }
         }
         this._travelActive = false;
         MapGraph.invalidate();
@@ -281,6 +288,8 @@ function getDevicePixelRatio() {
       this._lastTransitMoves = transit;
       this._lastLocIndex = loc;
       this._lastCurrLevel = level;
+      // Arm transitions after first sync so initial show never animates
+      if (!this._transitionArmed) this._transitionArmed = true;
 
       // Hide/show action buttons during animations and 1s after level transitions
       const transActive = !!(window.MapTransitions && typeof MapTransitions.isActive === 'function' && MapTransitions.isActive());
@@ -455,8 +464,14 @@ function getDevicePixelRatio() {
           window.MapTransitions.isPendingHold() &&
           (this._lastCurrLevel !== (window.currLevel || 0)) &&
           !window.MapTransitions.isActive()) {
-        try { console.debug('[mapRenderer] draw suppressed to avoid flash before transition'); } catch (_) {}
+        if (!this._suppressFlashLogged) {
+          try { console.debug('[mapRenderer] draw suppressed to avoid flash before transition'); } catch (_) {}
+          this._suppressFlashLogged = true;
+        }
         return;
+      } else {
+        // Reset throttle when suppression condition ends
+        if (this._suppressFlashLogged) this._suppressFlashLogged = false;
       }
 
       // Defer drawing the progress baby until after nodes so it's always on top
@@ -583,32 +598,34 @@ function getDevicePixelRatio() {
           const ringColor = hasGossip ? (getComputedColorForLabel(n.i) || STROKE) : undefined;
           drawNode(ctx, n, showName, hasGossip, labelText, ringColor);
 
-          // Level-specific embellishments (minimalist)
+          // Level-specific embellishments (minimalist, now data-driven via levelData)
           if (level === 1 && n.i > 0) {
-            // Four larger circles arranged in a row directly below the trading post
-            const rdot = 4.6;
-            const gap = 14;
-            const below = RADII[n.kind] + 12;
-            const baseY = n.y + below;
-            const baseX = n.x;
-
-            const offsets = [-1.5 * gap, -0.5 * gap, 0.5 * gap, 1.5 * gap];
-
-            ctx.save();
-            ctx.fillStyle = FILL;
-            ctx.strokeStyle = STROKE;
-            ctx.lineWidth = 2;
-            for (let idx = 0; idx < offsets.length; idx++) {
-              const dx = offsets[idx];
-              const isOuter = (idx === 0 || idx === offsets.length - 1);
-              const cxDot = baseX + dx;
-              const cyDot = baseY - (isOuter ? rdot * 0.5 : 0); // raise outer two to suggest a semicircle
-              ctx.beginPath();
-              ctx.arc(cxDot, cyDot, rdot, 0, Math.PI * 2);
-              ctx.fill();
-              ctx.stroke();
+            if (typeof window.drawGroupMiniCircles === 'function') {
+              window.drawGroupMiniCircles(ctx, n);
+            } else {
+              // Fallback to legacy geometry if helper not present
+              const rdot = 4.6;
+              const gap = 14;
+              const below = RADII[n.kind] + 12;
+              const baseY = n.y + below;
+              const baseX = n.x;
+              const offsets = [-1.5 * gap, -0.5 * gap, 0.5 * gap, 1.5 * gap];
+              ctx.save();
+              ctx.fillStyle = FILL;
+              ctx.strokeStyle = STROKE;
+              ctx.lineWidth = 2;
+              for (let idx = 0; idx < offsets.length; idx++) {
+                const dx = offsets[idx];
+                const isOuter = (idx === 0 || idx === offsets.length - 1);
+                const cxDot = baseX + dx;
+                const cyDot = baseY - (isOuter ? rdot * 0.5 : 0);
+                ctx.beginPath();
+                ctx.arc(cxDot, cyDot, rdot, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+              }
+              ctx.restore();
             }
-            ctx.restore();
           }
         }
       }
@@ -634,6 +651,11 @@ function getDevicePixelRatio() {
     onHostVisibilityChange(show) {
       
       if (!show) return;
+      // Reset arming and sync last level to avoid spurious transitions on show
+      this._transitionArmed = false;
+      this._lastCurrLevel = (window.currLevel || 0);
+      try { if (window.MapTransitions && typeof MapTransitions.updateLastLevel === 'function') { MapTransitions.updateLastLevel(this._lastCurrLevel); } } catch (_) {}
+
       // Force graph invalidation and schedule resize after layout becomes stable
       try { MapGraph.invalidate(); } catch (_) {}
       this._positionsValid = false;
@@ -663,9 +685,10 @@ function getDevicePixelRatio() {
 
   // Public helper: prepare an explicit level transition BEFORE mutating window.currLevel
   // fromLevel/toLevel must match the levels you are transitioning between.
-  mapRenderer.prepareLevelTransition = function (fromLevel, toLevel, fromLocIndex, toLocIndex) {
+  // reverse (optional): pass true to force reverse of the forward spec; defaults to (fromLevel > toLevel)
+  mapRenderer.prepareLevelTransition = function (fromLevel, toLevel, fromLocIndex, toLocIndex, reverse) {
     if (window.MapTransitions && typeof MapTransitions.prepareLevelTransition === 'function') {
-      return MapTransitions.prepareLevelTransition(fromLevel, toLevel, fromLocIndex, toLocIndex);
+      return MapTransitions.prepareLevelTransition(fromLevel, toLevel, fromLocIndex, toLocIndex, reverse);
     }
     // Fallback implementation
     try {

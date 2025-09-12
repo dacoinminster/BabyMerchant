@@ -1,4 +1,5 @@
 'use strict';
+'use strict';
 
 // DOM label helpers
 function getLabelElementForIndex(i) {
@@ -208,3 +209,58 @@ function dist(ax, ay, bx, by) {
   const dx = bx - ax, dy = by - ay;
   return Math.hypot(dx, dy);
 }
+// Data-driven helpers for Level 1 group mini-circles (shared by renderer and transitions)
+function getLevel1MiniSpec() {
+  try {
+    const LD = (typeof levelData !== 'undefined' && levelData) ? levelData : (window.levelData || null);
+    const t = (LD && LD[1] && LD[1].transitionSpecs) ? LD[1].transitionSpecs : null;
+    const spec = (t && t['0->1']) || (t && t['1->0']) || null;
+    const mini = spec && spec.l0l1 && spec.l0l1.mini;
+    if (mini) return mini;
+  } catch (_) {}
+  return { rdot: 4.6, gap: 14, belowOffset: 12, offsetMultipliers: [-1.5, -0.5, 0.5, 1.5], outerLift: 0.5 };
+}
+
+function computeGroupCirclePositions(node, miniSpec) {
+  const mini = miniSpec || getLevel1MiniSpec();
+  const rdot = (typeof mini.rdot === 'number') ? mini.rdot : 4.6;
+  const gap = (typeof mini.gap === 'number') ? mini.gap : 14;
+  const below = (RADII[node.kind] + (typeof mini.belowOffset === 'number' ? mini.belowOffset : 12));
+  const baseY = node.y + below;
+  const baseX = node.x;
+  const multipliers = Array.isArray(mini.offsetMultipliers) ? mini.offsetMultipliers : [-1.5, -0.5, 0.5, 1.5];
+  const outerLift = (typeof mini.outerLift === 'number') ? mini.outerLift : 0.5;
+
+  const pts = [];
+  for (let idx = 0; idx < multipliers.length; idx++) {
+    const dx = multipliers[idx] * gap;
+    const isOuter = (idx === 0 || idx === multipliers.length - 1);
+    const cxDot = baseX + dx;
+    const cyDot = baseY - (isOuter ? rdot * outerLift : 0); // raise outer dots to suggest a semicircle
+    pts.push({ x: cxDot, y: cyDot, r: rdot });
+  }
+  return pts;
+}
+
+function drawGroupMiniCircles(ctx, node, miniSpec) {
+  const circles = computeGroupCirclePositions(node, miniSpec);
+  ctx.save();
+  ctx.fillStyle = FILL;
+  ctx.strokeStyle = STROKE;
+  ctx.lineWidth = 2;
+  for (let i = 0; i < circles.length; i++) {
+    const c = circles[i];
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// Expose helpers on window for cross-module use
+try {
+  window.getLevel1MiniSpec = getLevel1MiniSpec;
+  window.computeGroupCirclePositions = computeGroupCirclePositions;
+  window.drawGroupMiniCircles = drawGroupMiniCircles;
+} catch (_) {}

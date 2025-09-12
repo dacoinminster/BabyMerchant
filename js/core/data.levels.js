@@ -215,6 +215,68 @@ const levelData = [
         }
       ]
     },
+    transitionSpecs: {
+      '0->1': {
+        transitionType: 'clusterMorph',
+        durationMs: 12000,
+        scaleBoost: 4.0,
+        l0l1: {
+          mini: { rdot: 4.6, gap: 14, belowOffset: 12, offsetMultipliers: [-1.5, -0.5, 0.5, 1.5], outerLift: 0.5 },
+          scaleFromIndices: { l0Pair: [0, 2], l1MiniIdx: 2 },
+          mapping: { strategy: 'angleSort' }
+        },
+        // Unified affine spec (pan/zoom/rotate + anchor alignment + post mapping)
+        affine: {
+          anchors: {
+            from: { type: 'node', which: 'fixed', index: 0 },     // L0 boss
+            to:   { type: 'node', which: 'toIndex' }               // target L1 group post (dynamic)
+          },
+          rotation: { mode: 'constant', value: 0 },
+          scale: { mode: 'pairToMini', pair: [0, 2], miniIdx: 2, source: 'low' }, // numerator comes from low scene
+          pivot: 'to',
+          pan: { reverseStrategy: 'identityStart' },
+          sceneDrawHints: {
+            low:  { showSubLocations: false },
+            high: { showSubLocations: true }
+          },
+          fades: { from: { outStart: 0.75, outEnd: 1.0 }, to: { inEnd: 0.25 } },
+          mapping: {
+            mode: 'ringToMini4',
+            roles: { ringScene: 'low', groupScene: 'high' }
+          }
+        }
+      },
+      '1->0': {
+        transitionType: 'clusterMorph',
+        durationMs: 12000,
+        scaleBoost: 4.0,
+        l0l1: {
+          mini: { rdot: 4.6, gap: 14, belowOffset: 12, offsetMultipliers: [-1.5, -0.5, 0.5, 1.5], outerLift: 0.5 },
+          scaleFromIndices: { l0Pair: [0, 2], l1MiniIdx: 2 },
+          mapping: { strategy: 'angleSort' }
+        },
+        // Unified affine spec
+        affine: {
+          anchors: {
+            from: { type: 'node', which: 'fromIndex' },            // active L1 group (dynamic)
+            to:   { type: 'node', which: 'fixed', index: 0 }       // L0 boss
+          },
+          rotation: { mode: 'constant', value: 0 },
+          scale: { mode: 'pairToMini', pair: [0, 2], miniIdx: 2, source: 'low' },
+          pivot: 'to',
+          pan: { reverseStrategy: 'identityStart' },
+          sceneDrawHints: {
+            low:  { showSubLocations: false },
+            high: { showSubLocations: true }
+          },
+          fades: { from: { outStart: 0.75, outEnd: 1.0 }, to: { inEnd: 0.25 } },
+          mapping: {
+            mode: 'ringToMini4',
+            roles: { ringScene: 'low', groupScene: 'high' }
+          }
+        }
+      }
+    },
     numLocations: 5,
   },
   {
@@ -380,6 +442,66 @@ const levelData = [
           ]
         }
       ]
+    },
+    transitionSpecs: {
+      '1->2': {
+        transitionType: 'rotatePanDoorway',
+        durationMs: 12000,
+        l1l2: {
+          rotationAngles: { left: -Math.PI / 2, right: Math.PI / 2, center: 0 },
+          doorGapHalf: 10,
+          pan: { screenFrac: 0.15, magMin: 60, magMax: 120 }
+        },
+        // Unified affine spec
+        affine: {
+          anchors: {
+            from: { type: 'doorCenterForNode', which: 'fixed', index: 0 }, // L1 doorway center (index 0)
+            to:   { type: 'doorCenterForNode', which: 'toIndex' }          // L2 wall center at selected door's y
+          },
+          rotation: {
+            mode: 'sideAngles',
+            left: -Math.PI / 2, right: Math.PI / 2, center: 0
+          },
+          scale: { mode: 'doorGapRatio', source: 'low' },            // numerator from 'low' scene (L1)
+          pivot: 'to',
+          pan: { reverseStrategy: 'identityStart' },
+          sceneDrawHints: {
+            low:  { showSubLocations: false },
+            high: { showSubLocations: false }
+          },
+          fades: { from: { outStart: 0.75, outEnd: 1.0 }, to: { inEnd: 0.25 } },
+          mapping: { mode: 'singleDoor', fromIndex: 0 }
+        }
+      },
+      '2->1': {
+        transitionType: 'rotatePanDoorway',
+        durationMs: 12000,
+        l1l2: {
+          rotationAngles: { left: -Math.PI / 2, right: Math.PI / 2, center: 0 },
+          doorGapHalf: 10,
+          pan: { screenFrac: 0.15, magMin: 60, magMax: 120 }
+        },
+        // Unified affine spec
+        affine: {
+          anchors: {
+            from: { type: 'doorCenterForNode', which: 'fromIndex' }, // L2 wall center at source door's y
+            to:   { type: 'doorCenterForNode', which: 'fixed', index: 0 }   // L1 doorway center (index 0)
+          },
+          rotation: {
+            mode: 'sideAngles',
+            left: -Math.PI / 2, right: Math.PI / 2, center: 0
+          },
+          scale: { mode: 'doorGapRatio', source: 'low' },
+          pivot: 'to',
+          pan: { reverseStrategy: 'identityStart' },
+          sceneDrawHints: {
+            low:  { showSubLocations: false },
+            high: { showSubLocations: false }
+          },
+          fades: { from: { outStart: 0.75, outEnd: 1.0 }, to: { inEnd: 0.25 } },
+          mapping: { mode: 'singleDoor', fromIndex: 0 }
+        }
+      }
     },
     numLocations: 5,
   },
