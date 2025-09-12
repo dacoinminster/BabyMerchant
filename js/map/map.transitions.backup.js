@@ -9,26 +9,6 @@
   // Dependencies loaded before this file:
   // - map.constants.js, map.math.js, map.layout.js, map.drawing.js
 
-/* Legacy fallback toggle for non-affine paths; keep disabled unless needed for emergency rollback */
-const ENABLE_LEGACY_FALLBACKS = false;
-/* Router delegation toggles for adjacency modules (safe rollout gates) */
-const ENABLE_DELEGATE_L0L1 = true; // handle 0↔1 in js/map/transitions.l0l1.js when true
-const ENABLE_DELEGATE_L1L2 = true; // handle 1↔2 in js/map/transitions.l1l2.js when true
-  /*
-   * MapTransitions facade
-   * - Lifecycle/state and cross-zoom snapshot handling during transitions
-   * - API methods:
-   *   init(renderer) – store renderer and seed last level
-   *   beginLevelTransition(newLevel) – set duration, pin time source, capture snapshot, preselect adjacency
-   *   drawTransition(ctx) – cross-zoom when previous-frame canvas is present
-   *   drawMorphTransition(ctx,nodes) – affine pan/zoom/rotate path + overlays + diagnostics
-   *   waitForTransition() – resolves when active transition completes
-   *   prepareLevelTransition(fromLevel,toLevel,fromIdx,toIdx,reverse?) – capture explicit snapshot/params
-   *   updateLastLevel(level) – mirror game state to detect direction
-   *   getters: isActive, isPendingHold, setPendingHold, isPathSuppressedOnce, setPathSuppressedOnce, hasExplicitSnapshot
-   * - Router note: Preselects adjacency (L0L1/L1L2) during begin; delegation will be introduced later.
-   * - Baselines for parity checks: see docs/transition-baselines.md
-   */
   const MapTransitions = {
     // Transition state
     _transitionActive: false,
@@ -51,10 +31,6 @@ const ENABLE_DELEGATE_L1L2 = true; // handle 1↔2 in js/map/transitions.l1l2.js
     _affineLoggedEnd: false,
     _affineOverlayLoggedStart: false,
     _affineOverlayLoggedEnd: false,
-
-    // Router preselection (set on begin; not used yet)
-    _activeAdjName: null,
-    _activeAdjModule: null,
     
     // Game-state mirrors to detect transitions without invasive hooks
     _lastCurrLevel: 0,
@@ -67,7 +43,6 @@ const ENABLE_DELEGATE_L1L2 = true; // handle 1↔2 in js/map/transitions.l1l2.js
       this._lastCurrLevel = (window.currLevel || 0);
     },
     
-    // Begin a transition: uses levelData to set duration, preselects adjacency, and snapshots previous frame
     beginLevelTransition(newLevel) {
       const prevLevel = this._lastCurrLevel || 0;
       this._transitionDir = (newLevel > prevLevel) ? 'up' : 'down';
@@ -82,26 +57,6 @@ const ENABLE_DELEGATE_L1L2 = true; // handle 1↔2 in js/map/transitions.l1l2.js
       } else {
         this._transitionDurationMs = TRANSITION_DEFAULT_MS;
       }
-
-      // Pre-select adjacency module (no delegation yet; for future router)
-      try {
-        const lo = Math.min(prevLevel, newLevel), hi = Math.max(prevLevel, newLevel);
-        const key = String(lo) + '-' + String(hi);
-        if (key === '0-1' && window.MapTransitionsL0L1) {
-          this._activeAdjName = 'L0L1';
-          this._activeAdjModule = window.MapTransitionsL0L1;
-        } else if (key === '1-2' && window.MapTransitionsL1L2) {
-          this._activeAdjName = 'L1L2';
-          this._activeAdjModule = window.MapTransitionsL1L2;
-        } else {
-          this._activeAdjName = null;
-          this._activeAdjModule = null;
-        }
-      } catch(_) {
-        this._activeAdjName = null;
-        this._activeAdjModule = null;
-      }
-
       // Apply scaleBoost hint (used for 0<->1); fall back to constant
       this._scaleBoost = (spec && typeof spec.scaleBoost === 'number') ? spec.scaleBoost : SCALE_BOOST_L0L1;
       // If we have an explicit prepared snapshot for this exact transition,
@@ -172,7 +127,6 @@ const ENABLE_DELEGATE_L1L2 = true; // handle 1↔2 in js/map/transitions.l1l2.js
     },
     
     // Draw level transition effects
-    // Cross-zoom of previous frame → current level when no explicit morph snapshot is used
     drawTransition(ctx) {
       // Level transition rendering: draw morph/zoom between levels
       let __transitionInfo = null;
@@ -226,7 +180,6 @@ const ENABLE_DELEGATE_L1L2 = true; // handle 1↔2 in js/map/transitions.l1l2.js
     },
     
     // Draw custom morph handling for L0<->L1 when explicit snapshot is present
-    // Affine morph renderer: reads forward (lo→hi) spec and applies reverse automatically; overlays + diagnostics
     drawMorphTransition(ctx, nodes) {
       if (this._transitionActive && this._explicitFromSnapshot) {
         const now = this._usePerfNow ? performance.now() : Date.now();
@@ -250,23 +203,8 @@ const ENABLE_DELEGATE_L1L2 = true; // handle 1↔2 in js/map/transitions.l1l2.js
         const hasAffine = !!(pairSpec && pairSpec.affine);
         const reverse = (this._preparedTransition && typeof this._preparedTransition.reverse === "boolean") ? this._preparedTransition.reverse : (fromL > toL);
 
-        // Attempt router delegation for 0↔1 and 1↔2 (kept behind flags for safe rollout)
-        // Note: Allows temporary override via window.__FORCE_DELEGATE_L0L1 / __FORCE_DELEGATE_L1L2 for parity testing.
-        let __delegated = false;
-        try {
-          if (this._activeAdjName === 'L0L1' && (ENABLE_DELEGATE_L0L1 || (window && window.__FORCE_DELEGATE_L0L1)) &&
-              window.MapTransitionsL0L1 &&
-              typeof window.MapTransitionsL0L1.drawMorphTransition === 'function') {
-            __delegated = !!window.MapTransitionsL0L1.drawMorphTransition(ctx, this);
-          } else if (!__delegated && this._activeAdjName === 'L1L2' && (ENABLE_DELEGATE_L1L2 || (window && window.__FORCE_DELEGATE_L1L2)) &&
-                     window.MapTransitionsL1L2 &&
-                     typeof window.MapTransitionsL1L2.drawMorphTransition === 'function') {
-            __delegated = !!window.MapTransitionsL1L2.drawMorphTransition(ctx, this);
-          }
-        } catch (_) {}
-
         // Unified affine morph path (pan/zoom/rotate) driven entirely by params in levelData.transitionSpecs[].affine
-        if (!__delegated && hasAffine) {
+        if (hasAffine) {
           const w = this._renderer._w, h = this._renderer._h;
           const snapFrom = this._explicitFromSnapshot; // source snapshot is captured before level switch
           const snapTo = computeSnapshotForLevel(toL, w, h);
@@ -303,38 +241,42 @@ const ENABLE_DELEGATE_L1L2 = true; // handle 1↔2 in js/map/transitions.l1l2.js
 
           // Anchor resolution
           function resolveIndex(which, snap) {
-            if (window.TransitionsCommon && typeof TransitionsCommon.resolveIndex === 'function') {
-              return TransitionsCommon.resolveIndex(which, snap, fromL, toL, fromIdx, toIdx);
-            }
-            // Fallback to local computation (should not be used if transitionsCommon is loaded)
+            // Interpret 'fromIndex' as the forward low-level index and 'toIndex' as the forward high-level index,
+            // independent of actual direction. Choose the appropriate index for the given snapshot's level.
             const lo = Math.min(fromL, toL);
             const hi = Math.max(fromL, toL);
             const idxAtLo = (fromL === lo) ? fromIdx : toIdx;
             const idxAtHi = (fromL === hi) ? fromIdx : toIdx;
-            if (which === 'fromIndex') return (snap && snap.level === lo) ? idxAtLo : idxAtHi;
-            if (which === 'toIndex')   return (snap && snap.level === hi) ? idxAtHi : idxAtLo;
+            if (which === 'fromIndex') {
+              return (snap && snap.level === lo) ? idxAtLo : idxAtHi;
+            }
+            if (which === 'toIndex') {
+              return (snap && snap.level === hi) ? idxAtHi : idxAtLo;
+            }
             return 0;
           }
           function resolveAnchor(desc, snap) {
-            if (window.TransitionsCommon && typeof TransitionsCommon.resolveAnchor === 'function') {
-              return TransitionsCommon.resolveAnchor(desc, snap, { w, h }, fromL, toL, fromIdx, toIdx);
-            }
-            // Fallback: original inline computation
             if (!desc) return { x: w * 0.5, y: h * 0.5 };
             if (desc.type === 'node') {
               const i = (desc.which === 'fixed') ? (desc.index || 0) : resolveIndex(desc.which, snap);
               const n = snap.nodes.find(nn => nn.i === i) || snap.nodes[0] || { x: w * 0.5, y: h * 0.5 };
+              // No special-casing: 'node' means the node's own position.
+              // Use 'doorCenterForNode' anchor type when the doorway rectangle center is required.
               return { x: n.x, y: n.y };
             }
             if (desc.type === 'doorCenterForNode') {
               const i = (desc.which === 'fixed') ? (desc.index || 0) : resolveIndex(desc.which, snap);
               const n = snap.nodes.find(nn => nn.i === i) || snap.nodes[0] || { x: w * 0.5, y: h * 0.5 };
+              // Level 1: doorway rectangle center (index 0)
               try {
                 if (snap.level === 1 && i === 0) {
                   const rc = MapHitTest.computeL1DoorwayRect(snap.nodes, { w, h });
-                  if (rc) return { x: rc.x + rc.w * 0.5, y: rc.y + rc.h * 0.5 };
+                  if (rc) {
+                    return { x: rc.x + rc.w * 0.5, y: rc.y + rc.h * 0.5 };
+                  }
                 }
               } catch (_) {}
+              // Level 2: hallway wall center at node.y (left or right wall)
               try {
                 const meta2 = snap.layoutMeta && snap.layoutMeta.level2;
                 if (meta2) {
@@ -342,6 +284,7 @@ const ENABLE_DELEGATE_L1L2 = true; // handle 1↔2 in js/map/transitions.l1l2.js
                   return { x: wallX, y: n.y };
                 }
               } catch (_) {}
+              // Fallback to node position
               return { x: n.x, y: n.y };
             }
             return { x: w * 0.5, y: h * 0.5 };
@@ -388,15 +331,6 @@ const ENABLE_DELEGATE_L1L2 = true; // handle 1↔2 in js/map/transitions.l1l2.js
 
           // Scale ratio computation
           function computePairToMiniRatio() {
-            // Prefer shared helper when available to centralize logic
-            if (window.TransitionsCommon && typeof TransitionsCommon.computePairToMiniRatio === 'function') {
-              const pair = (aff.scale && Array.isArray(aff.scale.pair)) ? aff.scale.pair : [0, 2];
-              const miniIdx = (aff.scale && typeof aff.scale.miniIdx === 'number') ? aff.scale.miniIdx : 2;
-              return TransitionsCommon.computePairToMiniRatio({
-                snapFrom, snapTo, fromL, toL, fromIdx, toIdx, pair, miniIdx
-              });
-            }
-            // Local fallback (parity with legacy inline computation)
             // d0 from two L0 nodes; d1 from L1 group to selected mini circle
             const snapL0 = (snapFrom.level === 0) ? snapFrom : (snapTo.level === 0 ? snapTo : null);
             const pair = (aff.scale && Array.isArray(aff.scale.pair)) ? aff.scale.pair : [0, 2];
@@ -435,15 +369,6 @@ const ENABLE_DELEGATE_L1L2 = true; // handle 1↔2 in js/map/transitions.l1l2.js
             return d0 / Math.max(1e-3, d1);
           }
           function computeDoorGapRatio() {
-            // Prefer shared helper when available
-            if (window.TransitionsCommon && typeof TransitionsCommon.computeDoorGapRatio === 'function') {
-              let half = 10;
-              try {
-                half = (pairSpec && pairSpec.l1l2 && typeof pairSpec.l1l2.doorGapHalf === 'number') ? pairSpec.l1l2.doorGapHalf : (MapHitTest.getL2DoorGapHalf ? MapHitTest.getL2DoorGapHalf() : 10);
-              } catch (_) {}
-              return TransitionsCommon.computeDoorGapRatio({ snapFrom, snapTo, w, h, doorGapHalf: half });
-            }
-            // Local fallback (parity with legacy inline computation)
             const snapL1 = (snapFrom.level === 1) ? snapFrom : (snapTo.level === 1 ? snapTo : null);
             let w1 = 50;
             try {
@@ -487,37 +412,35 @@ const ENABLE_DELEGATE_L1L2 = true; // handle 1↔2 in js/map/transitions.l1l2.js
           // Data-driven pan reverse strategy
           const reverseStrategy = (aff.pan && aff.pan.reverseStrategy) || null;
           let pan;
-          if (window.TransitionsCommon && typeof TransitionsCommon.panFromStrategy === 'function') {
-            pan = TransitionsCommon.panFromStrategy(
-              reverseStrategy, reverse, d, toRole, ratioSourceRole, S_start, S_end, safeRatio, eMotion
-            );
+          if (reverseStrategy === 'forwardInverse') {
+            // Scale-correct endpoints for exact symmetry:
+            // forward:  pan(0) = d,              pan(1) = (1 - sTo(1)) * d == 0
+            // reverse:  pan(0) = -sTo(0) * d,    pan(1) = (1 - sTo(1)) * d == 0
+            const sToStart = (toRole === ratioSourceRole) ? S_start : (S_start * safeRatio);
+            const sToEnd   = (toRole === ratioSourceRole) ? S_end   : (S_end   * safeRatio);
+            const panStartVec = reverse ? { x: -sToStart * d.x, y: -sToStart * d.y }
+                                        : { x: d.x,             y: d.y };
+            const panEndVec   = { x: (1 - sToEnd) * d.x, y: (1 - sToEnd) * d.y };
+            pan = {
+              x: lerp(panStartVec.x, panEndVec.x, eMotion),
+              y: lerp(panStartVec.y, panEndVec.y, eMotion)
+            };
+          } else if (reverseStrategy === 'identityStart') {
+            // d -> 0 for both directions (source starts identity; destination ends identity)
+            pan = { x: lerp(d.x, 0, eMotion), y: lerp(d.y, 0, eMotion) };
+          } else if (reverseStrategy === 'zero') {
+            pan = { x: 0, y: 0 };
           } else {
-            // Fallback to local strategy (parity with pre-refactor behavior)
-            if (reverseStrategy === 'forwardInverse') {
-              const sToStart = (toRole === ratioSourceRole) ? S_start : (S_start * safeRatio);
-              const sToEnd   = (toRole === ratioSourceRole) ? S_end   : (S_end   * safeRatio);
-              const panStartVec = reverse ? { x: -sToStart * d.x, y: -sToStart * d.y }
-                                          : { x: d.x,             y: d.y };
-              const panEndVec   = { x: (1 - sToEnd) * d.x, y: (1 - sToEnd) * d.y };
-              pan = { x: lerp(panStartVec.x, panEndVec.x, eMotion), y: lerp(panStartVec.y, panEndVec.y, eMotion) };
-            } else if (reverseStrategy === 'identityStart') {
-              pan = { x: lerp(d.x, 0, eMotion), y: lerp(d.y, 0, eMotion) };
-            } else if (reverseStrategy === 'zero') {
-              pan = { x: 0, y: 0 };
-            } else {
-              pan = !reverse ? { x: lerp(d.x, 0, eMotion), y: lerp(d.y, 0, eMotion) }
-                             : { x: lerp(0, d.x, eMotion), y: lerp(0, d.y, eMotion) };
-            }
+            // Legacy/mirror
+            pan = !reverse
+              ? { x: lerp(d.x, 0, eMotion), y: lerp(d.y, 0, eMotion) }
+              : { x: lerp(0, d.x, eMotion), y: lerp(0, d.y, eMotion) };
           }
           // Data-driven pivot selection
           const pivotMode = (aff.pivot || 'to');
           const pivot = (pivotMode === 'from') ? { x: anchorFrom.x, y: anchorFrom.y } : { x: anchorTo.x, y: anchorTo.y };
 
           function worldPos(local, s, preRot, anchor, angRot, panV) {
-            if (window.TransitionsCommon && typeof TransitionsCommon.worldPos === 'function') {
-              return TransitionsCommon.worldPos(local, s, preRot, anchor, angRot, panV, pivot);
-            }
-            // Fallback inline
             const lx = local.x - anchor.x, ly = local.y - anchor.y;
             const cpre = Math.cos(preRot), spre = Math.sin(preRot);
             const rx = cpre * lx - spre * ly;
@@ -607,41 +530,30 @@ try {
             alphaToVal = clamp01(k);
           }
 
-          // Hide node indices that will be animated to avoid duplicates (delegated to common when available)
+          // Hide node indices that will be animated to avoid duplicates
           const mapping = aff.mapping || {};
-          let hideFrom = new Set();
-          let hideTo = new Set();
-          let __mappingInfo = null;
-          if (window.TransitionsCommon && typeof TransitionsCommon.computeHideSets === 'function') {
-            const r = TransitionsCommon.computeHideSets(mapping, snapFrom, snapTo, fromL, toL, fromIdx, toIdx);
-            hideFrom = r.hideFrom || hideFrom;
-            hideTo = r.hideTo || hideTo;
-            __mappingInfo = r;
-          } else {
-            const hf = new Set();
-            const ht = new Set();
-            if (mapping.mode === 'singleDoor') {
-              // Dynamic source: L1 doorway (0) for 1->2, selected L2 door (fromIdx) for 2->1
-              const srcIndex = (snapFrom.level === Math.min(fromL, toL)) ? 0 : fromIdx;
-              hf.add(srcIndex);
-              ht.add(toIdx);
-            } else if (mapping.mode === 'ringToMini4') {
-              // Determine ring/group sides via roles to avoid level-number checks
-              const fromRoleH = (snapFrom.level === Math.min(fromL, toL)) ? 'low' : 'high';
-              const ringSceneRole = (mapping.roles && mapping.roles.ringScene) ? mapping.roles.ringScene : 'low';
-              const isRingFrom = (fromRoleH === ringSceneRole);
-              const ringSnap = isRingFrom ? snapFrom : snapTo;
-              const groupSnap = isRingFrom ? snapTo : snapFrom;
-              const groupIdx = isRingFrom ? toIdx : fromIdx;
-              // Hide ring nodes (0..4) in whichever scene has the ring role
-              const maxRing = Math.min(4, Math.max(0, ringSnap.nodes.length - 1));
-              for (let i = 0; i <= maxRing; i++) {
-                if (ringSnap === snapFrom) hf.add(i); else ht.add(i);
-              }
-              // Hide the active group post in the opposite scene to avoid double-draw
-              if (groupSnap === snapFrom) hf.add(groupIdx); else ht.add(groupIdx);
+          const hideFrom = new Set();
+          const hideTo = new Set();
+          if (mapping.mode === 'singleDoor') {
+            // Dynamic source: L1 doorway (0) for 1->2, selected L2 door (fromIdx) for 2->1
+            const srcIndex = (snapFrom.level === Math.min(fromL, toL)) ? 0 : fromIdx;
+            hideFrom.add(srcIndex);
+            hideTo.add(toIdx);
+          } else if (mapping.mode === 'ringToMini4') {
+            // Determine ring/group sides via roles to avoid level-number checks
+            const fromRoleH = (snapFrom.level === Math.min(fromL, toL)) ? 'low' : 'high';
+            const ringSceneRole = (mapping.roles && mapping.roles.ringScene) ? mapping.roles.ringScene : 'low';
+            const isRingFrom = (fromRoleH === ringSceneRole);
+            const ringSnap = isRingFrom ? snapFrom : snapTo;
+            const groupSnap = isRingFrom ? snapTo : snapFrom;
+            const groupIdx = isRingFrom ? toIdx : fromIdx;
+            // Hide ring nodes (0..4) in whichever scene has the ring role
+            const maxRing = Math.min(4, Math.max(0, ringSnap.nodes.length - 1));
+            for (let i = 0; i <= maxRing; i++) {
+              if (ringSnap === snapFrom) hideFrom.add(i); else hideTo.add(i);
             }
-            hideFrom = hf; hideTo = ht;
+            // Hide the active group post in the opposite scene to avoid double-draw
+            if (groupSnap === snapFrom) hideFrom.add(groupIdx); else hideTo.add(groupIdx);
           }
 
  // Affine diagnostics placeholder (closed immediately to prevent syntax errors)
@@ -656,6 +568,8 @@ try {
     const sTo1   = (toRole   === ratioSourceRole) ? sLow1 : sHigh1;
     const dDiag = { x: (anchorFrom.x - anchorTo.x), y: (anchorFrom.y - anchorTo.y) };
     const ang0 = 0, ang1 = alphaSpin;
+    const rotFrom0 = ang0, rotFrom1 = ang1;
+    const rotTo0 = preRotTo + ang0, rotTo1 = preRotTo + ang1; // should end ~0
     const packPt = (p) => ({ x: Math.round(p.x), y: Math.round(p.y) });
     // Endpoint pan with strategy awareness for logs (must mirror the actual pan(t))
     let panStart, panEnd;
@@ -1019,8 +933,7 @@ try {
           }
   
           // Unified path handled; specialized paths below remain as fallback
-        // Legacy fallback: clusterMorph (gated by ENABLE_LEGACY_FALLBACKS)
-        } else if (ENABLE_LEGACY_FALLBACKS && pairSpec && pairSpec.transitionType === 'clusterMorph') {
+        } else if (pairSpec && pairSpec.transitionType === 'clusterMorph') {
           const snapFrom = this._explicitFromSnapshot; // {nodes}
           const snapTo = computeSnapshotForLevel(toL, this._renderer._w, this._renderer._h);
           
@@ -1410,8 +1323,7 @@ try {
         }
         
         // Custom rotation + pan + fade (data-driven by transitionType)
-        // Legacy fallback: rotatePanDoorway (gated by ENABLE_LEGACY_FALLBACKS)
-        if (ENABLE_LEGACY_FALLBACKS && !hasAffine && pairSpec && pairSpec.transitionType === 'rotatePanDoorway') {
+        if (!hasAffine && pairSpec && pairSpec.transitionType === 'rotatePanDoorway') {
           const w = this._renderer._w, h = this._renderer._h;
           const snapFrom = this._explicitFromSnapshot; // current source snapshot
           const snapTo = computeSnapshotForLevel(toL, w, h);
@@ -1837,7 +1749,6 @@ try {
     },
     
     // Public helper: await current/next level transition end
-    // Promise resolves when the current (or next-started) transition ends; used by orchestrators
     waitForTransition() {
       return new Promise((resolve) => {
         if (this._transitionActive) {
@@ -1852,7 +1763,6 @@ try {
     // Public helper: prepare an explicit level transition BEFORE mutating window.currLevel
     // fromLevel/toLevel must match the levels you are transitioning between.
     // reverse (optional): pass true to force reverse of the forward spec; defaults to (fromLevel > toLevel)
-    // Capture an explicit source snapshot and parameters before mutating currLevel; fixes flash/race conditions
     prepareLevelTransition(fromLevel, toLevel, fromLocIndex, toLocIndex, reverse) {
       try {
         const snap = computeSnapshotForLevel(fromLevel, this._renderer._w || (this._renderer._canvas ? this._renderer._canvas.width : 0), this._renderer._h || (this._renderer._canvas ? this._renderer._canvas.height : 0));
@@ -1874,7 +1784,6 @@ try {
     },
     
     // Update last level for transition detection
-    // Mirror game state: used to infer direction for next transition
     updateLastLevel(level) {
       this._lastCurrLevel = level;
     },
@@ -1907,45 +1816,3 @@ try {
 
   window.MapTransitions = MapTransitions;
 })();
-
-// Dev helper: one-click baseline runner for parity checks (optional; inert until called)
-window.__dumpTransitionBaselines = async function __dumpTransitionBaselines() {
-  try {
-    const mt = window.MapTransitions;
-    if (!mt || typeof mt.prepareLevelTransition !== 'function' || typeof mt.beginLevelTransition !== 'function' || typeof mt.waitForTransition !== 'function') {
-      console.warn('[Baselines] MapTransitions not ready');
-      return;
-    }
-    if (!mt._renderer) {
-      console.warn('[Baselines] MapTransitions._renderer not set');
-      return;
-    }
-
-    // Force delegation for testing without code edits
-    const prevForceL0L1 = window.__FORCE_DELEGATE_L0L1;
-    const prevForceL1L2 = window.__FORCE_DELEGATE_L1L2;
-    window.__FORCE_DELEGATE_L0L1 = true;
-    window.__FORCE_DELEGATE_L1L2 = true;
-
-    async function run(from, to, fromIdx, toIdx, reverse) {
-      mt.prepareLevelTransition(from, to, fromIdx, toIdx, reverse);
-      window.currLevel = to;
-      mt.beginLevelTransition(to);
-      await mt.waitForTransition();
-    }
-
-    // 0→1, 1→0, 1→2, 2→1
-    await run(0, 1, 0, 1, false);
-    await run(1, 0, 1, 0, true);
-    await run(1, 2, 1, 1, false);
-    await run(2, 1, 1, 0, true);
-
-    // Restore flags
-    window.__FORCE_DELEGATE_L0L1 = prevForceL0L1;
-    window.__FORCE_DELEGATE_L1L2 = prevForceL1L2;
-
-    console.debug('[Baselines] Completed 0→1, 1→0, 1→2, 2→1 (see Affine*JSON logs above)');
-  } catch (e) {
-    console.warn('[Baselines] dump failed', e);
-  }
-};
