@@ -335,7 +335,31 @@
             ctx.strokeStyle = (window.STROKE || '#000'); ctx.lineWidth = 2;
 // Stroke-only moving marker to match L1 doorway (index 0) circle style across the entire morph.
             ctx.beginPath(); ctx.arc(mx, my, rNow, 0, Math.PI * 2); ctx.stroke();
-            ctx.restore();
+ctx.restore();
+
+// Level 1 location 0 label: keep upright and track the moving marker
+try {
+  let labelText = '';
+  if (window.locationName && window.locationName[1] && window.locationName[1][0]) {
+    labelText = window.locationName[1][0];
+  } else if (window.levelData && window.levelData[1]) {
+    labelText = (window.levelData[1].locationLabel[0] || 'doorway');
+  }
+  if (labelText) {
+    const baseFontPx = (typeof window.LABEL_BASE_FONT_PX === 'number') ? window.LABEL_BASE_FONT_PX : 10;
+    const lx = mx;
+    const ly = my - (rNow + 6);
+
+    ctx.save();
+    
+    ctx.font = Math.round(baseFontPx) + 'px monospace';
+    ctx.fillStyle = (window.STROKE || '#000');
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillText(labelText, lx, ly);
+    ctx.restore();
+  }
+} catch (_) {}
           } catch (_) {}
         }
 

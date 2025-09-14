@@ -439,14 +439,69 @@
             ctx.save();
 ctx.strokeStyle = window.STROKE || '#000'; ctx.lineWidth = 2;
           for (const p of pairs) {
-            const fxw = window.TransitionsCommon.worldPos({ x: p.fx, y: p.fy }, sFrom, 0, anchorFrom, angNow, pan, pivot);
+            // Moving circle center along world path (from-scene -> to-scene)
+            const fxw = window.TransitionsCommon.worldPos({ x: p.fx, y: p.fy }, sFrom, 0,        anchorFrom, angNow, pan, pivot);
             const txw = window.TransitionsCommon.worldPos({ x: p.tx, y: p.ty }, sTo,   preRotTo, anchorTo,   angNow, pan, pivot);
             const x = (typeof window.lerp === 'function') ? window.lerp(fxw.x, txw.x, eMotion) : (fxw.x + (txw.x - fxw.x) * eMotion);
             const y = (typeof window.lerp === 'function') ? window.lerp(fxw.y, txw.y, eMotion) : (fxw.y + (txw.y - fxw.y) * eMotion);
             const r = (typeof window.lerp === 'function') ? window.lerp(p.fr, p.tr, eMotion) : (p.fr + (p.tr - p.fr) * eMotion);
+
+            // Draw the moving marker (stroke-only to match style)
             ctx.beginPath();
             ctx.arc(x, y, r, 0, Math.PI * 2);
             ctx.stroke();
+
+            // Draw Level 0 labels (indices 1..4) above the moving circles so they track perfectly
+            // Identify which ring node this pair corresponds to on the ring side, then map to L0 label text.
+            try {
+              // Ring-side local coordinate for this pair
+              const ringLocal = isRingFrom ? { x: p.fx, y: p.fy } : { x: p.tx, y: p.ty };
+              // Find matching ring node index (1..4)
+              let ringIdx = -1;
+              if (ringSnap && Array.isArray(ringSnap.nodes)) {
+                // Use a small epsilon for float-safe matching
+                const eps = 0.5;
+                for (const rn of ringSnap.nodes) {
+                  if (rn && rn.i > 0 && rn.i <= 4 &&
+                      Math.abs(rn.x - ringLocal.x) < eps &&
+                      Math.abs(rn.y - ringLocal.y) < eps) {
+                    ringIdx = rn.i; break;
+                  }
+                }
+              }
+              if (ringIdx >= 1 && ringIdx <= 4) {
+                // Compute label text for the L0 station
+                let text = '';
+                if (window.locationName && window.locationName[0] && window.locationName[0][ringIdx]) {
+                  text = window.locationName[0][ringIdx];
+                } else if (window.levelData && window.levelData[0]) {
+                  text = (window.levelData[0].locationLabel[ringIdx] || 'spot') + (ringIdx > 0 ? (' #' + ringIdx) : '');
+                }
+                if (text) {
+                  // Size/alpha timeline: 0->1 shrink out (reverse=false), 1->0 grow in (reverse=true)
+                  const baseFontPx = (typeof window.LABEL_BASE_FONT_PX === 'number') ? window.LABEL_BASE_FONT_PX : 10;
+                  const k = Math.max(0, Math.min(1, eMotion));
+                  const appearing = reverse; // reverse (1->0) grows in; forward (0->1) fades out
+                  const ls = Math.max(0.15, appearing ? k : (1 - k));
+                  const alpha = appearing ? k : (1 - k);
+
+                  // Keep label above the moving circle by its instantaneous radius
+                  const lx = x;
+                  const ly = y - (r + 6);
+
+                  // Draw upright in screen space (preserve renderer's current transform, e.g., DPR scaling)
+                  ctx.save();
+                  ctx.font = Math.round(baseFontPx * ls) + 'px monospace';
+                  ctx.fillStyle = (window.STROKE || '#000');
+                  ctx.textAlign = 'center';
+                  ctx.textBaseline = 'alphabetic';
+                  const prevA = ctx.globalAlpha; ctx.globalAlpha = alpha;
+                  ctx.fillText(text, lx, ly);
+                  ctx.globalAlpha = prevA;
+                  ctx.restore();
+                }
+              }
+            } catch (_) {}
           }
           ctx.restore();
 
@@ -476,8 +531,9 @@ ctx.strokeStyle = window.STROKE || '#000'; ctx.lineWidth = 2;
               ctx.restore();
             }
           } catch (_) {}
-        }
 
+          // Legacy static L0 label overlay removed; labels now track moving circles directly above them.
+        }
         return true;
       } catch (_) {
         return false;
