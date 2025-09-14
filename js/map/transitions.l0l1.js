@@ -173,8 +173,8 @@
                 fromIdentity: ((Math.abs(angNow) < 1e-3) && (Math.abs((sFrom) - 1) < 1e-3) && (Math.abs(pan.x - d.x) < 1) && (Math.abs(pan.y - d.y) < 1))
               }
             };
-            console.debug('[AffineStartSummary]', __affStart);
-            try { console.debug('[AffineStartSummaryJSON] ' + JSON.stringify(__affStart)); } catch (_) {}
+            if (window.DEBUG_AFFINE) console.debug('[AffineStartSummary]', __affStart);
+            try { if (window.DEBUG_AFFINE) console.debug('[AffineStartSummaryJSON] ' + JSON.stringify(__affStart)); } catch (_) {}
             env._affineLoggedStart = true;
           }
           if (!env._affineLoggedEnd && eMotion > 0.999) {
@@ -203,8 +203,8 @@
                 toIdentity: ((Math.abs(preRotTo + angNow) < 1e-3) && (Math.abs((sTo) - 1) < 1e-3) && (Math.abs(pan.x) < 1) && (Math.abs(pan.y) < 1))
               }
             };
-            console.debug('[AffineEndSummary]', __affEnd);
-            try { console.debug('[AffineEndSummaryJSON] ' + JSON.stringify(__affEnd)); } catch (_) {}
+            if (window.DEBUG_AFFINE) console.debug('[AffineEndSummary]', __affEnd);
+            try { if (window.DEBUG_AFFINE) console.debug('[AffineEndSummaryJSON] ' + JSON.stringify(__affEnd)); } catch (_) {}
             env._affineLoggedEnd = true;
           }
         } catch (_) {}
@@ -354,8 +354,8 @@
                 rotation: { from: Number.isFinite(ang0) ? ang0.toFixed(4) : ang0, to: Number.isFinite(preRotTo + ang0) ? (preRotTo + ang0).toFixed(4) : (preRotTo + ang0) },
                 pan: { x: Math.round(panStartLog.x), y: Math.round(panStartLog.y) }
               };
-              console.debug('[AffineOverlayStart]', __ros);
-              try { console.debug('[AffineOverlayStartJSON] ' + JSON.stringify(__ros)); } catch (_) {}
+              if (window.DEBUG_AFFINE) console.debug('[AffineOverlayStart]', __ros);
+              try { if (window.DEBUG_AFFINE) console.debug('[AffineOverlayStartJSON] ' + JSON.stringify(__ros)); } catch (_) {}
               env._affineOverlayLoggedStart = true;
             }
             if (!env._affineOverlayLoggedEnd && eMotion > 0.999) {
@@ -368,8 +368,8 @@
                 rotation: { from: Number.isFinite(ang1) ? ang1.toFixed(4) : ang1, to: Number.isFinite(preRotTo + ang1) ? (preRotTo + ang1).toFixed(4) : (preRotTo + ang1) },
                 pan: { x: Math.round(panEndLog.x), y: Math.round(panEndLog.y) }
               };
-              console.debug('[AffineOverlayEnd]', __roe);
-              try { console.debug('[AffineOverlayEndJSON] ' + JSON.stringify(__roe)); } catch (_) {}
+              if (window.DEBUG_AFFINE) console.debug('[AffineOverlayEnd]', __roe);
+              try { if (window.DEBUG_AFFINE) console.debug('[AffineOverlayEndJSON] ' + JSON.stringify(__roe)); } catch (_) {}
               env._affineOverlayLoggedEnd = true;
             }
           } catch (_) {}
@@ -406,7 +406,7 @@
                       groupWorld: packPt(groupWStart0)
                     }
                   };
-                  try { console.debug('[AffineOneItemStartJSON] ' + JSON.stringify(oneStart)); } catch (_) {}
+                  try { if (window.DEBUG_AFFINE) console.debug('[AffineOneItemStartJSON] ' + JSON.stringify(oneStart)); } catch (_) {}
                 }
                 if (!env._affineOverlayLoggedEnd && eMotion > 0.999) {
                   const oneEnd = {
@@ -432,7 +432,7 @@
                       groupWorld: packPt(groupWEnd0)
                     }
                   };
-                  try { console.debug('[AffineOneItemEndJSON] ' + JSON.stringify(oneEnd)); } catch (_) {}
+                  try { if (window.DEBUG_AFFINE) console.debug('[AffineOneItemEndJSON] ' + JSON.stringify(oneEnd)); } catch (_) {}
                 }
               }
             } catch (_) {}

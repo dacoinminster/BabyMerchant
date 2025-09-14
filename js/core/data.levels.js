@@ -217,7 +217,6 @@ const levelData = [
     },
     transitionSpecs: {
       '0->1': {
-        transitionType: 'clusterMorph',
         durationMs: 12000,
         scaleBoost: 4.0,
         l0l1: {
@@ -247,7 +246,6 @@ const levelData = [
         }
       },
       '1->0': {
-        transitionType: 'clusterMorph',
         durationMs: 12000,
         scaleBoost: 4.0,
         l0l1: {
@@ -445,7 +443,6 @@ const levelData = [
     },
     transitionSpecs: {
       '1->2': {
-        transitionType: 'rotatePanDoorway',
         durationMs: 12000,
         l1l2: {
           rotationAngles: { left: -Math.PI / 2, right: Math.PI / 2, center: 0 },
@@ -474,7 +471,6 @@ const levelData = [
         }
       },
       '2->1': {
-        transitionType: 'rotatePanDoorway',
         durationMs: 12000,
         l1l2: {
           rotationAngles: { left: -Math.PI / 2, right: Math.PI / 2, center: 0 },

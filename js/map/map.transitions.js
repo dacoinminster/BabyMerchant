@@ -167,7 +167,7 @@ const ENABLE_DELEGATE_L1L2 = true; // handle 1↔2 in js/map/transitions.l1l2.js
           nodeTo: { x: Math.round(nodeTo.x), y: Math.round(nodeTo.y) },
           ts: Date.now(),
         };
-        console.debug('[MapTransitions] level transition start', this._transitionContext);
+        if (window.DEBUG_AFFINE) console.debug('[MapTransitions] level transition start', this._transitionContext);
       } catch (_) { /* ignore logging errors */ }
     },
     
@@ -212,7 +212,7 @@ const ENABLE_DELEGATE_L1L2 = true; // handle 1↔2 in js/map/transitions.l1l2.js
             try {
               if (this._transitionContext) {
                 const endInfo = Object.assign({}, this._transitionContext, { doneTs: Date.now() });
-                console.debug('[MapTransitions] level transition end', endInfo);
+                if (window.DEBUG_AFFINE) console.debug('[MapTransitions] level transition end', endInfo);
               }
             } catch (_) {}
             const waiters = this._onTransitionDone.splice(0, this._onTransitionDone.length);
@@ -557,8 +557,8 @@ try {
         fromIdentity: ((Math.abs(angNow) < 1e-3) && (Math.abs((sFrom) - 1) < 1e-3) && (Math.abs(pan.x - d.x) < 1) && (Math.abs(pan.y - d.y) < 1))
       }
     };
-    console.debug('[AffineStartSummary]', __affStart);
-    try { console.debug('[AffineStartSummaryJSON] ' + JSON.stringify(__affStart)); } catch (_) {}
+    if (window.DEBUG_AFFINE) console.debug('[AffineStartSummary]', __affStart);
+    try { if (window.DEBUG_AFFINE) console.debug('[AffineStartSummaryJSON] ' + JSON.stringify(__affStart)); } catch (_) {}
     this._affineLoggedStart = true;
   }
   if (!this._affineLoggedEnd && eMotion > 0.999) {
@@ -587,8 +587,8 @@ try {
         toIdentity: ((Math.abs(preRotTo + angNow) < 1e-3) && (Math.abs((sTo) - 1) < 1e-3) && (Math.abs(pan.x) < 1) && (Math.abs(pan.y) < 1))
       }
     };
-    console.debug('[AffineEndSummary]', __affEnd);
-    try { console.debug('[AffineEndSummaryJSON] ' + JSON.stringify(__affEnd)); } catch (_) {}
+    if (window.DEBUG_AFFINE) console.debug('[AffineEndSummary]', __affEnd);
+    try { if (window.DEBUG_AFFINE) console.debug('[AffineEndSummaryJSON] ' + JSON.stringify(__affEnd)); } catch (_) {}
     this._affineLoggedEnd = true;
   }
 } catch (_) {}
@@ -686,8 +686,8 @@ try {
             rotation: { from: Number.isFinite(ang0) ? ang0.toFixed(4) : ang0, to: Number.isFinite(preRotTo + ang0) ? (preRotTo + ang0).toFixed(4) : (preRotTo + ang0) },
             pan: { x: Math.round(panStart.x), y: Math.round(panStart.y) }
           };
-          console.debug('[AffineOverlayStart]', __aos);
-          try { console.debug('[AffineOverlayStartJSON] ' + JSON.stringify(__aos)); } catch (_) {}
+          if (window.DEBUG_AFFINE) console.debug('[AffineOverlayStart]', __aos);
+          try { if (window.DEBUG_AFFINE) console.debug('[AffineOverlayStartJSON] ' + JSON.stringify(__aos)); } catch (_) {}
           this._affineOverlayLoggedStart = true;
         }
         if (!this._affineOverlayLoggedEnd && eMotion > 0.999) {
@@ -700,8 +700,8 @@ try {
             rotation: { from: Number.isFinite(ang1) ? ang1.toFixed(4) : ang1, to: Number.isFinite(preRotTo + ang1) ? (preRotTo + ang1).toFixed(4) : (preRotTo + ang1) },
             pan: { x: Math.round(panEnd.x), y: Math.round(panEnd.y) }
           };
-          console.debug('[AffineOverlayEnd]', __aoe);
-          try { console.debug('[AffineOverlayEndJSON] ' + JSON.stringify(__aoe)); } catch (_) {}
+          if (window.DEBUG_AFFINE) console.debug('[AffineOverlayEnd]', __aoe);
+          try { if (window.DEBUG_AFFINE) console.debug('[AffineOverlayEndJSON] ' + JSON.stringify(__aoe)); } catch (_) {}
           this._affineOverlayLoggedEnd = true;
         }
       } catch (_) {}
@@ -897,7 +897,7 @@ try {
                         groupWorld: packPt(groupWStart0)
                       }
                     };
-                    try { console.debug('[AffineOneItemStartJSON] ' + JSON.stringify(oneStart)); } catch (_) {}
+                    try { if (window.DEBUG_AFFINE) console.debug('[AffineOneItemStartJSON] ' + JSON.stringify(oneStart)); } catch (_) {}
                   }
                   if (!this._affineOverlayLoggedEnd && eMotion > 0.999) {
                     const oneEnd = {
@@ -923,7 +923,7 @@ try {
                         groupWorld: packPt(groupWEnd0)
                       }
                     };
-                    try { console.debug('[AffineOneItemEndJSON] ' + JSON.stringify(oneEnd)); } catch (_) {}
+                    try { if (window.DEBUG_AFFINE) console.debug('[AffineOneItemEndJSON] ' + JSON.stringify(oneEnd)); } catch (_) {}
                   }
                 }
               } catch (_) {}
@@ -938,8 +938,8 @@ try {
                   rotation: { from: Number.isFinite(ang0) ? ang0.toFixed(4) : ang0, to: Number.isFinite(preRotTo + ang0) ? (preRotTo + ang0).toFixed(4) : (preRotTo + ang0) },
                   pan: { x: Math.round(panStartLog.x), y: Math.round(panStartLog.y) }
                 };
-                console.debug('[AffineOverlayStart]', __ros);
-                try { console.debug('[AffineOverlayStartJSON] ' + JSON.stringify(__ros)); } catch (_) {}
+                if (window.DEBUG_AFFINE) console.debug('[AffineOverlayStart]', __ros);
+                try { if (window.DEBUG_AFFINE) console.debug('[AffineOverlayStartJSON] ' + JSON.stringify(__ros)); } catch (_) {}
                 this._affineOverlayLoggedStart = true;
               }
               if (!this._affineOverlayLoggedEnd && eMotion > 0.999) {
@@ -952,8 +952,8 @@ try {
                   rotation: { from: Number.isFinite(ang1) ? ang1.toFixed(4) : ang1, to: Number.isFinite(preRotTo + ang1) ? (preRotTo + ang1).toFixed(4) : (preRotTo + ang1) },
                   pan: { x: Math.round(panEndLog.x), y: Math.round(panEndLog.y) }
                 };
-                console.debug('[AffineOverlayEnd]', __roe);
-                try { console.debug('[AffineOverlayEndJSON] ' + JSON.stringify(__roe)); } catch (_) {}
+                if (window.DEBUG_AFFINE) console.debug('[AffineOverlayEnd]', __roe);
+                try { if (window.DEBUG_AFFINE) console.debug('[AffineOverlayEndJSON] ' + JSON.stringify(__roe)); } catch (_) {}
                 this._affineOverlayLoggedEnd = true;
               }
             } catch (_) {}
@@ -1097,7 +1097,7 @@ try {
           // Log first and last frames for diagnostics
           if (t === 0 || t === 1) {
             try {
-              console.debug('[MapTransitions] morph pairs', { step: (t===0?'start':'end'), pairs: pairs.map(p => ({ fx: Math.round(p.fx), fy: Math.round(p.fy), tx: Math.round(p.tx), ty: Math.round(p.ty), fr: p.fr, tr: p.tr }))});
+              if (window.DEBUG_AFFINE) console.debug('[MapTransitions] morph pairs', { step: (t===0?'start':'end'), pairs: pairs.map(p => ({ fx: Math.round(p.fx), fy: Math.round(p.fy), tx: Math.round(p.tx), ty: Math.round(p.ty), fr: p.fr, tr: p.tr }))});
             } catch (_) {}
           }
           
@@ -1129,7 +1129,7 @@ try {
 
             const ratio = d0 / Math.max(1e-3, d1);
             sStart = ratio * (this._scaleBoost || 1.0);
-            try { console.debug('[MapTransitions] computed exact scaleStart clusterMorph', { pair, miniIdx, d0: d0.toFixed(2), d1: d1.toFixed(2), ratio: ratio.toFixed(2), boost: (this._scaleBoost||1), sStart }); } catch (_) {}
+            try { if (window.DEBUG_AFFINE) console.debug('[MapTransitions] computed exact scaleStart clusterMorph', { pair, miniIdx, d0: d0.toFixed(2), d1: d1.toFixed(2), ratio: ratio.toFixed(2), boost: (this._scaleBoost||1), sStart }); } catch (_) {}
           } catch (_) {}
           const cx = this._renderer._w * 0.5, cy = this._renderer._h * 0.5;
           
@@ -1154,7 +1154,7 @@ try {
               ctx.translate(gNodeBG.x, gNodeBG.y); ctx.scale(s, s); ctx.translate(-gNodeBG.x, -gNodeBG.y);
               // Draw walls first
               const rcWalls = drawL1WallsFromNodes.call(this, ctx, snapTo.nodes, e);
-              try { if (e < 0.02 || Math.abs(e-0.25)<0.01 || Math.abs(e-0.5)<0.01 || Math.abs(e-0.75)<0.01 || e>0.98) console.debug('[MapTransitions] L0->L1 walls bbox@e', e.toFixed(2), rcWalls); } catch(_){}
+              try { if (e < 0.02 || Math.abs(e-0.25)<0.01 || Math.abs(e-0.5)<0.01 || Math.abs(e-0.75)<0.01 || e>0.98) if (window.DEBUG_AFFINE) console.debug('[MapTransitions] L0->L1 walls bbox@e', e.toFixed(2), rcWalls); } catch(_){}
               // Draw other groups (exclude the active group node) as full groups (post + four dots) with labels
               ctx.globalAlpha = e;
               for (const n of snapTo.nodes) {
@@ -1211,7 +1211,7 @@ try {
               ctx.translate(gNodeBG.x, gNodeBG.y); ctx.scale(s, s); ctx.translate(-gNodeBG.x, -gNodeBG.y);
               // Draw walls fading out
               const rcWalls2 = drawL1WallsFromNodes.call(this, ctx, this._explicitFromSnapshot.nodes, 1 - e);
-              try { if (e < 0.02 || Math.abs(e-0.25)<0.01 || Math.abs(e-0.5)<0.01 || Math.abs(e-0.75)<0.01 || e>0.98) console.debug('[MapTransitions] L1->L0 walls bbox@e', e.toFixed(2), rcWalls2); } catch(_){}
+              try { if (e < 0.02 || Math.abs(e-0.25)<0.01 || Math.abs(e-0.5)<0.01 || Math.abs(e-0.75)<0.01 || e>0.98) if (window.DEBUG_AFFINE) console.debug('[MapTransitions] L1->L0 walls bbox@e', e.toFixed(2), rcWalls2); } catch(_){}
               // Draw other groups fading out (exclude the active group node) as full groups; labels only if visited
               ctx.globalAlpha = 1 - e;
               for (const n of this._explicitFromSnapshot.nodes) {
@@ -1392,7 +1392,7 @@ try {
             const stage = (e < 0.02) ? '0%' : (e < 0.27 ? '25%' : (e < 0.52 ? '50%' : (e < 0.77 ? '75%' : (e > 0.98 ? '100%' : ''))));
             if (stage && stage !== this._lastMorphLogStage) {
               const sNow = (fromL === 0 && toL === 1) ? lerp(sStart, 1, e) : lerp(1, sStart, e);
-              console.debug('[MapTransitions] morph stage', stage, {
+              if (window.DEBUG_AFFINE) console.debug('[MapTransitions] morph stage', stage, {
                 fromL, toL,
                 pivot: gNodeBG ? { x: Math.round(gNodeBG.x), y: Math.round(gNodeBG.y) } : null,
                 sStart: Number.isFinite(sStart) ? sStart.toFixed(2) : sStart,
@@ -1665,7 +1665,7 @@ try {
                     const bucket = Math.min(9, Math.floor(eMotion * 10));
                     if (bucket !== this._lastMorphBucket) {
                       this._lastMorphBucket = bucket;
-                      console.debug('[L1->L2 pos]', { bucket, circle: { x: Math.round(mx), y: Math.round(my) }, label: { x: Math.round(lx), y: Math.round(ly) } });
+                      if (window.DEBUG_AFFINE) console.debug('[L1->L2 pos]', { bucket, circle: { x: Math.round(mx), y: Math.round(my) }, label: { x: Math.round(lx), y: Math.round(ly) } });
                     }
                   } catch (_) {}
                 }
@@ -1808,7 +1808,7 @@ try {
                     const bucket = Math.min(9, Math.floor(eMotion * 10));
                     if (bucket !== this._lastMorphBucket) {
                       this._lastMorphBucket = bucket;
-                      console.debug('[L2->L1 pos]', { bucket, circle: { x: Math.round(mx), y: Math.round(my) }, label: { x: Math.round(lx), y: Math.round(ly) } });
+                      if (window.DEBUG_AFFINE) console.debug('[L2->L1 pos]', { bucket, circle: { x: Math.round(mx), y: Math.round(my) }, label: { x: Math.round(lx), y: Math.round(ly) } });
                     }
                   } catch (_) {}
                 }
@@ -1826,7 +1826,7 @@ try {
           try {
             if (this._transitionContext) {
               const endInfo = Object.assign({}, this._transitionContext, { doneTs: Date.now() });
-              console.debug('[MapTransitions] level transition end', endInfo);
+              if (window.DEBUG_AFFINE) console.debug('[MapTransitions] level transition end', endInfo);
             }
           } catch (_) {}
           const waiters = this._onTransitionDone.splice(0, this._onTransitionDone.length);
@@ -1865,7 +1865,7 @@ try {
           reverse: (typeof reverse === 'boolean' ? !!reverse : (fromLevel > toLevel)),
         };
         this._pendingTransitionHold = true;
-        console.debug('[MapTransitions] prepared level transition', { fromLevel, toLevel, fromIdx: this._preparedTransition.fromIdx, toIdx: this._preparedTransition.toIdx, reverse: this._preparedTransition.reverse, centroidFrom: centroidOf(snap.nodes) });
+        if (window.DEBUG_AFFINE) console.debug('[MapTransitions] prepared level transition', { fromLevel, toLevel, fromIdx: this._preparedTransition.fromIdx, toIdx: this._preparedTransition.toIdx, reverse: this._preparedTransition.reverse, centroidFrom: centroidOf(snap.nodes) });
       } catch (e) {
         try { console.warn('[MapTransitions] prepareLevelTransition failed', e); } catch (_) {}
         this._preparedTransition = null;
@@ -1944,7 +1944,7 @@ window.__dumpTransitionBaselines = async function __dumpTransitionBaselines() {
     window.__FORCE_DELEGATE_L0L1 = prevForceL0L1;
     window.__FORCE_DELEGATE_L1L2 = prevForceL1L2;
 
-    console.debug('[Baselines] Completed 0→1, 1→0, 1→2, 2→1 (see Affine*JSON logs above)');
+    if (window.DEBUG_AFFINE) console.debug('[Baselines] Completed 0→1, 1→0, 1→2, 2→1 (see Affine*JSON logs above)');
   } catch (e) {
     console.warn('[Baselines] dump failed', e);
   }
