@@ -1,5 +1,17 @@
 (function () {
   'use strict';
+  /*
+   * Developer notes (adjacency modules):
+   * - Purpose: host only pair-specific logic for this adjacency (0↔1). Keep shared math/diagnostics in TransitionsCommon.
+   * - Entry point: drawMorphTransition(ctx, env)
+   *   - Read forward (lo→hi) spec from levelData[hi].transitionSpecs['lo->hi'].affine
+   *   - Derive reverse via runtime direction (fromLevel > toLevel)
+   *   - Use TransitionsCommon helpers:
+   *       worldPos(), panFromStrategy(), resolveAnchor(), computeHideSets(),
+   *       drawSnapshotAff(), computePairToMiniRatio()/computeDoorGapRatio()
+   * - No level-number checks in TransitionsCommon; keep adjacency quirks local to this module.
+   * - Keep console.debug diagnostics lightweight; optionally gate with window.DEBUG_AFFINE when needed.
+   */
   // Transitions for adjacency 0 <-> 1 (ring <-> group minis)
   // Implementation mirrors the affine path in map.transitions.js for 0↔1 only, using TransitionsCommon helpers.
   // Not yet wired by the router; safe to load for incremental refactor.
@@ -61,6 +73,15 @@
 
         // Compute pairToMini ratio
         function computePairToMiniRatio() {
+          // Prefer shared helper when available to centralize behavior and keep parity
+          if (window.TransitionsCommon && typeof window.TransitionsCommon.computePairToMiniRatio === 'function') {
+            const pair = (aff.scale && Array.isArray(aff.scale.pair)) ? aff.scale.pair : [0, 2];
+            const miniIdx = (aff.scale && typeof aff.scale.miniIdx === 'number') ? aff.scale.miniIdx : 2;
+            return window.TransitionsCommon.computePairToMiniRatio({
+              snapFrom, snapTo, fromL, toL, fromIdx, toIdx, pair, miniIdx
+            });
+          }
+          // Fallback local calc (legacy parity):
           // d0 from two L0 nodes; d1 from L1 group to selected mini circle
           const snapL0 = (snapFrom.level === 0) ? snapFrom : (snapTo.level === 0 ? snapTo : null);
           const pair = (aff.scale && Array.isArray(aff.scale.pair)) ? aff.scale.pair : [0, 2];
@@ -351,6 +372,7 @@
               try { console.debug('[AffineOverlayEndJSON] ' + JSON.stringify(__roe)); } catch (_) {}
               env._affineOverlayLoggedEnd = true;
             }
+          } catch (_) {}
             try {
               const p0 = pairs[0];
               if (p0) {
@@ -414,9 +436,8 @@
                 }
               }
             } catch (_) {}
-
-          ctx.save();
-          ctx.fillStyle = window.FILL || '#000'; ctx.strokeStyle = window.STROKE || '#000'; ctx.lineWidth = 2;
+            ctx.save();
+ctx.strokeStyle = window.STROKE || '#000'; ctx.lineWidth = 2;
           for (const p of pairs) {
             const fxw = window.TransitionsCommon.worldPos({ x: p.fx, y: p.fy }, sFrom, 0, anchorFrom, angNow, pan, pivot);
             const txw = window.TransitionsCommon.worldPos({ x: p.tx, y: p.ty }, sTo,   preRotTo, anchorTo,   angNow, pan, pivot);
@@ -425,7 +446,6 @@
             const r = (typeof window.lerp === 'function') ? window.lerp(p.fr, p.tr, eMotion) : (p.fr + (p.tr - p.fr) * eMotion);
             ctx.beginPath();
             ctx.arc(x, y, r, 0, Math.PI * 2);
-            ctx.fill();
             ctx.stroke();
           }
           ctx.restore();
