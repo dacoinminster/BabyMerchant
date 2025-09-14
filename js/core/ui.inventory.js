@@ -246,7 +246,7 @@ function renderInventory() {
           invHTML += '</button></td></tr><tr>';
         }
         invHTML += '<td style="text-align:right; color:red;">';
-        invHTML += 'You have ' + freeSpace2 + '</td><td style="color:red;">';
+        invHTML += 'You have ' + (-freeSpace2) + '</td><td style="color:red;">';
         invHTML += 'too many items';
       } else {
         invHTML += '<td style="text-align:right">';
@@ -287,7 +287,7 @@ function renderInventory() {
           invHTML += '</button></td></tr><tr>';
         }
         invHTML += '<td style="text-align:right; color:red;">';
-        invHTML += 'You have ' + freeSpace2 + '</td><td style="color:red;">';
+        invHTML += 'You have ' + (-freeSpace2) + '</td><td style="color:red;">';
         invHTML += 'too many items';
       } else {
         invHTML += '<td style="text-align:right">';
