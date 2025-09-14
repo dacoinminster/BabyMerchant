@@ -65,19 +65,10 @@
       if (desc.type === 'doorCenterForNode') {
         const i = (desc.which === 'fixed') ? (desc.index || 0) : TransitionsCommon.resolveIndex(desc.which, snap, fromL, toL, fromIdx, toIdx);
         const n = (snap.nodes.find(nn => nn.i === i) || snap.nodes[0] || { x: w * 0.5, y: h * 0.5 });
-        // Level 1: doorway rectangle center
+        // Delegate adjacency-specific semantics via hook to avoid level checks in common.
         try {
-          if (snap.level === 1 && i === 0 && window.MapHitTest && MapHitTest.computeL1DoorwayRect) {
-            const rc = MapHitTest.computeL1DoorwayRect(snap.nodes, { w, h });
-            if (rc) return { x: rc.x + rc.w * 0.5, y: rc.y + rc.h * 0.5 };
-          }
-        } catch (_) {}
-        // Level 2: hallway wall center at node.y
-        try {
-          const meta2 = snap.layoutMeta && snap.layoutMeta.level2;
-          if (meta2) {
-            const wallX = (n.x < meta2.centerX) ? meta2.xLeft : meta2.xRight;
-            return { x: wallX, y: n.y };
+          if (window.TransitionsCommonHooks && typeof window.TransitionsCommonHooks.doorCenterForNode === 'function') {
+            return window.TransitionsCommonHooks.doorCenterForNode(snap, { w, h }, i, n);
           }
         } catch (_) {}
         return { x: n.x, y: n.y };
@@ -153,37 +144,50 @@
 
     // Scale ratio helpers (pair-agnostic utilities used by adjacency modules)
 
-    // Compute ratio between two L0 ring nodes distance and L1 group-to-mini distance
-    // opts: { snapFrom, snapTo, fromL, toL, fromIdx, toIdx, pair:[i0,i1], miniIdx:number }
+    // Compute ratio between ring-scene node pair distance and group-scene post→mini distance (pair-agnostic).
+    // opts: {
+    //   snapFrom, snapTo,
+    //   fromL, toL, fromIdx, toIdx,
+    //   pair:[i0,i1], miniIdx:number,
+    //   ringSceneRole?: 'low' | 'high'  // defaults to 'low'
+    // }
     computePairToMiniRatio(opts) {
       try {
         const o = opts || {};
         const snapFrom = o.snapFrom, snapTo = o.snapTo;
-        const fromIdx = (typeof o.fromIdx === 'number') ? o.fromIdx : 0;
-        const toIdx = (typeof o.toIdx === 'number') ? o.toIdx : 0;
         const pair = Array.isArray(o.pair) ? o.pair : [0, 2];
         const miniIdx = (typeof o.miniIdx === 'number') ? o.miniIdx : 2;
+        const fromIdx = (typeof o.fromIdx === 'number') ? o.fromIdx : 0;
+        const toIdx = (typeof o.toIdx === 'number') ? o.toIdx : 0;
+        const lf = (snapFrom && typeof snapFrom.level === 'number') ? snapFrom.level : (typeof o.fromL === 'number' ? o.fromL : NaN);
+        const lt = (snapTo && typeof snapTo.level === 'number') ? snapTo.level : (typeof o.toL === 'number' ? o.toL : NaN);
+        const lo = (Number.isFinite(lf) && Number.isFinite(lt)) ? Math.min(lf, lt) : (Number.isFinite(lf) ? lf : (Number.isFinite(lt) ? lt : 0));
+        const hi = (Number.isFinite(lf) && Number.isFinite(lt)) ? Math.max(lf, lt) : lo;
+        const snapLow  = (snapFrom && snapFrom.level === lo) ? snapFrom : ((snapTo && snapTo.level === lo) ? snapTo : null);
+        const snapHigh = (snapFrom && snapFrom.level === hi) ? snapFrom : ((snapTo && snapTo.level === hi) ? snapTo : null);
+        const ringRole = (o.ringSceneRole === 'high') ? 'high' : 'low';
+        const ringSnap  = (ringRole === 'high') ? snapHigh : snapLow;
+        const groupSnap = (ringRole === 'high') ? snapLow  : snapHigh;
 
-        // L0: ring side
-        const snapL0 = (snapFrom && snapFrom.level === 0) ? snapFrom : ((snapTo && snapTo.level === 0) ? snapTo : null);
+        // Distance on ring scene between two indices in 'pair'
         let d0 = 1;
-        if (snapL0 && Array.isArray(snapL0.nodes)) {
-          const a = snapL0.nodes.find(n => n.i === pair[0]);
-          const b = snapL0.nodes.find(n => n.i === pair[1]);
+        if (ringSnap && Array.isArray(ringSnap.nodes)) {
+          const a = ringSnap.nodes.find(n => n.i === pair[0]);
+          const b = ringSnap.nodes.find(n => n.i === pair[1]);
           d0 = (a && b) ? Math.hypot(b.x - a.x, b.y - a.y) : d0;
         }
 
-        // L1: group side
-        const snapL1 = (snapFrom && snapFrom.level === 1) ? snapFrom : ((snapTo && snapTo.level === 1) ? snapTo : null);
+        // Distance on group scene from post to one of its minis
         let d1 = 1;
-        if (snapL1 && Array.isArray(snapL1.nodes)) {
-          const gIndex = (snapTo && snapTo.level === 1) ? toIdx : ((snapFrom && snapFrom.level === 1) ? fromIdx : 1);
-          const gNode = snapL1.nodes.find(n => n.i === gIndex) || snapL1.nodes[1] || snapL1.nodes[0];
+        if (groupSnap && Array.isArray(groupSnap.nodes)) {
+          const gIndex = (groupSnap === snapTo) ? (Number.isFinite(toIdx) ? toIdx : 1)
+                                               : (Number.isFinite(fromIdx) ? fromIdx : 1);
+          const gNode = groupSnap.nodes.find(n => n.i === gIndex) || groupSnap.nodes[1] || groupSnap.nodes[0];
           let minis = null;
           if (typeof window.computeGroupCirclePositions === 'function') {
             minis = window.computeGroupCirclePositions(gNode);
           } else {
-            // Fallback generator using spec-like defaults
+            // Fallback generator using spec-like defaults (kept for parity)
             const specMini = (typeof window.getLevel1MiniSpec === 'function') ? window.getLevel1MiniSpec()
               : { rdot: 4.6, gap: 14, belowOffset: 12, offsetMultipliers: [-1.5, -0.5, 0.5, 1.5], outerLift: 0.5 };
             const rdot = specMini.rdot || 4.6;
@@ -207,7 +211,7 @@
       }
     },
 
-    // Compute ratio between L1 doorway width and L2 door gap width
+    // Compute ratio between "low" scene doorway width and "high" scene door gap width (used by 1↔2)
     // opts: { snapFrom, snapTo, w, h, doorGapHalf }
     computeDoorGapRatio(opts) {
       try {
@@ -219,13 +223,18 @@
           ? o.doorGapHalf
           : ((window.MapHitTest && typeof MapHitTest.getL2DoorGapHalf === 'function') ? MapHitTest.getL2DoorGapHalf() : 10);
 
-        // L1 doorway rect width
-        const snapL1 = (snapFrom && snapFrom.level === 1) ? snapFrom : ((snapTo && snapTo.level === 1) ? snapTo : null);
+        // Determine low/high without level-number conditionals
+        const lf = (snapFrom && typeof snapFrom.level === 'number') ? snapFrom.level : NaN;
+        const lt = (snapTo && typeof snapTo.level === 'number') ? snapTo.level : NaN;
+        const lo = (Number.isFinite(lf) && Number.isFinite(lt)) ? Math.min(lf, lt) : (Number.isFinite(lf) ? lf : (Number.isFinite(lt) ? lt : 0));
+        const snapLow = (snapFrom && snapFrom.level === lo) ? snapFrom : ((snapTo && snapTo.level === lo) ? snapTo : null);
+
+        // Width of the doorway in the "low" scene
         let w1 = 50;
         try {
-          if (snapL1 && window.MapHitTest && typeof MapHitTest.computeL1DoorwayRect === 'function') {
-            const rc1 = MapHitTest.computeL1DoorwayRect(snapL1.nodes, { w, h });
-            w1 = rc1 ? Math.max(1, (rc1.w - 16)) : w1; // parity with legacy subtract margin
+          if (snapLow && window.MapHitTest && typeof MapHitTest.computeL1DoorwayRect === 'function') {
+            const rc1 = MapHitTest.computeL1DoorwayRect(snapLow.nodes, { w, h });
+            w1 = rc1 ? Math.max(1, (rc1.w - 16)) : w1; // preserve legacy margin subtraction
           }
         } catch (_) {}
 

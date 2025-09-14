@@ -1020,7 +1020,7 @@ try {
   
           // Unified path handled; specialized paths below remain as fallback
         // Legacy fallback: clusterMorph (gated by ENABLE_LEGACY_FALLBACKS)
-        } else if (ENABLE_LEGACY_FALLBACKS && pairSpec && pairSpec.transitionType === 'clusterMorph') {
+        } else if (false /* legacy clusterMorph removed */) {
           const snapFrom = this._explicitFromSnapshot; // {nodes}
           const snapTo = computeSnapshotForLevel(toL, this._renderer._w, this._renderer._h);
           
@@ -1411,7 +1411,7 @@ try {
         
         // Custom rotation + pan + fade (data-driven by transitionType)
         // Legacy fallback: rotatePanDoorway (gated by ENABLE_LEGACY_FALLBACKS)
-        if (ENABLE_LEGACY_FALLBACKS && !hasAffine && pairSpec && pairSpec.transitionType === 'rotatePanDoorway') {
+        if (false /* legacy rotatePanDoorway removed */) {
           const w = this._renderer._w, h = this._renderer._h;
           const snapFrom = this._explicitFromSnapshot; // current source snapshot
           const snapTo = computeSnapshotForLevel(toL, w, h);

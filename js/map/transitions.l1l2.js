@@ -1,11 +1,49 @@
 (function () {
   'use strict';
   // Transitions for adjacency 1 <-> 2 (room <-> hallway)
-  // Implements the affine morph path using TransitionsCommon helpers.
-  // Router delegation remains behind ENABLE_DELEGATE_L1L2 (false by default).
+  // Developer notes (adjacency modules):
+  // - Purpose: keep only 1↔2-specific logic here; share math/diagnostics in TransitionsCommon.
+  // - Entry: L1L2.drawMorphTransition(ctx, env). Read forward lo→hi spec (1->2), reverse at runtime.
+  // - Anchors: use { type: 'doorCenterForNode' } with forward semantics; hook below resolves centers.
+  // - What belongs where:
+  //   * transitionsCommon.js: worldPos, panFromStrategy, resolveAnchor (via hook), hide sets, ratios, draws.
+  //   * this file: side-angle rotation semantics, mapping.singleDoor quirks, and door-center hook.
+  // - Adding a new adjacency file transitions.lNlNplus1.js:
+  //   * Create a module exposing window.MapTransitionsL{N}{N+1}.drawMorphTransition()
+  //   * Implement pair rules using TransitionsCommon helpers; avoid level-number checks in common.
+  //   * If needed, install a TransitionsCommonHooks.* function here for adjacency-specific anchor logic.
+  // Router delegation behind ENABLE_DELEGATE_L1L2 (currently true).
 
   function clamp01(x){ return Math.max(0, Math.min(1, x)); }
-
+  
+  // Hook: door center resolution for 1↔2 (pair-specific; avoids level-number checks in common)
+  (function initHooks(){
+    try {
+      if (!window.TransitionsCommonHooks) window.TransitionsCommonHooks = {};
+      if (typeof window.TransitionsCommonHooks.doorCenterForNode !== 'function') {
+        window.TransitionsCommonHooks.doorCenterForNode = function(snap, dims, i, n) {
+          // L1 doorway center from computed doorway rect
+          try {
+            if (snap && snap.level === 1 && window.MapHitTest && typeof MapHitTest.computeL1DoorwayRect === 'function') {
+              const rc = MapHitTest.computeL1DoorwayRect(snap.nodes, dims);
+              if (rc) return { x: rc.x + rc.w * 0.5, y: rc.y + rc.h * 0.5 };
+            }
+          } catch (_) {}
+          // L2 wall center at selected door's y
+          try {
+            if (snap && snap.level === 2 && snap.layoutMeta && snap.layoutMeta.level2) {
+              const meta2 = snap.layoutMeta.level2;
+              const wallX = (n.x < meta2.centerX) ? meta2.xLeft : meta2.xRight;
+              return { x: wallX, y: n.y };
+            }
+          } catch (_) {}
+          // Fallback to node position
+          return { x: n.x, y: n.y };
+        };
+      }
+    } catch (_) {}
+  })();
+  
   const L1L2 = {
     // Draw the 1↔2 affine morph. Returns true if handled, false if not applicable.
     // env is expected to be MapTransitions (router facade) for access to runtime state.
