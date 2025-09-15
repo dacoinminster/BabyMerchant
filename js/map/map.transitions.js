@@ -78,6 +78,13 @@ const ENABLE_DELEGATE_L1L2 = true; // handle 1↔2 in js/map/transitions.l1l2.js
       } else {
         this._transitionDurationMs = TRANSITION_DEFAULT_MS;
       }
+      // Global override for transition duration via config flags (SLOW_TRANSITIONS); defaults to normal when config.js missing
+      try {
+        const useSlow = !!(window && window.SLOW_TRANSITIONS);
+        const slowMs = (typeof window !== 'undefined' && typeof window.TRANSITION_SLOW_MS === 'number') ? window.TRANSITION_SLOW_MS : 12000;
+        const normalMs = (typeof window !== 'undefined' && typeof window.TRANSITION_NORMAL_MS === 'number') ? window.TRANSITION_NORMAL_MS : 2000;
+        this._transitionDurationMs = useSlow ? slowMs : normalMs;
+      } catch (_) {}
 
       // Pre-select adjacency module (no delegation yet; for future router)
       try {

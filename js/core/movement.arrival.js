@@ -67,8 +67,23 @@ function handleArrivalLogic() {
         levelData[currLevel].discoveryMsg3;
 
       if (!pickingEnabled) {
-        pickButton.style.visibility = 'visible';
+        // Promote game state first; avoid dependency on DOM existence
         pickingEnabled = true;
+
+        // Update movement UI pick button if present; guard against missing element
+        try {
+          if (pickButton) {
+            pickButton.style.visibility = 'visible';
+            var _cooldownActive = (typeof pickCooldownUntil === 'number') && (Date.now() < pickCooldownUntil);
+            // Allow picking during transit; only gate by cooldown
+            pickButton.disabled = _cooldownActive;
+          }
+          // If we're still in movement mode, ensure the button reflects the new enabled state
+          if (typeof updatePickButtonVisibility === 'function' && uiMode === 'movement') {
+            updatePickButtonVisibility();
+          }
+        } catch (_) {}
+
         locationMessage +=
           ' You notice ' +
           locationName[currLevel][locIndex] +

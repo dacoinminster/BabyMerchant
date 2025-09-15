@@ -19,7 +19,7 @@ var waitingTitleImage = [];
 var currLevel = 0;
 var locIndex = 0;
 var nextLocIndex = 1;
-var transitMoves = 4;
+var transitMoves = 0; // movement step countdown; 0 means idle (not in transit)
 var pickingEnabled = false;
 var tradingEnabled = false;
 var storeVisible = false;
@@ -41,6 +41,8 @@ var showingGossipColors = false;
 var gossipLocation = 0;
 var uiMode = 'movement';
 var isLevelTransitioning = false; // block inputs during level transition animation
+// Cooldown timestamp for pick-nose action (prevents rapid re-clicks across UI refresh/animations)
+var pickCooldownUntil = 0;
 // End variables to save between sessions
 const varsToSave = [
   'gameVersion',
@@ -160,7 +162,8 @@ function loadGameStateFromPrefix(prefix) {
         } else {
           pkBtn.style.display = 'block';
           pkBtn.style.visibility = pickingEnabled ? 'visible' : 'hidden';
-          pkBtn.disabled = !pickingEnabled;
+          var cooldownActive0 = (typeof pickCooldownUntil === 'number') && (Date.now() < pickCooldownUntil);
+          pkBtn.disabled = (!pickingEnabled) || cooldownActive0;
         }
       }
     }
@@ -293,7 +296,9 @@ function loadGameState() {
       } else {
         pkBtn.style.display = 'block';
         pkBtn.style.visibility = pickingEnabled ? 'visible' : 'hidden';
-        pkBtn.disabled = !pickingEnabled;
+        var nowLG = Date.now();
+        var cooldownActive1 = (typeof pickCooldownUntil === 'number') && (nowLG < pickCooldownUntil);
+        pkBtn.disabled = (!pickingEnabled) || cooldownActive1;
       }
     }
   }
@@ -410,6 +415,16 @@ function setupLocationRadioButtons() {
 /* moved to messages.js: negativeExclamation() */
 
 function doButtonAction(actionName) {
+  // Guard against rapid re-clicks; allow during transit
+  if (actionName === 'pick') {
+    try {
+      var now = Date.now();
+      var cooldownActive = (typeof pickCooldownUntil === 'number') && (now < pickCooldownUntil);
+      if (cooldownActive) {
+        return; // ignore clicks during cooldown
+      }
+    } catch (_) {}
+  }
   buttonAction = actionName;
 }
 
@@ -671,7 +686,10 @@ function buyUpgrade(upgradeType, upgradeAmount, cost) {
             if (dt2) { dt2.style.visibility = 'visible'; dt2.disabled = false; }
             if (currLevel === 0 && pickingEnabled) {
               var pk2 = document.getElementById('buttonIDpick');
-              if (pk2) { pk2.style.visibility = 'visible'; pk2.disabled = false; }
+              if (pk2) {
+                pk2.style.visibility = 'visible';
+                pk2.disabled = ((typeof pickCooldownUntil === 'number') && (Date.now() < pickCooldownUntil));
+              }
             }
             var lu2 = document.getElementById('buttonIDlevelUp');
             if (lu2) { lu2.style.visibility = 'visible'; lu2.disabled = false; }
@@ -737,7 +755,8 @@ function updatePickButtonVisibility() {
   if (currLevel === 0) {
     pkBtn.style.display = 'block';
     pkBtn.style.visibility = pickingEnabled ? 'visible' : 'hidden';
-    pkBtn.disabled = !pickingEnabled;
+    var cooldownActive = (typeof pickCooldownUntil === 'number') && (Date.now() < pickCooldownUntil);
+    pkBtn.disabled = (!pickingEnabled) || cooldownActive;
   } else {
     pkBtn.style.display = 'none';
   }
@@ -795,9 +814,9 @@ function enterTradingMode() {
   if (dt) { dt.style.visibility = 'visible'; dt.disabled = false; }
   if (currLevel == 0 && pickingEnabled) {
     var pk = document.getElementById('buttonIDpick');
-    if (pk) { pk.style.visibility = 'visible'; pk.disabled = false; }
+    if (pk) { pk.style.visibility = 'visible'; pk.disabled = ((typeof pickCooldownUntil === 'number') && (Date.now() < pickCooldownUntil)); }
   }
-
+ 
   // Force inventory panel to refresh immediately for trading view
   inventoryChanged = true;
 }
@@ -1048,12 +1067,19 @@ function goBaby() {
           }
           break;
         case 'pick':
+          // Respect cooldown (allow during intra-level transit)
+          if ((typeof pickCooldownUntil === 'number' && Date.now() < pickCooldownUntil)) {
+            // Ignore clicks during cooldown
+            break;
+          }
           if (locIndex == 0 && transitMoves == 0) {
             typeText(locationName[currLevel][locIndex] + ' glares at you, and you decide to wait.');
           } else if (freeSpace == 0 && transitMoves > 0) {
             typeText('You would be overencumbered!');
           } else {
-            pickButton.disabled = true;
+            // Begin cooldown immediately
+            pickCooldownUntil = Date.now() + (40 * PAUSE_MULT);
+            if (pickButton) pickButton.disabled = true;
             var pickResult = Math.random();
             if (pickResult < 0.9) {
               inv[0]++;
@@ -1073,11 +1099,16 @@ function goBaby() {
                 'bloodybooger.jpeg'
               );
             }
+            // Keep UI in sync with cooldown immediately
+            try {
+              if (uiMode === 'movement') {
+                updatePickButtonVisibility();
+              } else {
+                var pkTmp = document.getElementById('buttonIDpick');
+                if (pkTmp) pkTmp.disabled = true;
+              }
+            } catch (_) {}
           }
-          setTimeout(function () {
-            var el = document.getElementById('buttonIDpick');
-            if (el) el.disabled = false;
-          }, 40 * PAUSE_MULT);
           break;
         case 'locomote':
           if (freeSpace < 0) {
@@ -1126,6 +1157,8 @@ function goBaby() {
             if (transitMoves == 0) {
               // Handle things related to arriving at a location
               handleArrivalLogic(); // Call directly, animation happens during transit
+              // Re-sync pick button state on arrival in movement mode
+              try { if (typeof updatePickButtonVisibility === 'function' && uiMode === 'movement') updatePickButtonVisibility(); } catch (_) {}
             } else {
               if (visitedLocation[currLevel][nextLocIndex]) {
                 typeText(levelData[currLevel].RevisitMsg);
@@ -1191,6 +1224,30 @@ function goBaby() {
 
     buttonAction = '';
     inventoryChanged = false;
+
+    // Proactively refresh pick button state when cooldown ends
+    try {
+      if (typeof pickCooldownUntil === 'number' && Date.now() >= pickCooldownUntil) {
+        if (uiMode === 'movement') {
+          updatePickButtonVisibility();
+        } else if (uiMode === 'trading') {
+          var pkRe = document.getElementById('buttonIDpick');
+          if (pkRe) pkRe.disabled = false;
+// Ensure cooldown auto-reenable runs regardless of typing/UI mode
+try {
+  if (typeof pickCooldownUntil === 'number' && Date.now() >= pickCooldownUntil) {
+    if (uiMode === 'movement') {
+      if (typeof updatePickButtonVisibility === 'function') updatePickButtonVisibility();
+    } else if (uiMode === 'trading') {
+      var pkRe2 = document.getElementById('buttonIDpick');
+      if (pkRe2) pkRe2.disabled = false;
+    }
+  }
+} catch (_) {}
+        }
+      }
+    } catch (_) {}
+
   }
   setTimeout('goBaby()', 100);
 }
@@ -1285,8 +1342,9 @@ function clearGameVariables() {
   currLevel = 0;
   locIndex = 0;
   nextLocIndex = 1;
-  transitMoves = 4;
+  transitMoves = 0; // reset to idle at new game start
   pickingEnabled = false;
+  pickCooldownUntil = 0;
   tradingEnabled = false;
   storeVisible = false;
   upgradesVisible = false;
